@@ -548,15 +548,16 @@ def make_master_test(topic, count, questions):
     start_quiz_pattern = (
         r"function\s+startQuiz\s*\(\s*\)\s*\{"
         r".*?"
-        r"\n\}\s*\n(?=function\s+)"
+        r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{"
+        r".*?"
+        r"\}\s*,\s*1000\s*\)"
     )
 
     start_quiz_replacement = """function startQuiz(){
   qi=0;ans=Array(TOTAL).fill(null);time=0;reviewIndex=0;
   clearInterval(timerHandle);go('quiz');render();renderTimer();
   timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)
-}
-"""
+}"""
 
     source, start_quiz_count = re.subn(
         start_quiz_pattern,
@@ -566,8 +567,27 @@ def make_master_test(topic, count, questions):
         flags=re.S
     )
 
+    # Some Master UI revisions use slightly different spacing. If the
+    # complete function pattern is not found, patch the timer statement
+    # directly instead of failing generation.
     if start_quiz_count == 0:
-        raise RuntimeError("Master UI का startQuiz block नहीं मिला")
+        timer_pattern = (
+            r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{"
+            r".*?"
+            r"\}\s*,\s*1000\s*\)"
+        )
+        source, timer_count = re.subn(
+            timer_pattern,
+            "timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)",
+            source,
+            count=1,
+            flags=re.S
+        )
+        if timer_count == 0:
+            raise RuntimeError("Master UI में timer block नहीं मिला")
+        source = source.replace("time=TIME;", "time=0;")
+    else:
+        source = source.replace("time=TIME;", "time=0;")
 
     # ----------------------------------------------
     # TOPIC
