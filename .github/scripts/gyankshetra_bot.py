@@ -537,34 +537,37 @@ def make_master_test(topic, count, questions):
     if questions_json not in source:
         raise RuntimeError("Master UI में नए questions insert नहीं हुए")
 
+    if len(re.findall(r"const\s+questions\s*=", source)) != 1:
+        raise RuntimeError("Master UI में questions array replacement सुरक्षित नहीं है")
+
     # ----------------------------------------------
     # TIMER — ALWAYS START AT 00:00 AND COUNT UP
     # ----------------------------------------------
-    source = source.replace("time=TIME;", "time=0;")
+    # Replace the complete startQuiz() function. This avoids fragile
+    # matching of nested braces inside setInterval().
+    start_quiz_pattern = (
+        r"function\s+startQuiz\s*\(\s*\)\s*\{"
+        r".*?"
+        r"\n\}\s*\n(?=function\s+)"
+    )
 
-    timer_pattern = (
-        r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{.*?\}\s*,\s*1000\s*\)"
-    )
-    timer_replacement = (
-        "timerHandle=setInterval(()=>{"
-        "if(time<TIME){"
-        "time++;"
-        "renderTimer()"
-        "}else{"
-        "finish()"
-        "}"
-        "},1000)"
-    )
-    source, timer_count = re.subn(
-        timer_pattern,
-        timer_replacement,
+    start_quiz_replacement = """function startQuiz(){
+  qi=0;ans=Array(TOTAL).fill(null);time=0;reviewIndex=0;
+  clearInterval(timerHandle);go('quiz');render();renderTimer();
+  timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)
+}
+"""
+
+    source, start_quiz_count = re.subn(
+        start_quiz_pattern,
+        start_quiz_replacement,
         source,
         count=1,
         flags=re.S
     )
 
-    if timer_count == 0:
-        raise RuntimeError("Master UI का timer block नहीं मिला")
+    if start_quiz_count == 0:
+        raise RuntimeError("Master UI का startQuiz block नहीं मिला")
 
     # ----------------------------------------------
     # TOPIC
