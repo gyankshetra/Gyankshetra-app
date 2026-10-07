@@ -141,7 +141,8 @@ jobs:
                   "count": count
               }
 
-                   def groq_batch(topic, count, previous):
+      
+      def groq_batch(topic, count, previous):
               previous_text = "\n".join(previous[-20:])
 
               prompt = f"""
