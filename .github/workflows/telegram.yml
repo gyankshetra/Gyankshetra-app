@@ -15,7 +15,6 @@ concurrency:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -24,14 +23,17 @@ jobs:
           fetch-depth: 0
 
       - name: Install Python
-        run: pip install --no-cache-dir requests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install requests
+        run: pip install requests
 
       - name: Gyankshetra Telegram Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          REPO: ${{ github.repository }}
-
         run: |
           python3 <<'PY'
           import os
@@ -39,2145 +41,922 @@ jobs:
           import time
           import re
           import html
-          import hashlib
           import requests
-          import subprocess
           from pathlib import Path
           from datetime import datetime
 
-          # =========================================================
-          # CONFIG
-          # =========================================================
+          BOT = os.environ["TELEGRAM_BOT_TOKEN"]
+          GROQ = os.environ["GROQ_API_KEY"]
 
-          BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-          GROQ_KEY = os.environ["GROQ_API_KEY"]
-          REPO = os.environ["REPO"]
-
-          TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
+          TG = f"https://api.telegram.org/bot{BOT}"
           GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-          MODEL = "openai/gpt-oss-20b"
+          ROOT = Path(".")
+          REGISTRY = ROOT / "content" / "generated_tests.json"
+          OFFSET_FILE = ROOT / ".telegram_offset"
 
-          TEMPLATE = Path("index.html")
-          OFFSET_FILE = Path(".telegram_offset")
-          REGISTRY_FILE = Path("content/generated_tests.json")
+          REGISTRY.parent.mkdir(parents=True, exist_ok=True)
 
-          BATCH_SIZE = 4
-          POLL_SECONDS = 240
+          if REGISTRY.exists():
+              try:
+                  registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+              except Exception:
+                  registry = []
+          else:
+              registry = []
 
-          OWNER, REPO_NAME = REPO.split("/", 1)
-
-          BASE_URL = (
-              f"https://{OWNER}.github.io/"
-              f"{REPO_NAME}/"
-          )
-
-          # =========================================================
-          # TELEGRAM
-          # =========================================================
-
-          def tg(method, data=None, timeout=60):
-
-              r = requests.post(
-                  f"{TG}/{method}",
-                  json=data or {},
-                  timeout=timeout
-              )
-
-              r.raise_for_status()
-
-              result = r.json()
-
-              if not result.get("ok"):
-                  raise Exception(
-                      f"Telegram error: {result}"
-                  )
-
-              return result
-
-
-          def send(chat_id, text):
-
-              text = str(text)
-
-              for i in range(0, len(text), 3900):
-
-                  tg(
-                      "sendMessage",
-                      {
+          def tg_send(chat_id, text):
+              try:
+                  requests.post(
+                      TG + "/sendMessage",
+                      json={
                           "chat_id": chat_id,
-                          "text": text[i:i+3900],
+                          "text": text,
                           "disable_web_page_preview": False
-                      }
+                      },
+                      timeout=30
                   )
+              except Exception as e:
+                  print("Telegram send error:", e)
 
+          def get_offset():
+              if OFFSET_FILE.exists():
+                  try:
+                      return int(OFFSET_FILE.read_text().strip())
+                  except Exception:
+                      return 0
+              return 0
 
-          # =========================================================
-          # COMMAND PARSER
-          # =========================================================
+          def save_offset(offset):
+              OFFSET_FILE.write_text(str(offset), encoding="utf-8")
 
-          COMMANDS = {
-              "/test",
-              "/quiz",
-              "/practice",
-              "/mock",
-              "/pyq"
-          }
+          def safe_slug(text):
+              text = text.strip().lower()
+              text = re.sub(r"[^a-zA-Z0-9\u0900-\u097F]+", "-", text)
+              text = text.strip("-")
+              return text[:45] or "general"
 
-
-          def parse_command(text):
-
+          def command_parse(text):
               parts = text.strip().split()
 
               if not parts:
-                  return None, "", 20
+                  return None
 
-              command = parts[0].lower()
+              cmd = parts[0].lower()
 
-              command = command.split("@")[0]
+              allowed = {
+                  "/test": "test",
+                  "/mock": "mock",
+                  "/quiz": "quiz",
+                  "/practice": "practice",
+                  "/pyq": "pyq"
+              }
 
-              if command in ["/start", "/help"]:
-                  return command, "", 20
+              if cmd not in allowed:
+                  return None
 
-              if command not in COMMANDS:
-                  return None, "", 20
+              if len(parts) < 2:
+                  return {
+                      "type": allowed[cmd],
+                      "topic": "सामान्य",
+                      "count": 10
+                  }
 
-              count = 20
+              count = 10
 
-              if len(parts) >= 2 and parts[-1].isdigit():
-
-                  count = int(parts[-1])
-
-                  parts = parts[:-1]
-
-              topic = " ".join(parts[1:]).strip()
+              try:
+                  if parts[-1].isdigit():
+                      count = int(parts[-1])
+                      topic = " ".join(parts[1:-1]).strip()
+                  else:
+                      topic = " ".join(parts[1:]).strip()
+              except Exception:
+                  topic = " ".join(parts[1:]).strip()
 
               count = max(1, min(count, 100))
 
-              return command, topic, count
-
-
-          # =========================================================
-          # REGISTRY
-          # =========================================================
-
-          def load_registry():
-
-              if not REGISTRY_FILE.exists():
-                  return []
-
-              try:
-
-                  data = json.loads(
-                      REGISTRY_FILE.read_text(
-                          encoding="utf-8"
-                      )
-                  )
-
-                  return data if isinstance(data, list) else []
-
-              except Exception:
-
-                  return []
-
-
-          def save_registry(items):
-
-              REGISTRY_FILE.parent.mkdir(
-                  parents=True,
-                  exist_ok=True
-              )
-
-              REGISTRY_FILE.write_text(
-                  json.dumps(
-                      items,
-                      ensure_ascii=False,
-                      indent=2
-                  ),
-                  encoding="utf-8"
-              )
-
-
-          def find_update_in_registry(update_id):
-
-              for item in load_registry():
-
-                  if item.get("update_id") == update_id:
-                      return item
-
-              return None
-
-
-          # =========================================================
-          # INDEX UI
-          # =========================================================
-
-          REGISTRY_SCRIPT = r'''
-          <script id="generatedContentScript">
-          (function(){
-
-            async function loadGeneratedContent(){
-
-              try{
-
-                const response =
-                  await fetch(
-                    'content/generated_tests.json?v='
-                    + Date.now()
-                  );
-
-                if(!response.ok) return;
-
-                const items = await response.json();
-
-                if(!Array.isArray(items)) return;
-
-                const esc = function(value){
-
-                  return String(value ?? '')
-                    .replace(
-                      /[&<>"']/g,
-                      function(m){
-                        return {
-                          '&':'&amp;',
-                          '<':'&lt;',
-                          '>':'&gt;',
-                          '"':'&quot;',
-                          "'":'&#39;'
-                        }[m];
-                      }
-                    );
-
-                };
-
-
-                function renderBox(
-                  id,
-                  heading,
-                  icon,
-                  types
-                ){
-
-                  const box =
-                    document.getElementById(id);
-
-                  if(!box) return;
-
-                  const rows =
-                    items.filter(function(item){
-                      return types.includes(item.type);
-                    });
-
-                  if(!rows.length){
-                    box.innerHTML = '';
-                    return;
-                  }
-
-                  let out =
-                    '<h3 style="margin:14px 0 8px">'
-                    + icon + ' '
-                    + heading
-                    + '</h3>';
-
-
-                  rows.forEach(function(item){
-
-                    let extra = '';
-
-                    if(item.type === 'mock'){
-                      extra = ' • Mock';
-                    }
-
-                    if(item.type === 'pyq'){
-                      extra = ' • PYQ-style';
-                    }
-
-                    out +=
-                      '<div class="card">'
-                      + '<b>'
-                      + esc(item.title)
-                      + '</b>'
-                      + '<small>'
-                      + esc(item.questions)
-                      + ' Questions • '
-                      + esc(item.minutes)
-                      + ' Minutes'
-                      + extra
-                      + '</small>'
-                      + '<a '
-                      + 'href="' + esc(item.url) + '" '
-                      + 'class="primary" '
-                      + 'style="display:inline-block;'
-                      + 'text-decoration:none;'
-                      + 'margin-top:9px">'
-                      + 'Start Test →'
-                      + '</a>'
-                      + '</div>';
-
-                  });
-
-                  box.innerHTML = out;
-
-                }
-
-
-                renderBox(
-                  'generatedTests',
-                  'AI Test Series',
-                  '📝',
-                  ['test','mock']
-                );
-
-
-                renderBox(
-                  'generatedQuiz',
-                  'AI Quiz',
-                  '🎯',
-                  ['quiz']
-                );
-
-
-                renderBox(
-                  'generatedPractice',
-                  'AI Practice',
-                  '⚡',
-                  ['practice']
-                );
-
-
-                renderBox(
-                  'generatedPyq',
-                  'PYQ Practice',
-                  '📄',
-                  ['pyq']
-                );
-
-
-                const home =
-                  document.getElementById(
-                    'generatedHome'
-                  );
-
-                if(home){
-
-                  const latest =
-                    items.slice(0,5);
-
-                  let out = '';
-
-                  latest.forEach(function(item){
-
-                    out +=
-                      '<div class="card">'
-                      + '<b>'
-                      + esc(item.title)
-                      + '</b>'
-                      + '<small>'
-                      + esc(item.questions)
-                      + ' Questions • '
-                      + esc(item.minutes)
-                      + ' Minutes'
-                      + '</small>'
-                      + '<a '
-                      + 'href="' + esc(item.url) + '" '
-                      + 'class="primary" '
-                      + 'style="display:inline-block;'
-                      + 'text-decoration:none;'
-                      + 'margin-top:8px">'
-                      + 'Open →'
-                      + '</a>'
-                      + '</div>';
-
-                  });
-
-                  home.innerHTML = out;
-
-                }
-
-              }
-              catch(error){
-
-                console.log(
-                  'Generated content:',
-                  error
-                );
-
+              return {
+                  "type": allowed[cmd],
+                  "topic": topic or "सामान्य",
+                  "count": count
               }
 
-            }
-
-
-            const path =
-              location.pathname;
-
-            if(
-              path.endsWith('/')
-              ||
-              path.endsWith('/index.html')
-            ){
-
-              loadGeneratedContent();
-
-            }
-
-          })();
-          </script>
-          '''
-
-
-          def ensure_index_ui():
-
-              if not TEMPLATE.exists():
-
-                  raise Exception(
-                      "index.html नहीं मिला।"
-                  )
-
-              text = TEMPLATE.read_text(
-                  encoding="utf-8"
-              )
-
-              original = text
-
-              text = text.replace(
-                  "\r\n",
-                  "\n"
-              )
-
-
-              # -----------------------------------------------------
-              # HOME BOX
-              # -----------------------------------------------------
-
-              if 'id="generatedHome"' not in text:
-
-                  text = text.replace(
-                      "<h3>आज का टेस्ट</h3>",
-                      "<h3>आज का टेस्ट</h3>"
-                      '<div id="generatedHome"></div>',
-                      1
-                  )
-
-
-              # -----------------------------------------------------
-              # TEST BOX
-              # -----------------------------------------------------
-
-              if 'id="generatedTests"' not in text:
-
-                  marker = (
-                      '<main id="tests" '
-                      'class="screen">'
-                      '<h2>📝 Test Series</h2>'
-                  )
-
-                  replacement = (
-                      marker
-                      '<div id="generatedTests"></div>'
-                  )
-
-                  text = text.replace(
-                      marker,
-                      replacement,
-                      1
-                  )
-
-
-              # -----------------------------------------------------
-              # QUIZ / PRACTICE / PYQ BOXES
-              # -----------------------------------------------------
-
-              if 'id="generatedQuiz"' not in text:
-
-                  marker = (
-                      '<main id="practice" '
-                      'class="screen">'
-                      '<h2>🎯 Quiz</h2>'
-                  )
-
-                  replacement = (
-                      marker
-                      '<div id="generatedQuiz"></div>'
-                      '<div id="generatedPractice"></div>'
-                      '<div id="generatedPyq"></div>'
-                  )
-
-                  text = text.replace(
-                      marker,
-                      replacement,
-                      1
-                  )
-
-
-              # -----------------------------------------------------
-              # HIDE QUESTION PALETTE
-              # -----------------------------------------------------
-
-              if (
-                  "#popupPalette,#paletteHint"
-                  not in text
-              ):
-
-                  text = text.replace(
-                      "</style>",
-                      """
-          #popupPalette,
-          #paletteHint,
-          .palette{
-            display:none!important;
-          }
-          </style>
-          """,
-                      1
-                  )
-
-
-              # -----------------------------------------------------
-              # COUNT-UP TIMER
-              # Starts 00:00
-              # -----------------------------------------------------
-
-              if (
-                  "GYANKSHETRA_COUNTUP_TIMER_V1"
-                  not in text
-              ):
-
-                  pattern = re.compile(
-                      r"function startQuiz\(\)\{.*?"
-                      r"\}\s*function renderTimer",
-                      re.S
-                  )
-
-                  replacement = """
-          // GYANKSHETRA_COUNTUP_TIMER_V1
-          function startQuiz(){
-            qi=0;
-            ans=Array(TOTAL).fill(null);
-            time=0;
-            reviewIndex=0;
-            clearInterval(timerHandle);
-            go('quiz');
-            render();
-            renderTimer();
-
-            timerHandle=setInterval(()=>{
-              if(time<TIME){
-                time++;
-                renderTimer();
-
-                if(time>=TIME){
-                  finish();
-                }
-              }
-            },1000);
-          }
-
-          function renderTimer"""
-
-                  text, changed = pattern.subn(
-                      replacement,
-                      text,
-                      count=1
-                  )
-
-
-              text = text.replace(
-                  '<span id="timer">20:00</span>',
-                  '<span id="timer">00:00</span>',
-                  1
-              )
-
-
-              # -----------------------------------------------------
-              # DYNAMIC MARKS
-              # -----------------------------------------------------
-
-              text = text.replace(
-                  "marks.textContent=c+' / 20'",
-                  "marks.textContent=c+' / '+TOTAL",
-                  1
-              )
-
-              text = text.replace(
-                  "bestScore.textContent=(h.reduce((m,x)=>Math.max(m,x.marks),0))+' / 20'",
-                  "bestScore.textContent=(h.reduce((m,x)=>Math.max(m,Number(x.marks)||0),0))+' / '+TOTAL",
-                  1
-              )
-
-
-              # -----------------------------------------------------
-              # REGISTRY SCRIPT
-              # -----------------------------------------------------
-
-              if (
-                  'id="generatedContentScript"'
-                  not in text
-              ):
-
-                  text = text.replace(
-                      "</body>",
-                      REGISTRY_SCRIPT
-                      + "\n</body>",
-                      1
-                  )
-
-
-              if text != original:
-
-                  TEMPLATE.write_text(
-                      text,
-                      encoding="utf-8"
-                  )
-
-              return text
-
-
-          # =========================================================
-          # GROQ SCHEMA
-          # =========================================================
-
-          SCHEMA = {
-              "type": "object",
-              "properties": {
-                  "questions": {
-                      "type": "array",
-                      "items": {
-                          "type": "object",
-                          "properties": {
-                              "question": {
-                                  "type": "string"
-                              },
-                              "options": {
-                                  "type": "array",
-                                  "items": {
-                                      "type": "string"
-                                  }
-                              },
-                              "answer": {
-                                  "type": "integer"
-                              },
-                              "explanation": {
-                                  "type": "string"
-                              },
-                              "facts": {
-                                  "type": "array",
-                                  "items": {
-                                      "type": "string"
-                                  }
-                              }
-                          },
-                          "required": [
-                              "question",
-                              "options",
-                              "answer",
-                              "explanation",
-                              "facts"
-                          ],
-                          "additionalProperties": False
-                      }
-                  }
-              },
-              "required": [
-                  "questions"
-              ],
-              "additionalProperties": False
-          }
-
-
-          # =========================================================
-          # GROQ BATCH
-          # =========================================================
-
-          def groq_batch(
-              topic,
-              count,
-              command,
-              avoid=""
-          ):
-
-              if command == "/pyq":
-
-                  instruction = """
-          Create PYQ-style practice questions.
-          Do NOT claim they are authentic PYQs unless
-          a verified source was provided.
-          """
-
-              elif command == "/mock":
-
-                  instruction = """
-          Create full mock-test level questions.
-          Use conceptual, application and exam-oriented
-          difficulty.
-          """
-
-              elif command == "/practice":
-
-                  instruction = """
-          Create concept and application based practice
-          questions.
-          """
-
-              elif command == "/quiz":
-
-                  instruction = """
-          Create engaging high-quality quiz questions
-          with medium-to-high difficulty.
-          """
-
-              else:
-
-                  instruction = """
-          Create high-level Test Series questions.
-          """
-
+          def groq_batch(topic, count, previous):
+              previous_text = "\n".join(previous[-20:])
 
               prompt = f"""
-          You are Gyankshetra's official AI question generator.
+          आप Gyankshetra के लिए प्रतियोगी परीक्षा स्तर के MCQ प्रश्न बनाएं।
 
-          Topic:
-          {topic}
+          विषय: {topic}
+          प्रश्नों की संख्या: {count}
 
-          Generate exactly:
-          {count} questions
+          परीक्षा स्तर:
+          STET / BPSC TRE / शिक्षक भर्ती / प्रतियोगी परीक्षा
 
-          Exam level:
-          STET / BPSC TRE
+          नियम:
+          1. सभी प्रश्न मौलिक और तथ्यात्मक हों।
+          2. प्रत्येक प्रश्न के 4 विकल्प हों।
+          3. केवल एक सही उत्तर हो।
+          4. उत्तर 0,1,2,3 में दें।
+          5. हर प्रश्न की छोटी लेकिन उपयोगी व्याख्या दें।
+          6. हर प्रश्न के 5 महत्वपूर्ण परीक्षा तथ्य दें।
+          7. भाषा मुख्यतः शुद्ध हिन्दी रखें।
+          8. English scientific names आवश्यक होने पर English में ही रखें।
+          9. प्रश्नों को दोहराएं नहीं।
+          10. JSON के अलावा कोई text न दें।
 
-          {instruction}
-
-          Rules:
-
-          1. Every question must be MCQ.
-          2. Exactly 4 options.
-          3. Only one correct answer.
-          4. answer must be 0,1,2 or 3.
-          5. Questions must not repeat.
-          6. Questions must be factually accurate.
-          7. Write questions primarily in Hindi.
-          8. Keep necessary scientific/English terms in English.
-          9. Give a concise explanation.
-          10. Give exactly 10 useful exam facts.
-          11. Medium to high difficulty.
-          12. Do not invent facts.
-          13. Do not falsely call generated questions authentic PYQs.
-          14. Return JSON only.
-
-          Avoid repeating these previous questions:
-          {avoid}
-
-          JSON structure:
-
+          JSON format:
           {{
             "questions": [
               {{
-                "question": "...",
-                "options": [
-                  "...",
-                  "...",
-                  "...",
-                  "..."
-                ],
+                "question": "प्रश्न",
+                "options": ["A","B","C","D"],
                 "answer": 0,
-                "explanation": "...",
-                "facts": [
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "...",
-                  "..."
-                ]
+                "explanation": "व्याख्या",
+                "facts": ["तथ्य 1","तथ्य 2","तथ्य 3","तथ्य 4","तथ्य 5"]
               }}
             ]
           }}
+
+          पहले से बने कुछ प्रश्न:
+          {previous_text}
           """
 
-
               payload = {
-                  "model": MODEL,
-
+                  "model": "openai/gpt-oss-20b",
                   "messages": [
                       {
                           "role": "system",
-                          "content": (
-                              "Return only valid JSON "
-                              "matching the supplied schema."
-                          )
+                          "content": "आप एक उच्च गुणवत्ता वाले भारतीय प्रतियोगी परीक्षा प्रश्न निर्माता हैं।"
                       },
                       {
                           "role": "user",
                           "content": prompt
                       }
                   ],
-
+                  "temperature": 0.4,
+                  "max_completion_tokens": 5000,
                   "response_format": {
-                      "type": "json_schema",
-                      "json_schema": {
-                          "name": "question_set",
-                          "strict": True,
-                          "schema": SCHEMA
-                      }
-                  },
-
-                  "max_completion_tokens": 3500,
-
-                  "reasoning_effort": "low"
+                      "type": "json_object"
+                  }
               }
 
-
-              for attempt in range(6):
-
+              for attempt in range(5):
                   r = requests.post(
                       GROQ_URL,
                       headers={
-                          "Authorization":
-                              f"Bearer {GROQ_KEY}",
-                          "Content-Type":
-                              "application/json"
+                          "Authorization": f"Bearer {GROQ}",
+                          "Content-Type": "application/json"
                       },
                       json=payload,
-                      timeout=180
+                      timeout=120
                   )
-
 
                   if r.status_code == 429:
-
-                      retry_after = (
-                          r.headers.get(
-                              "Retry-After"
-                          )
-                      )
-
-                      wait = 25
-
-                      if retry_after:
-
-                          try:
-                              wait = int(
-                                  float(retry_after)
-                              )
-                          except:
-                              pass
-
-                      else:
-
-                          m = re.search(
-                              r"try again in ([0-9.]+)s",
-                              r.text,
-                              re.I
-                          )
-
-                          if m:
-
-                              wait = int(
-                                  float(m.group(1))
-                              ) + 2
-
-                      wait = min(
-                          max(wait, 5),
-                          90
-                      )
-
-                      print(
-                          f"Groq 429. Waiting {wait}s"
-                      )
-
+                      wait = 25 * (attempt + 1)
+                      print("Groq rate limit. Waiting", wait)
                       time.sleep(wait)
-
                       continue
 
-
-                  if r.status_code >= 500:
-
-                      time.sleep(
-                          5 * (attempt + 1)
+                  if r.status_code >= 400:
+                      raise RuntimeError(
+                          f"Groq API {r.status_code}: {r.text[:1000]}"
                       )
-
-                      continue
-
-
-                  if not r.ok:
-
-                      raise Exception(
-                          "Groq API Error "
-                          f"{r.status_code}: "
-                          f"{r.text[:2000]}"
-                      )
-
 
                   data = r.json()
+                  content = data["choices"][0]["message"]["content"]
 
-                  content = (
-                      data["choices"][0]
-                      ["message"]["content"]
-                  )
+                  try:
+                      obj = json.loads(content)
+                  except Exception:
+                      match = re.search(r"\{.*\}", content, re.S)
+                      if not match:
+                          raise RuntimeError("Groq ने valid JSON नहीं दिया")
+                      obj = json.loads(match.group(0))
 
-                  result = json.loads(
-                      content
-                  )
+                  qs = obj.get("questions", [])
 
-                  questions = result.get(
-                      "questions",
-                      []
-                  )
+                  if not isinstance(qs, list):
+                      raise RuntimeError("questions array नहीं मिला")
 
-                  if not isinstance(
-                      questions,
-                      list
-                  ):
+                  return qs
 
-                      raise Exception(
-                          "Groq ने questions array नहीं दिया।"
-                      )
+              raise RuntimeError("Groq rate limit बार-बार आया")
 
-                  valid = []
-
-                  for q in questions:
-
-                      if not isinstance(
-                          q,
-                          dict
-                      ):
-                          continue
-
-                      question = str(
-                          q.get(
-                              "question",
-                              ""
-                          )
-                      ).strip()
-
-                      options = q.get(
-                          "options",
-                          []
-                      )
-
-                      answer = q.get(
-                          "answer",
-                          0
-                      )
-
-                      explanation = str(
-                          q.get(
-                              "explanation",
-                              ""
-                          )
-                      ).strip()
-
-                      facts = q.get(
-                          "facts",
-                          []
-                      )
-
-
-                      if (
-                          not question
-                          or not isinstance(
-                              options,
-                              list
-                          )
-                          or len(options) != 4
-                          or not isinstance(
-                              facts,
-                              list
-                          )
-                      ):
-                          continue
-
-
-                      try:
-
-                          answer = int(answer)
-
-                      except:
-
-                          continue
-
-
-                      if answer not in range(4):
-                          continue
-
-
-                      options = [
-                          str(x).strip()
-                          for x in options
-                      ]
-
-                      facts = [
-                          str(x).strip()
-                          for x in facts
-                          if str(x).strip()
-                      ]
-
-
-                      if len(facts) < 3:
-                          continue
-
-
-                      valid.append({
-                          "question": question,
-                          "options": options,
-                          "answer": answer,
-                          "explanation": explanation,
-                          "facts": facts[:10]
-                      })
-
-
-                  return valid
-
-
-              raise Exception(
-                  "Groq लगातार retry के बाद भी response नहीं दे पाया।"
-              )
-
-
-          # =========================================================
-          # GENERATE TOTAL
-          # =========================================================
-
-          def generate_questions(
-              topic,
-              total,
-              command
-          ):
-
-              result = []
-
+          def generate_questions(topic, total):
+              all_q = []
               seen = set()
 
-              empty_rounds = 0
-
-
-              while len(result) < total:
-
-                  batch = min(
-                      BATCH_SIZE,
-                      total - len(result)
-                  )
-
-
-                  avoid = "\n".join(
-                      q["question"]
-                      for q in result[-8:]
-                  )
-
+              while len(all_q) < total:
+                  remaining = total - len(all_q)
+                  batch = min(5, remaining)
 
                   qs = groq_batch(
                       topic,
                       batch,
-                      command,
-                      avoid
+                      [q["question"] for q in all_q]
                   )
-
 
                   added = 0
 
-
                   for q in qs:
+                      try:
+                          question = str(q["question"]).strip()
+                          options = q["options"]
+                          answer = int(q["answer"])
+                          explanation = str(q.get("explanation", "")).strip()
+                          facts = q.get("facts", [])
 
-                      key = re.sub(
-                          r"\s+",
-                          " ",
-                          q["question"].strip().lower()
-                      )
+                          if not question:
+                              continue
 
+                          if question in seen:
+                              continue
 
-                      if key in seen:
+                          if not isinstance(options, list) or len(options) != 4:
+                              continue
+
+                          if answer not in [0, 1, 2, 3]:
+                              continue
+
+                          if not isinstance(facts, list):
+                              facts = []
+
+                          q["question"] = question
+                          q["options"] = [str(x) for x in options]
+                          q["answer"] = answer
+                          q["explanation"] = explanation
+                          q["facts"] = [str(x) for x in facts[:5]]
+
+                          seen.add(question)
+                          all_q.append(q)
+                          added += 1
+
+                          if len(all_q) >= total:
+                              break
+
+                      except Exception:
                           continue
 
-
-                      seen.add(key)
-
-                      result.append(q)
-
-                      added += 1
-
-
-                      if len(result) >= total:
-                          break
-
-
                   if added == 0:
+                      time.sleep(3)
 
-                      empty_rounds += 1
+                  print("Generated:", len(all_q), "/", total)
 
-                      if empty_rounds >= 3:
+              return all_q[:total]
 
-                          raise Exception(
-                              "AI ने लगातार duplicate/invalid "
-                              "questions दिए।"
-                          )
-
-                  else:
-
-                      empty_rounds = 0
-
-
-                  time.sleep(1)
-
-
-              return result[:total]
-
-
-          # =========================================================
-          # CREATE GENERATED HTML
-          # =========================================================
-
-          def create_generated_page(
-              topic,
-              questions,
-              command
-          ):
-
-              template = ensure_index_ui()
-
-              total = len(questions)
-
-              time_seconds = total * 60
-
-
-              old_format = []
-
-
-              for q in questions:
-
-                  options = q["options"]
-
-                  options = (
-                      options + ["", "", "", ""]
-                  )[:4]
-
-
-                  answer = int(
-                      q["answer"]
-                  )
-
-
-                  facts = [
-                      str(x)
-                      for x in q.get(
-                          "facts",
-                          []
-                      )
-                  ]
-
-
-                  old_format.append(
-                      [
-                          str(q["question"]),
-                          options,
-                          answer,
-                          facts
-                      ]
-                  )
-
-
-              js_questions = json.dumps(
-                  old_format,
+          def make_test_html(title, topic, qtype, questions):
+              data = json.dumps(
+                  questions,
                   ensure_ascii=False,
                   separators=(",", ":")
               )
 
-
-              # Protect </script>
-              js_questions = js_questions.replace(
-                  "</",
-                  "<\\/"
-              )
-
-
-              topic_json = json.dumps(
-                  topic,
-                  ensure_ascii=False
-              ).replace(
-                  "</",
-                  "<\\/"
-              )
-
-
-              escaped_topic = html.escape(
-                  topic
-              )
-
-
-              # -----------------------------------------------------
-              # TOTAL / TIME
-              # -----------------------------------------------------
-
-              text = re.sub(
-                  r"const TOTAL=.*?;",
-                  (
-                      f"const TOTAL={total},"
-                      f"TIME={time_seconds};"
-                  ),
-                  template,
-                  count=1
-              )
-
-
-              # -----------------------------------------------------
-              # QUESTION ARRAY
-              # -----------------------------------------------------
-
-              q_start = text.find(
-                  "const questions=["
-              )
-
-              q_marker = "];\nlet qi=0,"
-
-              q_end = text.find(
-                  q_marker,
-                  q_start
-              )
-
-
-              if (
-                  q_start == -1
-                  or q_end == -1
-              ):
-
-                  raise Exception(
-                      "Master UI में current "
-                      "question block नहीं मिला।"
-                  )
-
-
-              text = (
-                  text[:q_start]
-                  + "const questions="
-                  + js_questions
-                  + ";"
-                  + text[q_end + 2:]
-              )
-
-
-              # -----------------------------------------------------
-              # GENERATED TOPIC
-              # -----------------------------------------------------
-
-              qi_pos = text.find(
-                  "let qi=0,"
-              )
-
-
-              text = (
-                  text[:qi_pos]
-                  + f"const GENERATED_TOPIC={topic_json};\n"
-                  + text[qi_pos:]
-              )
-
-
-              # -----------------------------------------------------
-              # TITLE
-              # -----------------------------------------------------
-
-              text = re.sub(
-                  r"<title>.*?</title>",
-                  (
-                      f"<title>"
-                      f"Gyankshetra — "
-                      f"{escaped_topic} "
-                      f"{total}Q"
-                      f"</title>"
-                  ),
-                  text,
-                  count=1,
-                  flags=re.S
-              )
-
-
-              # -----------------------------------------------------
-              # QUIZ HEADER
-              # -----------------------------------------------------
-
-              text = re.sub(
-                  r"(<main id=\"quiz\".*?"
-                  r"<div class=\"quizbar\">"
-                  r"<button[^>]*>‹</button>"
-                  r"<b>).*?(</b>)",
-                  lambda m:
-                      m.group(1)
-                      + escaped_topic
-                      + m.group(2),
-                  text,
-                  count=1,
-                  flags=re.S
-              )
-
-
-              # Back button -> main app
-              back_button = (
-                  '<button '
-                  f'onclick="location.href=\''
-                  f'{BASE_URL}'
-                  f'\'">‹</button>'
-              )
-
-
-              text = re.sub(
-                  r'<button onclick="go\(\'tests\'\)">‹</button>',
-                  back_button,
-                  text,
-                  count=1
-              )
-
-
-              # -----------------------------------------------------
-              # QUESTION COUNT
-              # -----------------------------------------------------
-
-              text = re.sub(
-                  r'<span id="qn">.*?</span>',
-                  f'<span id="qn">1/{total}</span>',
-                  text,
-                  count=1
-              )
-
-
-              # Timer starts at 00:00
-              text = re.sub(
-                  r'<span id="timer">.*?</span>',
-                  '<span id="timer">00:00</span>',
-                  text,
-                  count=1
-              )
-
-
-              # -----------------------------------------------------
-              # COUNT-UP TIMER
-              # -----------------------------------------------------
-
-              start_pattern = re.compile(
-                  r"function startQuiz\(\)\{.*?"
-                  r"\}\s*function renderTimer",
-                  re.S
-              )
-
-
-              start_replacement = """
-          function startQuiz(){
-            qi=0;
-            ans=Array(TOTAL).fill(null);
-            time=0;
-            reviewIndex=0;
-            clearInterval(timerHandle);
-            go('quiz');
-            render();
-            renderTimer();
-
-            timerHandle=setInterval(()=>{
-              if(time<TIME){
-                time++;
-                renderTimer();
-
-                if(time>=TIME){
-                  finish();
-                }
-              }
-            },1000);
-          }
-
-          function renderTimer"""
-
-
-              text, changed = (
-                  start_pattern.subn(
-                      start_replacement,
-                      text,
-                      count=1
-                  )
-              )
-
-
-              if changed != 1:
-
-                  raise Exception(
-                      "Timer function नहीं मिला।"
-                  )
-
-
-              # -----------------------------------------------------
-              # DYNAMIC FINISH
-              # -----------------------------------------------------
-
-              finish_pattern = re.compile(
-                  r"function finish\(\)\{.*?"
-                  r"\}\s*function showReview",
-                  re.S
-              )
-
-
-              finish_replacement = """
-          function finish(){
-            if(!quiz.classList.contains('active'))return;
-
-            clearInterval(timerHandle);
-            timerHandle=null;
-
-            closePopup();
-
-            let c=ans.filter(
-              (v,i)=>v!==null &&
-              v===questions[i][2]
-            ).length;
-
-            let w=ans.filter(
-              (v,i)=>v!==null &&
-              v!==questions[i][2]
-            ).length;
-
-            let s=ans.filter(
-              v=>v===null
-            ).length;
-
-            let item={
-              date:new Date().toLocaleString('hi-IN'),
-              test:GENERATED_TOPIC,
-              marks:c,
-              total:TOTAL,
-              correct:c,
-              wrong:w,
-              skipped:s
-            };
-
-            let h=JSON.parse(
-              localStorage.getItem('history')||'[]'
-            );
-
-            h.push(item);
-
-            localStorage.setItem(
-              'history',
-              JSON.stringify(h)
-            );
-
-            score.textContent=
-              Math.round(c/TOTAL*100)+'%';
-
-            marks.textContent=
-              c+' / '+TOTAL;
-
-            correct.textContent=c;
-            wrong.textContent=w;
-            skipped.textContent=s;
-
-            go('result');
-          }
-
-          function showReview"""
-
-
-              text, changed = (
-                  finish_pattern.subn(
-                      finish_replacement,
-                      text,
-                      count=1
-                  )
-              )
-
-
-              if changed != 1:
-
-                  raise Exception(
-                      "Finish function नहीं मिला।"
-                  )
-
-
-              # -----------------------------------------------------
-              # HIDE QUESTION PALETTE
-              # -----------------------------------------------------
-
-              text = text.replace(
-                  "</style>",
-                  """
-          #popupPalette,
-          #paletteHint,
-          .palette{
-            display:none!important;
-          }
+              title_js = json.dumps(title, ensure_ascii=False)
+              topic_js = json.dumps(topic, ensure_ascii=False)
+
+              return f'''<!DOCTYPE html>
+          <html lang="hi">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta name="theme-color" content="#111827">
+          <title>Gyankshetra — {html.escape(title)}</title>
+          <style>
+          *{{box-sizing:border-box}}
+          body{{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,"Noto Sans Devanagari",sans-serif}}
+          button{{font:inherit}}
+          .top{{height:58px;background:#111827;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 15px;position:sticky;top:0;z-index:5}}
+          .brand{{font-size:20px;font-weight:800}}
+          .top button{{background:none;border:0;color:white;font-size:22px}}
+          .wrap{{max-width:700px;margin:auto;padding:14px}}
+          .card,.qcard,.resultcard,.reviewcard{{background:white;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #00000012}}
+          .hero{{font-size:18px;font-weight:800}}
+          .small{{display:block;color:#687386;margin-top:5px;font-size:13px}}
+          .primary,.next{{background:#2563eb;color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:700}}
+          .secondary{{background:#e5e7eb;border:0;border-radius:10px;padding:12px 18px}}
+          .quizbar{{display:flex;align-items:center;justify-content:space-between;background:white;padding:12px 15px;border-bottom:1px solid #eee}}
+          .quizbar button{{border:0;background:none;font-size:22px}}
+          .questionline{{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-weight:700}}
+          .star{{border:0;background:none;font-size:27px}}
+          .timer{{font-variant-numeric:tabular-nums}}
+          .qcard h2{{font-size:20px;line-height:1.5}}
+          .option{{display:block;width:100%;text-align:left;background:#f8fafc;border:1px solid #d8dee8;padding:13px;border-radius:10px;margin:9px 0}}
+          .option.selected{{border:2px solid #2563eb;background:#eff6ff}}
+          .actions{{display:flex;gap:10px;justify-content:space-between;margin-top:18px}}
+          .actions button{{flex:1}}
+          .facts{{background:#f8fafc;padding:12px;border-radius:10px;margin-top:12px;line-height:1.6}}
+          .hide{{display:none}}
+          .score{{font-size:34px;font-weight:900;text-align:center}}
+          .nav{{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #ddd;padding:10px;text-align:center}}
           </style>
-          """,
-                  1
-              )
+          </head>
+          <body>
 
+          <div class="top">
+            <div class="brand">Gyankshetra</div>
+            <button onclick="alert('Gyankshetra Test')">☰</button>
+          </div>
 
-              # -----------------------------------------------------
-              # AUTO START
-              # -----------------------------------------------------
+          <div id="home" class="wrap">
+            <div class="card">
+              <div class="hero">{html.escape(title)}</div>
+              <span class="small">{len(questions)} प्रश्न • {len(questions)} अंक • {len(questions)} मिनट • No Negative</span>
+              <br>
+              <button class="primary" onclick="startQuiz()">Start Test</button>
+            </div>
+          </div>
 
-              boot = f"""
-          <script id="generatedBoot">
-          window.addEventListener(
-            'load',
-            function(){{
-              try{{
-                var title =
-                  document.querySelector(
-                    '#quiz .quizbar b'
-                  );
+          <div id="quiz" class="hide">
+            <div class="quizbar">
+              <button onclick="confirmBack()">‹</button>
+              <b>{html.escape(title)}</b>
+              <button>☰</button>
+            </div>
 
-                if(title){{
-                  title.textContent =
-                    GENERATED_TOPIC;
-                }}
+            <div class="questionline">
+              <span>प्रश्न <span id="qn">1/{len(questions)}</span></span>
+              <button id="star" class="star" onclick="saveQuestion()">☆</button>
+              <span>⏱ <span id="timer">00:00</span></span>
+            </div>
 
-                requireUser(startQuiz);
+            <div class="wrap">
+              <div class="qcard">
+                <h2 id="question"></h2>
+                <div id="options"></div>
+                <div class="actions">
+                  <button class="secondary" onclick="prev()">← पिछला</button>
+                  <button id="next" class="next" onclick="next()">अगला →</button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-              }}catch(e){{
-                console.error(e);
+          <div id="result" class="wrap hide">
+            <div class="resultcard">
+              <h2>🎉 Test Result</h2>
+              <div class="score" id="score">0/{len(questions)}</div>
+              <p id="resultText"></p>
+              <div class="actions">
+                <button class="secondary" onclick="review()">Review</button>
+                <button class="primary" onclick="startQuiz()">Reattempt</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="review" class="wrap hide">
+            <div class="reviewcard">
+              <b id="reviewTitle"></b>
+              <h2 id="reviewQuestion"></h2>
+              <p><b>आपका उत्तर:</b> <span id="userAnswer"></span></p>
+              <p><b>सही उत्तर:</b> <span id="correctAnswer"></span></p>
+              <p><b>व्याख्या:</b> <span id="explanation"></span></p>
+              <div class="facts">
+                <b>महत्वपूर्ण तथ्य</b>
+                <div id="facts"></div>
+              </div>
+              <div class="actions">
+                <button class="secondary" onclick="reviewPrev()">← पिछला</button>
+                <button class="next" onclick="reviewNext()">अगला →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav">
+            Gyankshetra • {html.escape(topic)}
+          </div>
+
+          <script>
+          const questions={data};
+          const TOTAL=questions.length;
+          const TEST_TITLE={title_js};
+          const TOPIC={topic_js};
+          const MAX_TIME=TOTAL*60;
+
+          let qi=0;
+          let answers=Array(TOTAL).fill(null);
+          let elapsed=0;
+          let timerHandle=null;
+          let reviewIndex=0;
+
+          function $(id){{return document.getElementById(id)}}
+
+          function startQuiz(){{
+            qi=0;
+            answers=Array(TOTAL).fill(null);
+            elapsed=0;
+
+            clearInterval(timerHandle);
+
+            $("home").classList.add("hide");
+            $("result").classList.add("hide");
+            $("review").classList.add("hide");
+            $("quiz").classList.remove("hide");
+
+            render();
+
+            timerHandle=setInterval(function(){{
+              elapsed++;
+
+              let m=Math.floor(elapsed/60);
+              let s=elapsed%60;
+
+              $("timer").textContent=
+                String(m).padStart(2,"0")+":"+
+                String(s).padStart(2,"0");
+
+              if(elapsed>=MAX_TIME){{
+                finish();
               }}
+            }},1000);
+          }}
+
+          function render(){{
+            let q=questions[qi];
+
+            $("qn").textContent=(qi+1)+"/"+TOTAL;
+            $("question").textContent=q.question;
+
+            let box=$("options");
+            box.innerHTML="";
+
+            q.options.forEach(function(opt,i){{
+              let b=document.createElement("button");
+              b.className="option";
+              b.textContent=String.fromCharCode(65+i)+". "+opt;
+
+              if(answers[qi]===i){{
+                b.classList.add("selected");
+              }}
+
+              b.onclick=function(){{
+                answers[qi]=i;
+                render();
+              }};
+
+              box.appendChild(b);
+            }});
+
+            $("next").textContent=
+              qi===TOTAL-1 ? "Submit Test" : "अगला →";
+
+            $("star").textContent=
+              savedQuestion(qi) ? "★" : "☆";
+          }}
+
+          function prev(){{
+            if(qi>0){{
+              qi--;
+              render();
+              window.scrollTo(0,0);
             }}
-          );
+          }}
+
+          function next(){{
+            if(qi<TOTAL-1){{
+              qi++;
+              render();
+              window.scrollTo(0,0);
+            }}else{{
+              finish();
+            }}
+          }}
+
+          function finish(){{
+            clearInterval(timerHandle);
+
+            let correct=0;
+
+            questions.forEach(function(q,i){{
+              if(answers[i]===q.answer) correct++;
+            }});
+
+            $("quiz").classList.add("hide");
+            $("result").classList.remove("hide");
+
+            $("score").textContent=correct+"/"+TOTAL;
+
+            $("resultText").textContent=
+              "सही: "+correct+
+              " • गलत: "+answers.filter((x,i)=>x!==null&&x!==questions[i].answer).length+
+              " • छोड़े: "+answers.filter(x=>x===null).length+
+              " • प्रतिशत: "+Math.round(correct/TOTAL*100)+"%";
+          }}
+
+          function review(){{
+            reviewIndex=0;
+
+            $("result").classList.add("hide");
+            $("review").classList.remove("hide");
+
+            renderReview();
+          }}
+
+          function renderReview(){{
+            let q=questions[reviewIndex];
+
+            $("reviewTitle").textContent=
+              "Review "+(reviewIndex+1)+"/"+TOTAL;
+
+            $("reviewQuestion").textContent=q.question;
+
+            $("userAnswer").textContent=
+              answers[reviewIndex]===null
+              ? "छोड़ा गया"
+              : q.options[answers[reviewIndex]];
+
+            $("correctAnswer").textContent=
+              q.options[q.answer];
+
+            $("explanation").textContent=
+              q.explanation || "—";
+
+            $("facts").innerHTML=
+              (q.facts||[]).map(x=>"• "+x).join("<br>");
+
+            window.scrollTo(0,0);
+          }}
+
+          function reviewPrev(){{
+            if(reviewIndex>0){{
+              reviewIndex--;
+              renderReview();
+            }}
+          }}
+
+          function reviewNext(){{
+            if(reviewIndex<TOTAL-1){{
+              reviewIndex++;
+              renderReview();
+            }}
+          }}
+
+          function savedQuestion(i){{
+            try{{
+              let x=JSON.parse(localStorage.getItem("gyankshetra_saved")||"[]");
+              return x.some(a=>a.title===TEST_TITLE && a.index===i);
+            }}catch(e){{
+              return false;
+            }}
+          }}
+
+          function saveQuestion(){{
+            let key="gyankshetra_saved";
+
+            let list=[];
+
+            try{{
+              list=JSON.parse(localStorage.getItem(key)||"[]");
+            }}catch(e){{
+              list=[];
+            }}
+
+            let found=list.findIndex(
+              x=>x.title===TEST_TITLE && x.index===qi
+            );
+
+            if(found>=0){{
+              list.splice(found,1);
+            }}else{{
+              list.push({{
+                title:TEST_TITLE,
+                topic:TOPIC,
+                index:qi,
+                question:questions[qi].question
+              }});
+            }}
+
+            localStorage.setItem(key,JSON.stringify(list));
+
+            render();
+          }}
+
+          function confirmBack(){{
+            if(confirm("क्या आप टेस्ट छोड़ना चाहते हैं?")){{
+              clearInterval(timerHandle);
+              location.reload();
+            }}
+          }}
+
+          startQuiz();
           </script>
-          """
+          </body>
+          </html>'''
 
-              text = text.replace(
-                  "</body>",
-                  boot + "\n</body>",
-                  1
-              )
+          def update_registry(item):
+              global registry
 
+              registry = [
+                  x for x in registry
+                  if x.get("url") != item.get("url")
+              ]
 
-              # -----------------------------------------------------
-              # FOLDER
-              # -----------------------------------------------------
+              registry.insert(0, item)
 
-              folders = {
-                  "/test": "tests",
-                  "/mock": "tests",
-                  "/quiz": "quiz",
-                  "/practice": "practice",
-                  "/pyq": "pyq"
-              }
+              registry = registry[:200]
 
-
-              folder = folders.get(
-                  command,
-                  "tests"
-              )
-
-
-              stamp = datetime.utcnow().strftime(
-                  "%Y%m%d-%H%M%S"
-              )
-
-
-              short_hash = hashlib.sha1(
-                  (
-                      topic
-                      + str(time.time())
-                  ).encode(
-                      "utf-8"
-                  )
-              ).hexdigest()[:6]
-
-
-              slug = (
-                  command[1:]
-                  + "-"
-                  + stamp
-                  + "-"
-                  + short_hash
-              )
-
-
-              directory = Path(folder)
-
-              directory.mkdir(
-                  parents=True,
-                  exist_ok=True
-              )
-
-
-              filepath = (
-                  directory
-                  / f"{slug}.html"
-              )
-
-
-              filepath.write_text(
-                  text,
+              REGISTRY.write_text(
+                  json.dumps(
+                      registry,
+                      ensure_ascii=False,
+                      indent=2
+                  ),
                   encoding="utf-8"
               )
 
+          def update_master_index():
+              index = ROOT / "index.html"
 
-              relative_url = (
-                  f"{folder}/{slug}.html"
-              )
-
-
-              return (
-                  filepath,
-                  relative_url
-              )
-
-
-          # =========================================================
-          # GIT
-          # =========================================================
-
-          def git_config():
-
-              subprocess.run(
-                  [
-                      "git",
-                      "config",
-                      "user.name",
-                      "Gyankshetra Bot"
-                  ],
-                  check=True
-              )
-
-              subprocess.run(
-                  [
-                      "git",
-                      "config",
-                      "user.email",
-                      "bot@gyankshetra.github.io"
-                  ],
-                  check=True
-              )
-
-
-          def git_publish(message):
-
-              git_config()
-
-              subprocess.run(
-                  ["git", "add", "-A"],
-                  check=True
-              )
-
-
-              status = subprocess.run(
-                  [
-                      "git",
-                      "diff",
-                      "--cached",
-                      "--quiet"
-                  ]
-              )
-
-
-              if status.returncode == 0:
-
+              if not index.exists():
+                  print("index.html नहीं मिला")
                   return
 
+              text = index.read_text(encoding="utf-8")
 
-              subprocess.run(
-                  [
-                      "git",
-                      "commit",
-                      "-m",
-                      message
-                  ],
-                  check=True
+              start_marker = "<!-- GYANKSHETRA_GENERATED_CONTENT_START -->"
+              end_marker = "<!-- GYANKSHETRA_GENERATED_CONTENT_END -->"
+
+              block = f'''
+          {start_marker}
+          <script>
+          (function(){{
+            fetch("content/generated_tests.json?ts="+Date.now())
+              .then(r=>r.json())
+              .then(items=>{{
+                const tests=document.getElementById("tests");
+                const practice=document.getElementById("practice");
+
+                if(!tests && !practice) return;
+
+                function addBox(parent,title,items){{
+                  if(!parent || !items.length) return;
+
+                  let old=parent.querySelector(
+                    '[data-generated-box="'+title+'"]'
+                  );
+
+                  if(old) old.remove();
+
+                  let box=document.createElement("div");
+                  box.setAttribute("data-generated-box",title);
+                  box.className="card";
+
+                  let h=document.createElement("h3");
+                  h.textContent=title;
+                  box.appendChild(h);
+
+                  items.forEach(function(x){{
+                    let c=document.createElement("div");
+                    c.style.cssText=
+                      "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:8px 0";
+
+                    let b=document.createElement("b");
+                    b.textContent=x.title;
+                    c.appendChild(b);
+
+                    let s=document.createElement("small");
+                    s.style.display="block";
+                    s.style.margin="5px 0";
+                    s.textContent=
+                      x.questions+" Questions • "+
+                      x.questions+" Marks • "+
+                      x.questions+" Minutes • No Negative";
+                    c.appendChild(s);
+
+                    let a=document.createElement("a");
+                    a.href=x.url;
+                    a.textContent="Start Test";
+                    a.style.cssText=
+                      "display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:bold";
+                    c.appendChild(a);
+
+                    box.appendChild(c);
+                  }});
+
+                  parent.appendChild(box);
+                }}
+
+                addBox(
+                  tests,
+                  "🤖 AI Generated Tests",
+                  items.filter(x=>x.type==="test"||x.type==="mock")
+                );
+
+                addBox(
+                  practice,
+                  "🎯 AI Generated Quiz",
+                  items.filter(x=>x.type==="quiz")
+                );
+
+                addBox(
+                  practice,
+                  "⚡ AI Generated Practice",
+                  items.filter(x=>x.type==="practice")
+                );
+
+                addBox(
+                  practice,
+                  "🎯 PYQ Practice",
+                  items.filter(x=>x.type==="pyq")
+                );
+              }})
+              .catch(()=>{{}});
+          }})();
+          </script>
+          {end_marker}
+          '''
+
+              if start_marker in text and end_marker in text:
+                  a=text.index(start_marker)
+                  b=text.index(end_marker)+len(end_marker)
+                  text=text[:a]+block.strip()+text[b:]
+              else:
+                  pos=text.lower().rfind("</body>")
+
+                  if pos!=-1:
+                      text=text[:pos]+block+"\n"+text[pos:]
+                  else:
+                      text += block
+
+              index.write_text(text,encoding="utf-8")
+
+          def create_test(cmd):
+              qtype=cmd["type"]
+              topic=cmd["topic"]
+              count=cmd["count"]
+
+              type_names={
+                  "test":"Test",
+                  "mock":"Mock Test",
+                  "quiz":"Quiz",
+                  "practice":"Practice",
+                  "pyq":"PYQ Practice"
+              }
+
+              label=type_names[qtype]
+
+              if qtype=="pyq":
+                  label="PYQ-style Practice"
+
+              title=f"{topic} {count}Q"
+
+              tg_send(
+                  CURRENT_CHAT,
+                  f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n"
+                  f"📚 {topic}\n"
+                  f"📝 {label}\n"
+                  f"❓ प्रश्न: {count}\n\n"
+                  f"थोड़ा समय लगेगा..."
               )
 
+              questions=generate_questions(topic,count)
 
-              result = subprocess.run(
-                  [
-                      "git",
-                      "push",
-                      "origin",
-                      "HEAD:main"
-                  ]
+              if qtype in ["test","mock"]:
+                  folder="tests"
+              elif qtype=="quiz":
+                  folder="quiz"
+              elif qtype=="practice":
+                  folder="practice"
+              else:
+                  folder="pyq"
+
+              Path(folder).mkdir(parents=True,exist_ok=True)
+
+              stamp=datetime.now().strftime("%Y%m%d-%H%M%S")
+              slug=safe_slug(topic)
+              filename=f"{slug}-{count}q-{stamp}.html"
+
+              path=Path(folder)/filename
+
+              page=make_test_html(
+                  title,
+                  topic,
+                  qtype,
+                  questions
               )
 
+              path.write_text(page,encoding="utf-8")
 
-              if result.returncode != 0:
-
-                  raise Exception(
-                      "GitHub push failed."
-                  )
-
-
-          # =========================================================
-          # OFFSET
-          # =========================================================
-
-          def get_offset():
-
-              try:
-
-                  return int(
-                      OFFSET_FILE.read_text(
-                          encoding="utf-8"
-                      ).strip()
-                  )
-
-              except:
-
-                  return 0
-
-
-          def save_offset(update_id):
-
-              OFFSET_FILE.write_text(
-                  str(update_id + 1),
-                  encoding="utf-8"
+              url=(
+                  "https://gyankshetra.github.io/"
+                  f"Gyankshetra-app/{folder}/{filename}"
               )
 
+              item={
+                  "type":qtype,
+                  "title":title,
+                  "topic":topic,
+                  "questions":count,
+                  "url":url,
+                  "created":datetime.now().isoformat()
+              }
 
-          # =========================================================
-          # MAIN
-          # =========================================================
+              update_registry(item)
+              update_master_index()
 
-          def main():
-
-              print(
-                  "Gyankshetra AI Generator started"
+              tg_send(
+                  CURRENT_CHAT,
+                  f"✅ {label} तैयार है!\n\n"
+                  f"📚 विषय: {topic}\n"
+                  f"📝 प्रश्न: {count}\n"
+                  f"🎯 Generated: {len(questions)}\n\n"
+                  f"🔗 LIVE TEST:\n{url}"
               )
 
-
-              offset = get_offset()
-
-              started = time.time()
-
-
-              while (
-                  time.time() - started
-                  < POLL_SECONDS
-              ):
-
-                  response = tg(
-                      "getUpdates",
-                      {
-                          "offset": offset,
-                          "timeout": 25,
-                          "allowed_updates": [
-                              "message"
-                          ]
-                      },
-                      timeout=40
-                  )
-
-
-                  updates = response.get(
-                      "result",
-                      []
-                  )
-
-
-                  for update in updates:
-
-                      update_id = update[
-                          "update_id"
-                      ]
-
-                      message = update.get(
-                          "message",
-                          {}
-                      )
-
-                      chat = message.get(
-                          "chat",
-                          {}
-                      )
-
-                      chat_id = chat.get(
-                          "id"
-                      )
-
-                      text = message.get(
-                          "text",
-                          ""
-                      )
-
-
-                      if (
-                          not chat_id
-                          or not text
-                      ):
-
-                          offset = update_id + 1
-
-                          save_offset(
-                              update_id
-                          )
-
-                          continue
-
-
-                      print(
-                          "Telegram command:",
-                          text
-                      )
-
-
-                      # ------------------------------------------------
-                      # Duplicate generated request recovery
-                      # ------------------------------------------------
-
-                      previous = (
-                          find_update_in_registry(
-                              update_id
-                          )
-                      )
-
-
-                      if previous:
-
-                          try:
-
-                              send(
-                                  chat_id,
-                                  "🔗 आपका LIVE TEST पहले से तैयार है:\n\n"
-                                  + BASE_URL
-                                  + previous["url"]
-                              )
-
-                              save_offset(
-                                  update_id
-                              )
-
-                              git_publish(
-                                  "Update Telegram offset"
-                              )
-
-                          except Exception as e:
-
-                              print(
-                                  "Recovery error:",
-                                  e
-                              )
-
-                          offset = update_id + 1
-
-                          continue
-
-
-                      command, topic, count = (
-                          parse_command(text)
-                      )
-
-
-                      # ------------------------------------------------
-                      # START / HELP
-                      # ------------------------------------------------
-
-                      if command in [
-                          "/start",
-                          "/help"
-                      ]:
-
-                          try:
-
-                              send(
-                                  chat_id,
-
-                                  "🚀 Gyankshetra AI Bot\n\n"
-
-                                  "/test इतिहास 20\n"
-                                  "/quiz इतिहास 10\n"
-                                  "/practice रसायन 20\n"
-                                  "/mock विज्ञान 30\n"
-                                  "/pyq BPSC TRE Science 20\n\n"
-
-                                  "1–100 प्रश्न बनाए जा सकते हैं।\n\n"
-
-                                  "Command लिखते ही AI test "
-                                  "बनाकर GitHub Pages पर publish होगा।"
-                              )
-
-                              save_offset(
-                                  update_id
-                              )
-
-                              git_publish(
-                                  "Update Telegram offset"
-                              )
-
-                          except Exception as e:
-
-                              print(e)
-
-                          offset = update_id + 1
-
-                          continue
-
-
-                      # ------------------------------------------------
-                      # INVALID
-                      # ------------------------------------------------
-
-                      if command is None:
-
-                          offset = update_id + 1
-
-                          continue
-
-
-                      if not topic:
-
-                          try:
-
-                              send(
-                                  chat_id,
-                                  "❌ Topic लिखिए।\n\n"
-                                  "उदाहरण:\n"
-                                  "/quiz इतिहास 10"
-                              )
-
-                              save_offset(
-                                  update_id
-                              )
-
-                              git_publish(
-                                  "Update Telegram offset"
-                              )
-
-                          except Exception as e:
-
-                              print(e)
-
-                          offset = update_id + 1
-
-                          continue
-
-
-                      # ------------------------------------------------
-                      # PROGRESS
-                      # ------------------------------------------------
-
-                      try:
-
-                          send(
-                              chat_id,
-                              "⏳ Gyankshetra AI काम कर रहा है...\n\n"
-                              f"Command: {command}\n"
-                              f"Topic: {topic}\n"
-                              f"Questions: {count}\n\n"
-                              "Groq AI प्रश्न बना रहा है।"
-                          )
-
-
-                          # --------------------------------------------
-                          # GENERATE
-                          # --------------------------------------------
-
-                          questions = generate_questions(
-                              topic,
-                              count,
-                              command
-                          )
-
-
-                          if len(questions) != count:
-
-                              raise Exception(
-                                  "AI ने requested संख्या में "
-                                  "questions नहीं दिए।"
-                              )
-
-
-                          # --------------------------------------------
-                          # CREATE PAGE
-                          # --------------------------------------------
-
-                          filepath, relative_url = (
-                              create_generated_page(
-                                  topic,
-                                  questions,
-                                  command
-                              )
-                          )
-
-
-                          # --------------------------------------------
-                          # REGISTRY ENTRY
-                          # --------------------------------------------
-
-                          if command == "/test":
-
-                              title = (
-                                  f"📝 {topic} "
-                                  f"{count}Q"
-                              )
-
-                          elif command == "/mock":
-
-                              title = (
-                                  f"🧪 Mock — {topic} "
-                                  f"{count}Q"
-                              )
-
-                          elif command == "/quiz":
-
-                              title = (
-                                  f"🎯 {topic} "
-                                  f"{count}Q"
-                              )
-
-                          elif command == "/practice":
-
-                              title = (
-                                  f"⚡ Practice — {topic} "
-                                  f"{count}Q"
-                              )
-
-                          else:
-
-                              title = (
-                                  f"📄 PYQ-style — "
-                                  f"{topic} {count}Q"
-                              )
-
-
-                          entry = {
-
-                              "update_id":
-                                  update_id,
-
-                              "type":
-                                  command[1:],
-
-                              "topic":
-                                  topic,
-
-                              "title":
-                                  title,
-
-                              "url":
-                                  relative_url,
-
-                              "questions":
-                                  count,
-
-                              "minutes":
-                                  count,
-
-                              "created_at":
-                                  datetime.utcnow().isoformat()
-                                  + "Z",
-
-                              "pyq_authentic":
-                                  False
-                                  if command == "/pyq"
-                                  else None
-
-                          }
-
-
-                          registry = (
-                              load_registry()
-                          )
-
-
-                          registry = [
-                              entry
-                          ] + [
-                              x for x in registry
-                              if x.get("url")
-                              != relative_url
-                          ]
-
-
-                          registry = registry[:100]
-
-
-                          save_registry(
-                              registry
-                          )
-
-
-                          # --------------------------------------------
-                          # PUBLISH
-                          # --------------------------------------------
-
-                          git_publish(
-                              f"Gyankshetra AI: {title}"
-                          )
-
-
-                          # --------------------------------------------
-                          # LIVE LINK
-                          # --------------------------------------------
-
-                          live_url = (
-                              BASE_URL
-                              + relative_url
-                          )
-
-
-                          send(
-                              chat_id,
-
-                              "✅ TEST READY!\n\n"
-
-                              f"📚 {title}\n"
-                              f"❓ Questions: {count}\n"
-                              f"⏱ Time: {count} Minutes\n"
-                              "➕ No Negative Marking\n\n"
-
-                              "🔗 LIVE TEST:\n"
-                              + live_url
-                          )
-
-
-                          # --------------------------------------------
-                          # SAVE OFFSET
-                          # --------------------------------------------
-
-                          save_offset(
-                              update_id
-                          )
-
-                          git_publish(
-                              "Update Telegram offset"
-                          )
-
-
-                      except Exception as e:
-
-                          error_text = str(e)
-
-                          print(
-                              "ERROR:",
-                              error_text
-                          )
-
-
-                          try:
-
-                              send(
-                                  chat_id,
-                                  "❌ Test नहीं बन पाया।\n\n"
-                                  "Error:\n"
-                                  + error_text[:3000]
-                              )
-
-                              save_offset(
-                                  update_id
-                              )
-
-                              git_publish(
-                                  "Update Telegram offset"
-                              )
-
-                          except Exception as inner:
-
-                              print(
-                                  "Error sending failure:",
-                                  inner
-                              )
-
-
-                      offset = update_id + 1
-
-
-              print(
-                  "Gyankshetra bot polling finished."
+          offset=get_offset()
+
+          print("Gyankshetra Bot started")
+          print("Offset:",offset)
+
+          # केवल एक polling cycle; GitHub Actions schedule इसे हर 5 मिनट में चलाएगा.
+          try:
+              response=requests.get(
+                  TG+"/getUpdates",
+                  params={
+                      "offset":offset+1,
+                      "timeout":10,
+                      "allowed_updates":["message"]
+                  },
+                  timeout=20
               )
 
+              data=response.json()
 
-          if __name__ == "__main__":
+              if not data.get("ok"):
+                  raise RuntimeError(str(data))
 
-              main()
+              updates=data.get("result",[])
 
+              for upd in updates:
+                  new_offset=upd["update_id"]
+                  save_offset(new_offset)
+
+                  message=upd.get("message",{})
+                  chat=message.get("chat",{})
+                  chat_id=chat.get("id")
+                  text=message.get("text","").strip()
+
+                  if not chat_id:
+                      continue
+
+                  if text.startswith("/start"):
+                      tg_send(
+                          chat_id,
+                          "👋 Gyankshetra Bot में आपका स्वागत है!\n\n"
+                          "Commands:\n"
+                          "/test इतिहास 10\n"
+                          "/mock विज्ञान 20\n"
+                          "/quiz इतिहास 10\n"
+                          "/practice रसायन 20\n"
+                          "/pyq BPSC TRE Science 20"
+                      )
+                      continue
+
+                  parsed=command_parse(text)
+
+                  if not parsed:
+                      continue
+
+                  CURRENT_CHAT=chat_id
+
+                  try:
+                      create_test(parsed)
+                  except Exception as e:
+                      print("ERROR:",repr(e))
+
+                      tg_send(
+                          chat_id,
+                          "❌ Test generate नहीं हो पाया।\n\n"
+                          "Error:\n"+
+                          str(e)[:2500]
+                      )
+
+          except Exception as e:
+              print("Polling ERROR:",repr(e))
+
+          # Registry को हमेशा save करें
+          REGISTRY.write_text(
+              json.dumps(
+                  registry,
+                  ensure_ascii=False,
+                  indent=2
+              ),
+              encoding="utf-8"
+          )
+
+          print("Bot cycle completed")
           PY
+
+      - name: Commit generated tests
+        run: |
+          git config user.name "Gyankshetra AI"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "AI generated Gyankshetra tests"
+            git push
+          fi
