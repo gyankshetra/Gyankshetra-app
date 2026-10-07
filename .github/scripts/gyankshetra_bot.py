@@ -8,12 +8,10 @@ from datetime import datetime
 from urllib.parse import quote
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-GROQ_KEY = os.environ["GROQ_API_KEY"]
+GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 
 TG = "https://api.telegram.org/bot" + BOT_TOKEN
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-
-MODEL = "openai/gpt-oss-20b"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
 
 BASE_URL = (
     "https://gyankshetra.github.io/"
@@ -80,7 +78,7 @@ def parse_command(text):
             topic = " ".join(parts[1:-1]).strip()
 
         except ValueError:
-            topic = " ".join(parts[1:]) .strip()
+            topic = " ".join(parts[1:]).strip()
 
     if not topic:
         topic = "सामान्य विज्ञान"
@@ -141,10 +139,10 @@ def command_info(command):
 
 
 # --------------------------------------------------
-# GROQ
+# GEMINI QUESTIONS GENERATOR
 # --------------------------------------------------
 
-def groq_questions(topic, count, mode, previous):
+def gemini_questions(topic, count, mode, previous):
 
     old = ""
 
@@ -173,8 +171,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 8. गलत या मनगढ़ंत तथ्य न बनाओ।
 9. STET / BPSC TRE स्तर का ध्यान रखो।
 10. PYQ command में यदि verified source उपलब्ध नहीं है तो वास्तविक PYQ होने का दावा न करो।
-11. केवल JSON दो।
-12. Markdown code fence मत दो।
+11. केवल valid JSON दो।
 
 सिर्फ इस structure में JSON दो:
 
@@ -211,19 +208,16 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
     prompt += old
 
     payload = {
-        "model": MODEL,
-        "messages": [
+        "contents": [
             {
-                "role": "user",
-                "content": prompt
+                "parts": [
+                    {"text": prompt}
+                ]
             }
         ],
-        "temperature": 0.35,
-        "reasoning_effort": "low",
-        "reasoning_format": "hidden",
-        "max_completion_tokens": 7000,
-        "response_format": {
-            "type": "json_object"
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "temperature": 0.35
         }
     }
 
@@ -234,11 +228,8 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
         try:
 
             response = requests.post(
-                GROQ_URL,
-                headers={
-                    "Authorization": "Bearer " + GROQ_KEY,
-                    "Content-Type": "application/json"
-                },
+                GEMINI_URL,
+                headers={"Content-Type": "application/json"},
                 json=payload,
                 timeout=120
             )
@@ -249,7 +240,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
             if response.status_code >= 400:
                 raise RuntimeError(
-                    "Groq HTTP "
+                    "Gemini HTTP "
                     + str(response.status_code)
                     + ": "
                     + response.text[:1500]
@@ -257,22 +248,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
             data = response.json()
 
-            content = data["choices"][0]["message"]["content"]
-
-            content = content.strip()
-
-            if content.startswith("```"):
-                content = re.sub(
-                    r"^```(?:json)?",
-                    "",
-                    content
-                )
-                content = re.sub(
-                    r"```$",
-                    "",
-                    content
-                )
-                content = content.strip()
+            content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
             parsed = json.loads(content)
 
@@ -280,7 +256,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
             if not isinstance(questions, list):
                 raise RuntimeError(
-                    "Groq response में questions array नहीं मिला"
+                    "Gemini response में questions array नहीं मिला"
                 )
 
             clean = []
@@ -343,7 +319,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
             if not clean:
                 raise RuntimeError(
-                    "Groq ने valid questions नहीं दिए"
+                    "Gemini ने valid questions नहीं दिए"
                 )
 
             return clean
@@ -353,7 +329,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
             last_error = str(e)
 
             print(
-                "Groq attempt",
+                "Gemini attempt",
                 attempt + 1,
                 "failed:",
                 last_error
@@ -379,7 +355,7 @@ def generate_all(topic, count, mode):
 
         batch_size = min(5, remaining)
 
-        questions = groq_questions(
+        questions = gemini_questions(
             topic,
             batch_size,
             mode,
@@ -457,7 +433,6 @@ def make_arrays(questions):
 # --------------------------------------------------
 
 def _find_matching_js_bracket(text, start, opening="[", closing="]"):
-    """Find the matching JS bracket while ignoring strings/comments."""
     depth = 0
     i = start
     n = len(text)
@@ -591,7 +566,6 @@ def make_master_test(topic, count, questions):
         separators=(",", ":")
     )
 
-    # 1. TITLE
     source = re.sub(
         r"<title>.*?</title>",
         "<title>Gyankshetra — "
@@ -604,7 +578,6 @@ def make_master_test(topic, count, questions):
         flags=re.S
     )
 
-    # 2. TOTAL / TIME (ROBUST REGEX MATCHING)
     source = re.sub(
         r"const\s+TOTAL\s*=\s*\d+\s*,\s*TIME\s*=\s*[^;]+;",
         "const TOTAL=" + str(count) + ",TIME=" + str(count) + "*60;",
@@ -612,13 +585,11 @@ def make_master_test(topic, count, questions):
         count=1
     )
 
-    # 3. QUESTIONS ARRAY (BRACKET MATCHING)
     source = _replace_questions_array(
         source,
         questions_json
     )
 
-    # 4. TIMER REPLACEMENT (Replace entire startQuiz function)
     start_quiz_replacement = """function startQuiz(){
   qi=0;ans=Array(TOTAL).fill(null);time=TIME;reviewIndex=0;running=true;
   clearInterval(timerHandle);go('quiz');render();saveProgress();
@@ -634,13 +605,11 @@ def make_master_test(topic, count, questions):
     except Exception:
         pass
 
-    # 5. TOPIC REPLACEMENT
     source = source.replace(
         "विलयन",
         topic
     )
 
-    # 6. COUNT & MARKS TEXT REPLACEMENTS
     replacements = {
         "20Q": str(count) + "Q",
         "20 Questions": str(count) + " Questions",
@@ -657,7 +626,6 @@ def make_master_test(topic, count, questions):
     for old, new in replacements.items():
         source = source.replace(old, new)
 
-    # 7. REMOVE QUESTION PALETTE
     source += """
 <style>
 #popupPalette{display:none !important;}
@@ -961,7 +929,7 @@ def process_update(update):
 
         send_message(
             chat_id,
-            "🤖 Gyankshetra AI Bot तैयार है!\n\n"
+            "🤖 Gyankshetra AI Bot (Powered by Gemini) तैयार है!\n\n"
             "/test इतिहास 20\n"
             "/quiz इतिहास 10\n"
             "/practice विज्ञान 20\n"
@@ -988,7 +956,7 @@ def process_update(update):
 
     send_message(
         chat_id,
-        "🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n"
+        "🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n"
         + info["emoji"]
         + " विषय: "
         + topic
@@ -1128,7 +1096,7 @@ def process_update(update):
 def main():
 
     print(
-        "Gyankshetra Telegram Bot started"
+        "Gyankshetra Telegram Bot (Gemini) started"
     )
 
     offset = load_offset()
