@@ -457,6 +457,115 @@ def make_arrays(questions):
 # MASTER UI
 # --------------------------------------------------
 
+
+def _find_matching_js_bracket(text, start, opening="[", closing="]"):
+    """Find the matching JS bracket while ignoring strings/comments."""
+    depth = 0
+    i = start
+    n = len(text)
+    quote = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = None
+            i += 1
+            continue
+
+        if ch in ("'", '"', "`"):
+            quote = ch
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+
+        if ch == opening:
+            depth += 1
+        elif ch == closing:
+            depth -= 1
+            if depth == 0:
+                return i
+
+        i += 1
+
+    return -1
+
+
+def _replace_questions_array(source, questions_json):
+    m = re.search(r"\bconst\s+questions\s*=", source)
+    if not m:
+        raise RuntimeError("Master UI में questions array नहीं मिला")
+
+    start = source.find("[", m.end())
+    if start < 0:
+        raise RuntimeError("Master UI में questions array का [ नहीं मिला")
+
+    end = _find_matching_js_bracket(source, start, "[", "]")
+    if end < 0:
+        raise RuntimeError("Master UI में questions array बंद नहीं मिला")
+
+    replacement = "const questions=" + questions_json
+    source = source[:m.start()] + replacement + source[end + 1:]
+
+    if source.count("const questions=") != 1:
+        raise RuntimeError("Master UI में questions array replacement सुरक्षित नहीं है")
+
+    return source
+
+
+def _replace_js_function(source, function_name, replacement):
+    pattern = re.compile(
+        r"\bfunction\s+" + re.escape(function_name) + r"\s*\([^)]*\)\s*\{"
+    )
+    m = pattern.search(source)
+    if not m:
+        raise RuntimeError(
+            "Master UI में " + function_name + "() नहीं मिला"
+        )
+
+    brace_start = source.find("{", m.start(), m.end())
+    brace_end = _find_matching_js_bracket(source, brace_start, "{", "}")
+    if brace_end < 0:
+        raise RuntimeError(
+            "Master UI में " + function_name + "() का end नहीं मिला"
+        )
+
+    return source[:m.start()] + replacement + source[brace_end + 1:]
+
+
+
 def make_master_test(topic, count, questions):
 
     master = "index.html"
@@ -481,10 +590,7 @@ def make_master_test(topic, count, questions):
         separators=(",", ":")
     )
 
-    # ----------------------------------------------
     # TITLE
-    # ----------------------------------------------
-
     source = re.sub(
         r"<title>.*?</title>",
         "<title>Gyankshetra — "
@@ -497,10 +603,7 @@ def make_master_test(topic, count, questions):
         flags=re.S
     )
 
-    # ----------------------------------------------
     # TOTAL / TIME
-    # ----------------------------------------------
-
     source = re.sub(
         r"const\s+TOTAL\s*=\s*20\s*,\s*TIME\s*=\s*20\s*\*\s*60\s*;",
         "const TOTAL="
@@ -512,184 +615,63 @@ def make_master_test(topic, count, questions):
         count=1
     )
 
-    # ----------------------------------------------
-    # QUESTIONS
-    # ----------------------------------------------
-
-    # Robustly replace the complete questions array from the Master UI.
-    pattern = r"const\s+questions\s*=\s*\[.*?\]\s*;\s*let\s+qi"
-
-    replacement = (
-        "const questions="
-        + questions_json
-        + ";\n"
-        + "let qi"
-    )
-
-    source = re.sub(
-        pattern,
-        replacement,
+    # QUESTIONS — bracket-aware, so ] inside a question cannot break it.
+    source = _replace_questions_array(
         source,
-        count=1,
-        flags=re.S
+        questions_json
     )
 
-    if questions_json not in source:
-        raise RuntimeError("Master UI में नए questions insert नहीं हुए")
-
-    if len(re.findall(r"const\s+questions\s*=", source)) != 1:
-        raise RuntimeError("Master UI में questions array replacement सुरक्षित नहीं है")
-
-    # ----------------------------------------------
-    # TIMER — ALWAYS START AT 00:00 AND COUNT UP
-    # ----------------------------------------------
-    # Replace the complete startQuiz() function. This avoids fragile
-    # matching of nested braces inside setInterval().
-    start_quiz_pattern = (
-        r"function\s+startQuiz\s*\(\s*\)\s*\{"
-        r".*?"
-        r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{"
-        r".*?"
-        r"\}\s*,\s*1000\s*\)"
-    )
-
+    # TIMER — replace the whole startQuiz() function.
+    # This does NOT depend on the exact formatting of the old timer.
     start_quiz_replacement = """function startQuiz(){
   qi=0;ans=Array(TOTAL).fill(null);time=0;reviewIndex=0;
   clearInterval(timerHandle);go('quiz');render();renderTimer();
-  timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)
+  timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else{finish()}},1000);
 }"""
 
-    source, start_quiz_count = re.subn(
-        start_quiz_pattern,
-        start_quiz_replacement,
+    source = _replace_js_function(
         source,
-        count=1,
-        flags=re.S
+        "startQuiz",
+        start_quiz_replacement
     )
 
-    # Some Master UI revisions use slightly different spacing. If the
-    # complete function pattern is not found, patch the timer statement
-    # directly instead of failing generation.
-    if start_quiz_count == 0:
-        timer_pattern = (
-            r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{"
-            r".*?"
-            r"\}\s*,\s*1000\s*\)"
-        )
-        source, timer_count = re.subn(
-            timer_pattern,
-            "timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)",
-            source,
-            count=1,
-            flags=re.S
-        )
-        if timer_count == 0:
-            raise RuntimeError("Master UI में timer block नहीं मिला")
-        source = source.replace("time=TIME;", "time=0;")
-    else:
-        source = source.replace("time=TIME;", "time=0;")
+    # Keep timer at 00:00 on every fresh start.
+    source = source.replace(
+        "time=TIME;",
+        "time=0;"
+    )
 
-    # ----------------------------------------------
     # TOPIC
-    # ----------------------------------------------
-
     source = source.replace(
         "विलयन",
         topic
     )
 
-    # ----------------------------------------------
     # COUNT TEXT
-    # ----------------------------------------------
+    replacements = {
+        "20Q": str(count) + "Q",
+        "20 Questions": str(count) + " Questions",
+        "20 प्रश्न": str(count) + " प्रश्न",
+        "20 Marks": str(count) + " Marks",
+        "20 अंक": str(count) + " अंक",
+        "20 Minutes": str(count) + " Minutes",
+        "20 मिनट": str(count) + " मिनट",
+        "c+' / 20'": "c+' / " + str(count) + "'",
+        "marks.textContent=c+' / 20'":
+            "marks.textContent=c+' / " + str(count) + "'",
+        "test:'विलयन'":
+            "test:" + json.dumps(topic, ensure_ascii=False)
+    }
 
-    source = source.replace(
-        "20Q",
-        str(count) + "Q"
-    )
+    for old, new in replacements.items():
+        source = source.replace(old, new)
 
-    source = source.replace(
-        "20 Questions",
-        str(count) + " Questions"
-    )
-
-    source = source.replace(
-        "20 प्रश्न",
-        str(count) + " प्रश्न"
-    )
-
-    source = source.replace(
-        "20 Marks",
-        str(count) + " Marks"
-    )
-
-    source = source.replace(
-        "20 अंक",
-        str(count) + " अंक"
-    )
-
-    source = source.replace(
-        "20 Minutes",
-        str(count) + " Minutes"
-    )
-
-    source = source.replace(
-        "20 मिनट",
-        str(count) + " मिनट"
-    )
-
-    # ----------------------------------------------
-    # HARD-CODED RESULT
-    # ----------------------------------------------
-
-    source = source.replace(
-        "c+' / 20'",
-        "c+' / "
-        + str(count)
-        + "'"
-    )
-
-    source = source.replace(
-        "c+' / 20'",
-        "c+' / "
-        + str(count)
-        + "'"
-    )
-
-    source = source.replace(
-        "marks.textContent=c+' / 20'",
-        "marks.textContent=c+' / "
-        + str(count)
-        + "'"
-    )
-
-    # ----------------------------------------------
-    # HISTORY TEST NAME
-    # ----------------------------------------------
-
-    source = source.replace(
-        "test:'विलयन'",
-        "test:"
-        + json.dumps(
-            topic,
-            ensure_ascii=False
-        )
-    )
-
-    # ----------------------------------------------
     # REMOVE QUESTION PALETTE
-    # ----------------------------------------------
-
     source += """
 <style>
-#popupPalette{
-    display:none !important;
-}
-#paletteHint{
-    display:none !important;
-}
-.questionPopup .palette{
-    display:none !important;
-}
+#popupPalette{display:none !important;}
+#paletteHint{display:none !important;}
+.questionPopup .palette{display:none !important;}
 </style>
 """
 
