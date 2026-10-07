@@ -1,0 +1,25 @@
+name: Gyankshetra Telegram Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  telegram-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test Telegram Bot
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe")
+          echo "$RESPONSE"
+
+          if echo "$RESPONSE" | grep -q '"ok":true'; then
+            echo "GyankshetraBot connection successful!"
+          else
+            echo "Telegram Bot connection failed!"
+            exit 1
+          fi
