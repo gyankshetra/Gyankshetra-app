@@ -1,4 +1,3 @@
-
 import os
 import re
 import json
@@ -81,7 +80,7 @@ def parse_command(text):
             topic = " ".join(parts[1:-1]).strip()
 
         except ValueError:
-            topic = " ".join(parts[1:]).strip()
+            topic = " ".join(parts[1:]) .strip()
 
     if not topic:
         topic = "सामान्य विज्ञान"
@@ -454,9 +453,8 @@ def make_arrays(questions):
 
 
 # --------------------------------------------------
-# MASTER UI
+# MASTER UI HELPERS
 # --------------------------------------------------
-
 
 def _find_matching_js_bracket(text, start, opening="[", closing="]"):
     """Find the matching JS bracket while ignoring strings/comments."""
@@ -565,6 +563,9 @@ def _replace_js_function(source, function_name, replacement):
     return source[:m.start()] + replacement + source[brace_end + 1:]
 
 
+# --------------------------------------------------
+# MAKE MASTER TEST
+# --------------------------------------------------
 
 def make_master_test(topic, count, questions):
 
@@ -590,7 +591,7 @@ def make_master_test(topic, count, questions):
         separators=(",", ":")
     )
 
-    # TITLE
+    # 1. TITLE
     source = re.sub(
         r"<title>.*?</title>",
         "<title>Gyankshetra — "
@@ -603,51 +604,43 @@ def make_master_test(topic, count, questions):
         flags=re.S
     )
 
-    # TOTAL / TIME
+    # 2. TOTAL / TIME (ROBUST REGEX MATCHING)
     source = re.sub(
-        r"const\s+TOTAL\s*=\s*20\s*,\s*TIME\s*=\s*20\s*\*\s*60\s*;",
-        "const TOTAL="
-        + str(count)
-        + ",TIME="
-        + str(count)
-        + "*60;",
+        r"const\s+TOTAL\s*=\s*\d+\s*,\s*TIME\s*=\s*[^;]+;",
+        "const TOTAL=" + str(count) + ",TIME=" + str(count) + "*60;",
         source,
         count=1
     )
 
-    # QUESTIONS — bracket-aware, so ] inside a question cannot break it.
+    # 3. QUESTIONS ARRAY (BRACKET MATCHING)
     source = _replace_questions_array(
         source,
         questions_json
     )
 
-    # TIMER — replace the whole startQuiz() function.
-    # This does NOT depend on the exact formatting of the old timer.
+    # 4. TIMER REPLACEMENT (Replace entire startQuiz function)
     start_quiz_replacement = """function startQuiz(){
-  qi=0;ans=Array(TOTAL).fill(null);time=0;reviewIndex=0;
-  clearInterval(timerHandle);go('quiz');render();renderTimer();
-  timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else{finish()}},1000);
+  qi=0;ans=Array(TOTAL).fill(null);time=TIME;reviewIndex=0;running=true;
+  clearInterval(timerHandle);go('quiz');render();saveProgress();
+  timerHandle=setInterval(tick,1000);
 }"""
 
-    source = _replace_js_function(
-        source,
-        "startQuiz",
-        start_quiz_replacement
-    )
+    try:
+        source = _replace_js_function(
+            source,
+            "startQuiz",
+            start_quiz_replacement
+        )
+    except Exception:
+        pass
 
-    # Keep timer at 00:00 on every fresh start.
-    source = source.replace(
-        "time=TIME;",
-        "time=0;"
-    )
-
-    # TOPIC
+    # 5. TOPIC REPLACEMENT
     source = source.replace(
         "विलयन",
         topic
     )
 
-    # COUNT TEXT
+    # 6. COUNT & MARKS TEXT REPLACEMENTS
     replacements = {
         "20Q": str(count) + "Q",
         "20 Questions": str(count) + " Questions",
@@ -657,16 +650,14 @@ def make_master_test(topic, count, questions):
         "20 Minutes": str(count) + " Minutes",
         "20 मिनट": str(count) + " मिनट",
         "c+' / 20'": "c+' / " + str(count) + "'",
-        "marks.textContent=c+' / 20'":
-            "marks.textContent=c+' / " + str(count) + "'",
-        "test:'विलयन'":
-            "test:" + json.dumps(topic, ensure_ascii=False)
+        "marks.textContent=c+' / 20'": "marks.textContent=c+' / " + str(count) + "'",
+        "test:'विलयन'": "test:" + json.dumps(topic, ensure_ascii=False)
     }
 
     for old, new in replacements.items():
         source = source.replace(old, new)
 
-    # REMOVE QUESTION PALETTE
+    # 7. REMOVE QUESTION PALETTE
     source += """
 <style>
 #popupPalette{display:none !important;}
@@ -1143,9 +1134,6 @@ def main():
     offset = load_offset()
 
     start_time = time.time()
-
-    # लगभग 210 सेकंड polling
-    # GitHub Actions schedule के साथ काम करेगा।
 
     while time.time() - start_time < 210:
 
