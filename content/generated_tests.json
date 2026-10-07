@@ -1,5 +1,19 @@
 [
   {
+    "title": "📝 Physics",
+    "questions": 10,
+    "type": "test",
+    "url": "tests/Physics-10q-20261007-211003.html",
+    "id": "20261007-211003",
+    "topic": "Physics",
+    "count": 10,
+    "command": "/test",
+    "box": "test",
+    "label": "Test Series",
+    "emoji": "📝",
+    "created": "20261007-211003"
+  },
+  {
     "title": "📝 biology",
     "questions": 5,
     "type": "test",
