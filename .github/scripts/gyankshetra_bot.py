@@ -161,23 +161,30 @@ def is_missing_model(err):
     return "404" in err or "NOT_FOUND" in err or "no longer available" in err
 
 
+def is_busy(err):
+    return any(x in err for x in (
+        "503", "UNAVAILABLE", "500", "INTERNAL", "429", "RESOURCE_EXHAUSTED",
+        "DEADLINE", "overloaded", "high demand",
+    ))
+
+
 def ask_gemini(prompt):
     from google.genai import types
 
     if not MODELS:
         MODELS.extend(discover_models()[:4] or FALLBACK_MODELS)
 
-    last, idx, discovered = "", 0, False
-    for attempt in range(12):
-        if idx >= len(MODELS):
+    dead, discovered, last = set(), False, ""
+    for attempt in range(10):
+        alive = [m for m in MODELS if m not in dead]
+        if not alive:  # सब model बंद मिले -> एक बार नई सूची मँगाओ
             if discovered:
                 break
             discovered = True
             MODELS.extend(m for m in discover_models() if m not in MODELS)
             MODELS.extend(m for m in FALLBACK_MODELS if m not in MODELS)
-            if idx >= len(MODELS):
-                break
-        model = MODELS[idx]
+            continue
+        model = alive[attempt % len(alive)]  # व्यस्त model से अगले पर घूमते रहो
         try:
             resp = get_client().models.generate_content(
                 model=model,
@@ -187,19 +194,18 @@ def ask_gemini(prompt):
                 ),
             )
             if resp.text:
-                if idx:
-                    MODELS.insert(0, MODELS.pop(idx))  # चलने वाला model आगे रखो
+                MODELS.remove(model)
+                MODELS.insert(0, model)  # चलने वाला model आगे रखो
                 return resp.text
             last = "[%s] खाली जवाब" % model
         except Exception as e:
             last = "[%s] %s" % (model, str(e))
             if is_missing_model(last):
                 print("Model unavailable:", model)
-                idx += 1  # अगला model, बिना रुके
+                dead.add(model)
                 continue
         print("Gemini attempt", attempt + 1, "failed:", last[:300])
-        limited = "429" in last or "RESOURCE_EXHAUSTED" in last
-        time.sleep(15 * (attempt + 1) if limited else 3)
+        time.sleep(min(8 * (attempt + 1), 20) if is_busy(last) else 3)
     raise RuntimeError("Gemini से जवाब नहीं मिला: " + last[:600])
 
 
