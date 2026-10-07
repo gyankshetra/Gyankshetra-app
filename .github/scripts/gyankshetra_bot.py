@@ -22,11 +22,10 @@ import requests
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 
-# पहला model आज़माया जाता है; बार-बार fail होने पर अगला।
-MODELS = []
-for _m in (os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"), "gemini-2.5-flash-lite"):
-    if _m and _m not in MODELS:
-        MODELS.append(_m)
+# Model: GEMINI_MODEL दें तो वही पहले आज़माया जाएगा। न दें तो bot खुद चालू model ढूँढता है।
+# (Google पुराने models नए खातों के लिए बंद करता रहता है, इसलिए नाम fix नहीं रखा।)
+MODELS = [m for m in [os.environ.get("GEMINI_MODEL", "").strip()] if m]
+FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
 # खाली छोड़ेंगे तो हर कोई bot चला सकेगा। /id से अपना chat id पता करके यहाँ रखें।
 ALLOWED = {
@@ -133,12 +132,52 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 """
 
 
+def discover_models():
+    """API से वे flash models लाता है जो generateContent चला सकते हैं (नए पहले)।"""
+    try:
+        found = []
+        for m in get_client().models.list():
+            name = (getattr(m, "name", "") or "").replace("models/", "")
+            actions = getattr(m, "supported_actions", None) or []
+            if "flash" not in name or "generateContent" not in actions:
+                continue
+            if any(x in name for x in ("image", "tts", "live", "audio", "embedding", "robotics", "computer")):
+                continue
+            found.append(name)
+
+        def version(n):
+            mm = re.search(r"gemini-(\d+(?:\.\d+)?)", n)
+            return float(mm.group(1)) if mm else 0.0
+
+        found.sort(key=lambda n: (-version(n), "preview" in n or "exp" in n, "lite" in n, n))
+        print("Discovered models:", found[:6])
+        return found
+    except Exception as e:
+        print("model discovery failed:", str(e)[:200])
+        return []
+
+
+def is_missing_model(err):
+    return "404" in err or "NOT_FOUND" in err or "no longer available" in err
+
+
 def ask_gemini(prompt):
     from google.genai import types
 
-    last = ""
-    for attempt in range(6):
-        model = MODELS[min(attempt // 3, len(MODELS) - 1)]
+    if not MODELS:
+        MODELS.extend(discover_models()[:4] or FALLBACK_MODELS)
+
+    last, idx, discovered = "", 0, False
+    for attempt in range(12):
+        if idx >= len(MODELS):
+            if discovered:
+                break
+            discovered = True
+            MODELS.extend(m for m in discover_models() if m not in MODELS)
+            MODELS.extend(m for m in FALLBACK_MODELS if m not in MODELS)
+            if idx >= len(MODELS):
+                break
+        model = MODELS[idx]
         try:
             resp = get_client().models.generate_content(
                 model=model,
@@ -148,10 +187,16 @@ def ask_gemini(prompt):
                 ),
             )
             if resp.text:
+                if idx:
+                    MODELS.insert(0, MODELS.pop(idx))  # चलने वाला model आगे रखो
                 return resp.text
-            last = "खाली जवाब"
+            last = "[%s] खाली जवाब" % model
         except Exception as e:
-            last = str(e)
+            last = "[%s] %s" % (model, str(e))
+            if is_missing_model(last):
+                print("Model unavailable:", model)
+                idx += 1  # अगला model, बिना रुके
+                continue
         print("Gemini attempt", attempt + 1, "failed:", last[:300])
         limited = "429" in last or "RESOURCE_EXHAUSTED" in last
         time.sleep(15 * (attempt + 1) if limited else 3)
