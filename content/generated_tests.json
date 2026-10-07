@@ -1,5 +1,19 @@
 [
   {
+    "title": "📝 class 10th Life process",
+    "questions": 10,
+    "type": "practice",
+    "url": "practice/class-10th-Life-process-10q-20261007-220515.html",
+    "id": "20261007-220515",
+    "topic": "class 10th Life process",
+    "count": 10,
+    "command": "/practice",
+    "box": "practice",
+    "label": "Practice",
+    "emoji": "📝",
+    "created": "20261007-220515"
+  },
+  {
     "title": "📝 Physics",
     "questions": 10,
     "type": "test",
