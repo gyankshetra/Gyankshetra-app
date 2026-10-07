@@ -1,5 +1,19 @@
 [
   {
+    "title": "🎯 history",
+    "questions": 5,
+    "type": "quiz",
+    "url": "quiz/history-5q-20261007-205734.html",
+    "id": "20261007-205734",
+    "topic": "history",
+    "count": 5,
+    "command": "/quiz",
+    "box": "quiz",
+    "label": "Quiz",
+    "emoji": "🎯",
+    "created": "20261007-205734"
+  },
+  {
     "id": "20261007-172822",
     "topic": "इतिहास",
     "count": 5,
