@@ -5,21 +5,141 @@ on:
   schedule:
     - cron: "*/5 * * * *"
 
+permissions:
+  contents: read
+
 jobs:
-  telegram-test:
+  telegram-bot:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test Telegram Bot
+      - name: Process Telegram commands
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          APP_URL: https://gyankshetra.github.io/Gyankshetra-app/
         run: |
-          RESPONSE=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe")
-          echo "$RESPONSE"
+          python3 <<'PY'
+          import os
+          import json
+          import urllib.request
+          import urllib.parse
+          import html
 
-          if echo "$RESPONSE" | grep -q '"ok":true'; then
-            echo "GyankshetraBot connection successful!"
-          else
-            echo "Telegram Bot connection failed!"
-            exit 1
-          fi
+          TOKEN = os.environ["BOT_TOKEN"]
+          APP_URL = os.environ["APP_URL"]
+          API = f"https://api.telegram.org/bot{TOKEN}"
+
+          def api(method, params=None):
+              data = None
+
+              if params:
+                  data = urllib.parse.urlencode(params).encode()
+
+              req = urllib.request.Request(
+                  API + "/" + method,
+                  data=data
+              )
+
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  return json.loads(response.read().decode())
+
+          # Telegram से नए messages लें
+          updates = api("getUpdates", {
+              "limit": 100,
+              "timeout": 5
+          })
+
+          if not updates.get("ok"):
+              raise SystemExit("Telegram API error")
+
+          items = updates.get("result", [])
+
+          last_update_id = None
+
+          for update in items:
+
+              last_update_id = update["update_id"]
+
+              message = update.get("message", {})
+              chat = message.get("chat", {})
+              chat_id = chat.get("id")
+              text = (message.get("text") or "").strip()
+
+              if not chat_id:
+                  continue
+
+              # /start
+              if text.startswith("/start"):
+
+                  reply = (
+                      "🎓 <b>Gyankshetra Command Bot</b>\n\n"
+                      "आप command भेज सकते हैं:\n\n"
+                      "📝 <code>/test विलयन 20</code>\n"
+                      "❓ <code>/help</code>"
+                  )
+
+              # /help
+              elif text.startswith("/help"):
+
+                  reply = (
+                      "🤖 <b>Gyankshetra Commands</b>\n\n"
+                      "📝 <code>/test विलयन 20</code>\n"
+                      "→ विलयन 20Q Test\n\n"
+                      "अभी Free version में पहला test "
+                      "आपके मौजूदा Gyankshetra Test से जुड़ेगा।"
+                  )
+
+              # /test
+              elif text.lower().startswith("/test"):
+
+                  parts = text.split()
+
+                  if len(parts) >= 2 and "विलयन" in parts[1]:
+
+                      reply = (
+                          "✅ <b>Gyankshetra Test तैयार है</b>\n\n"
+                          "📚 विषय: विलयन\n"
+                          "📝 प्रश्न: 20\n"
+                          "⏱️ समय: 20 मिनट\n"
+                          "💯 अंक: 20\n"
+                          "❌ Negative Marking: नहीं\n\n"
+                          f"🌐 <a href=\"{html.escape(APP_URL)}\">"
+                          "Test खोलें</a>"
+                      )
+
+                  else:
+
+                      reply = (
+                          "⚠️ अभी यह command उपलब्ध है:\n\n"
+                          "<code>/test विलयन 20</code>"
+                      )
+
+              # Unknown command
+              else:
+
+                  reply = (
+                      "❓ Command समझ नहीं आया।\n\n"
+                      "उदाहरण:\n"
+                      "<code>/test विलयन 20</code>"
+                  )
+
+              # Telegram को जवाब भेजें
+              api("sendMessage", {
+                  "chat_id": chat_id,
+                  "text": reply,
+                  "parse_mode": "HTML",
+                  "disable_web_page_preview": False
+              })
+
+          # Processed messages को acknowledge करें
+          if last_update_id is not None:
+
+              api("getUpdates", {
+                  "offset": last_update_id + 1,
+                  "limit": 1
+              })
+
+          print(
+              f"Processed {len(items)} Telegram update(s)."
+          )
+          PY
