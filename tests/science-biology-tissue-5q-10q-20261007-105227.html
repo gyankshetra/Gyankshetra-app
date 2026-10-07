@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>Gyankshetra — science biology tissue 5Q 10Q</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,"Noto Sans Devanagari",sans-serif}
+button{font:inherit}
+.top{height:58px;background:#111827;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 15px;position:sticky;top:0;z-index:5}
+.brand{font-size:20px;font-weight:800}
+.top button{background:none;border:0;color:white;font-size:22px}
+.wrap{max-width:700px;margin:auto;padding:14px}
+.card,.qcard,.resultcard,.reviewcard{background:white;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #00000012}
+.hero{font-size:18px;font-weight:800}
+.small{display:block;color:#687386;margin-top:5px;font-size:13px}
+.primary,.next{background:#2563eb;color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:700}
+.secondary{background:#e5e7eb;border:0;border-radius:10px;padding:12px 18px}
+.quizbar{display:flex;align-items:center;justify-content:space-between;background:white;padding:12px 15px;border-bottom:1px solid #eee}
+.quizbar button{border:0;background:none;font-size:22px}
+.questionline{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-weight:700}
+.star{border:0;background:none;font-size:27px}
+.timer{font-variant-numeric:tabular-nums}
+.qcard h2{font-size:20px;line-height:1.5}
+.option{display:block;width:100%;text-align:left;background:#f8fafc;border:1px solid #d8dee8;padding:13px;border-radius:10px;margin:9px 0}
+.option.selected{border:2px solid #2563eb;background:#eff6ff}
+.actions{display:flex;gap:10px;justify-content:space-between;margin-top:18px}
+.actions button{flex:1}
+.facts{background:#f8fafc;padding:12px;border-radius:10px;margin-top:12px;line-height:1.6}
+.hide{display:none}
+.score{font-size:34px;font-weight:900;text-align:center}
+.nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #ddd;padding:10px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">Gyankshetra</div>
+  <button onclick="alert('Gyankshetra Test')">☰</button>
+</div>
+
+<div id="home" class="wrap">
+  <div class="card">
+    <div class="hero">science biology tissue 5Q 10Q</div>
+    <span class="small">10 प्रश्न • 10 अंक • 10 मिनट • No Negative</span>
+    <br>
+    <button class="primary" onclick="startQuiz()">Start Test</button>
+  </div>
+</div>
+
+<div id="quiz" class="hide">
+  <div class="quizbar">
+    <button onclick="confirmBack()">‹</button>
+    <b>science biology tissue 5Q 10Q</b>
+    <button>☰</button>
+  </div>
+
+  <div class="questionline">
+    <span>प्रश्न <span id="qn">1/10</span></span>
+    <button id="star" class="star" onclick="saveQuestion()">☆</button>
+    <span>⏱ <span id="timer">00:00</span></span>
+  </div>
+
+  <div class="wrap">
+    <div class="qcard">
+      <h2 id="question"></h2>
+      <div id="options"></div>
+      <div class="actions">
+        <button class="secondary" onclick="prev()">← पिछला</button>
+        <button id="next" class="next" onclick="next()">अगला →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="wrap hide">
+  <div class="resultcard">
+    <h2>🎉 Test Result</h2>
+    <div class="score" id="score">0/10</div>
+    <p id="resultText"></p>
+    <div class="actions">
+      <button class="secondary" onclick="review()">Review</button>
+      <button class="primary" onclick="startQuiz()">Reattempt</button>
+    </div>
+  </div>
+</div>
+
+<div id="review" class="wrap hide">
+  <div class="reviewcard">
+    <b id="reviewTitle"></b>
+    <h2 id="reviewQuestion"></h2>
+    <p><b>आपका उत्तर:</b> <span id="userAnswer"></span></p>
+    <p><b>सही उत्तर:</b> <span id="correctAnswer"></span></p>
+    <p><b>व्याख्या:</b> <span id="explanation"></span></p>
+    <div class="facts">
+      <b>महत्वपूर्ण तथ्य</b>
+      <div id="facts"></div>
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="reviewPrev()">← पिछला</button>
+      <button class="next" onclick="reviewNext()">अगला →</button>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  Gyankshetra • science biology tissue 5Q
+</div>
+
+<script>
+const questions=[{"question":"किस प्रकार के ऊतक में कोशिकाएँ एक-दूसरे से जुड़ी होती हैं और यह ऊतक शरीर के भीतर जल और पोषक तत्वों का परिवहन करता है?","options":["कनेक्टिव ऊतक","एपिथेलियल ऊतक","मस्कुलर ऊतक","न्यूरल ऊतक"],"answer":0,"explanation":"कनेक्टिव ऊतक में रक्त, लसिका आदि शामिल होते हैं जो पोषक तत्वों और जल का परिवहन करते हैं।","facts":["रक्त वाहिकाएँ इस ऊतक में पाई जाती हैं","यह शरीर को समर्थन देता है","फाइब्रोब्लास्ट्स इसकी प्रमुख कोशिकाएँ हैं","पोषक तत्वों का परिवहन करता है","रक्त इसका एक प्रमुख घटक है"]},{"question":"मांसपेशी ऊतक के तीन प्रमुख प्रकार कौन से हैं?","options":["स्केलेटल, कार्डियक, स्मूथ","एपिथेलियल, स्केलेटल, न्यूरल","कार्डियक, न्यूरल, कनेक्टिव","स्मूथ, एपिथेलियल, स्केलेटल"],"answer":0,"explanation":"स्केलेटल, कार्डियक और स्मूथ मांसपेशी ऊतक के तीन मुख्य प्रकार हैं।","facts":["स्केलेटल मांसपेशी स्वैच्छिक है","कार्डियक मांसपेशी अनैच्छिक है","स्मूथ मांसपेशी अनैच्छिक है","प्रत्येक का कार्य अलग है","इनकी संरचना भिन्न है"]},{"question":"किस ऊतक में कोशिकाएँ घनीभूत होती हैं और यह त्वचा की सतह पर पाई जाती है?","options":["एपिथेलियल ऊतक","कनेक्टिव ऊतक","मस्कुलर ऊतक","न्यूरल ऊतक"],"answer":0,"explanation":"त्वचा की बाहरी परत एपिथेलियल ऊतक से बनी होती है।","facts":["कोशिकाएँ tightly packed होती हैं","बैरियर कार्य करती हैं","केराटिनोसाइट्स प्रमुख हैं","नॉन-केराटिनाइज्ड म्यूकस में भी पाई जाती है","नवजीवन दर तेज है"]},{"question":"कौन सा ऊतक रक्त के रूप में पाया जाता है और यह एक विशेष प्रकार का कनेक्टिव ऊतक है?","options":["ब्लड","लसिका","हड्डी","मांसपेशी"],"answer":0,"explanation":"रक्त एक द्रव कनेक्टिव ऊतक है जो परिसंचरण तंत्र का हिस्सा है।","facts":["लाल रक्त कोशिकाएँ ऑक्सीजन ले जाती हैं","प्लेटलेट्स रक्तस्राव रोकते हैं","प्लाज़्मा द्रव भाग है","परिसंचरण में महत्वपूर्ण भूमिका निभाता है","ऑक्सीजन परिवहन का मुख्य माध्यम है"]},{"question":"न्यूरल ऊतक में मुख्यतः कौन सी कोशिकाएँ होती हैं?","options":["न्यूरॉन और ग्लियल","एपिथेलियल और कनेक्टिव","मस्कुलर और न्यूरॉन","फाइब्रोब्लास्ट और प्लेटलेट्स"],"answer":0,"explanation":"न्यूरल ऊतक में न्यूरॉन सूचना प्रसारित करते हैं और ग्लियल कोशिकाएँ समर्थन देती हैं।","facts":["न्यूरॉन सिनैप्स बनाते हैं","ग्लियल माइलिन शीथ बनाता है","सिनैप्टिक ट्रांसमिशन होता है","माइलिन शीथ तंत्रिका आवेग को तेज करता है","न्यूरोप्लास्टिसिटी सीखने में मदद करती है"]},{"question":"कौन सा ऊतक मुख्यतः कोशिकाओं के बीच के मैट्रिक्स के कारण लचीला और विस्तारणीय होता है?","options":["Epithelial","Connective","Muscle","Nervous"],"answer":1,"explanation":"कनेक्टिव ऊतक में कोशिकाओं के बीच का मैट्रिक्स (extracellular matrix) लचीलापन और विस्तारशीलता देता है।","facts":["कनेक्टिव ऊतक में कोलेजन और इलास्टिन फाइबर प्रमुख होते हैं।","यह ऊतक शरीर के अंगों को जोड़ता है।","वहां फाइब्रोब्लास्ट कोशिकाएँ मैट्रिक्स बनाती हैं।","विस्तारशीलता के कारण यह रक्त वाहिकाओं को सहारा देता है।","कनेक्टिव ऊतक के उपप्रकार में रक्त, अस्थि, उपास्थि आदि आते हैं।"]},{"question":"मांसपेशी ऊतक में संकुचन के लिए ज़िम्मेदार प्रोटीन कौन से हैं?","options":["Actin और Myosin","Collagen और Elastin","Keratin और Desmosomes","Neurotransmitters"],"answer":0,"explanation":"मांसपेशी संकुचन में Actin और Myosin फिलामेंट्स का स्लाइडिंग मेकेनिज्म प्रमुख है।","facts":["Actin एक पतला फिलामेंट है।","Myosin मोटा फिलामेंट है।","ATP ऊर्जा स्रोत है।","संकुचन के दौरान Myosin हेड Actin से बंधते हैं।","यह प्रक्रिया सभी मांसपेशी प्रकारों में समान है।"]},{"question":"किस ऊतक में कोशिकाएँ नाभिक के बिना रक्त कोशिकाएँ पाई जाती हैं?","options":["Epithelial","Connective","Blood","Nervous"],"answer":2,"explanation":"रक्त में लाल रक्त कोशिकाएँ (erythrocytes) नाभिक रहित होती हैं।","facts":["लाल रक्त कोशिकाएँ ऑक्सीजन ले जाती हैं।","उनका आयु लगभग 120 दिन होता है।","नाभिक के अभाव से गैस विनिमय आसान होता है।","रक्त प्लाज्मा में प्रोटीन और इलेक्ट्रोलाइट्स होते हैं।","रक्त का मुख्य कार्य पोषण और अपशिष्ट निष्कासन है।"]},{"question":"कौन सा ऊतक त्वचा की बाहरी परत में पाया जाता है और यह ऊतक केराटिन से समृद्ध होता है?","options":["Dermis","Epidermis","Hypodermis","Subcutaneous"],"answer":1,"explanation":"एपिडर्मिस त्वचा की बाहरी परत है जिसमें केराटिनयुक्त कोशिकाएँ होती हैं।","facts":["एपिडर्मिस में स्ट्रैटम कॉर्नियम प्रमुख है।","केराटिन त्वचा को जलरोधी बनाता है।","म्यूटेशन से त्वचा कैंसर हो सकता है।","एपिडर्मिस में मेलेनोसाइट्स रंग देते हैं।","यह परत लगातार पुनर्जीवित होती है।"]},{"question":"किस ऊतक में न्यूरॉन्स और ग्लिया कोशिकाएँ पाई जाती हैं?","options":["Muscle","Nervous","Connective","Epithelial"],"answer":1,"explanation":"न्यूरल ऊतक में न्यूरॉन्स और ग्लिया कोशिकाएँ होती हैं।","facts":["न्यूरॉन्स सूचना संचारित करते हैं।","ग्लिया कोशिकाएँ न्यूरॉन्स का समर्थन करती हैं।","मस्तिष्क और रीढ़ की हड्डी इस ऊतक के प्रमुख भाग हैं।","सिनैप्स पर न्यूरोट्रांसमीटर का विमोचन होता है।","न्यूरल ऊतक का विकास भ्रूण में न्यूरल ट्यूब से होता है।"]}];
+const TOTAL=questions.length;
+const TEST_TITLE="science biology tissue 5Q 10Q";
+const TOPIC="science biology tissue 5Q";
+const MAX_TIME=TOTAL*60;
+
+let qi=0;
+let answers=Array(TOTAL).fill(null);
+let elapsed=0;
+let timerHandle=null;
+let reviewIndex=0;
+
+function $(id){return document.getElementById(id)}
+
+function startQuiz(){
+  qi=0;
+  answers=Array(TOTAL).fill(null);
+  elapsed=0;
+
+  clearInterval(timerHandle);
+
+  $("home").classList.add("hide");
+  $("result").classList.add("hide");
+  $("review").classList.add("hide");
+  $("quiz").classList.remove("hide");
+
+  render();
+
+  timerHandle=setInterval(function(){
+    elapsed++;
+
+    let m=Math.floor(elapsed/60);
+    let s=elapsed%60;
+
+    $("timer").textContent=
+      String(m).padStart(2,"0")+":"+
+      String(s).padStart(2,"0");
+
+    if(elapsed>=MAX_TIME){
+      finish();
+    }
+  },1000);
+}
+
+function render(){
+  let q=questions[qi];
+
+  $("qn").textContent=(qi+1)+"/"+TOTAL;
+  $("question").textContent=q.question;
+
+  let box=$("options");
+  box.innerHTML="";
+
+  q.options.forEach(function(opt,i){
+    let b=document.createElement("button");
+    b.className="option";
+    b.textContent=String.fromCharCode(65+i)+". "+opt;
+
+    if(answers[qi]===i){
+      b.classList.add("selected");
+    }
+
+    b.onclick=function(){
+      answers[qi]=i;
+      render();
+    };
+
+    box.appendChild(b);
+  });
+
+  $("next").textContent=
+    qi===TOTAL-1 ? "Submit Test" : "अगला →";
+
+  $("star").textContent=
+    savedQuestion(qi) ? "★" : "☆";
+}
+
+function prev(){
+  if(qi>0){
+    qi--;
+    render();
+    window.scrollTo(0,0);
+  }
+}
+
+function next(){
+  if(qi<TOTAL-1){
+    qi++;
+    render();
+    window.scrollTo(0,0);
+  }else{
+    finish();
+  }
+}
+
+function finish(){
+  clearInterval(timerHandle);
+
+  let correct=0;
+
+  questions.forEach(function(q,i){
+    if(answers[i]===q.answer) correct++;
+  });
+
+  $("quiz").classList.add("hide");
+  $("result").classList.remove("hide");
+
+  $("score").textContent=correct+"/"+TOTAL;
+
+  $("resultText").textContent=
+    "सही: "+correct+
+    " • गलत: "+answers.filter((x,i)=>x!==null&&x!==questions[i].answer).length+
+    " • छोड़े: "+answers.filter(x=>x===null).length+
+    " • प्रतिशत: "+Math.round(correct/TOTAL*100)+"%";
+}
+
+function review(){
+  reviewIndex=0;
+
+  $("result").classList.add("hide");
+  $("review").classList.remove("hide");
+
+  renderReview();
+}
+
+function renderReview(){
+  let q=questions[reviewIndex];
+
+  $("reviewTitle").textContent=
+    "Review "+(reviewIndex+1)+"/"+TOTAL;
+
+  $("reviewQuestion").textContent=q.question;
+
+  $("userAnswer").textContent=
+    answers[reviewIndex]===null
+    ? "छोड़ा गया"
+    : q.options[answers[reviewIndex]];
+
+  $("correctAnswer").textContent=
+    q.options[q.answer];
+
+  $("explanation").textContent=
+    q.explanation || "—";
+
+  $("facts").innerHTML=
+    (q.facts||[]).map(x=>"• "+x).join("<br>");
+
+  window.scrollTo(0,0);
+}
+
+function reviewPrev(){
+  if(reviewIndex>0){
+    reviewIndex--;
+    renderReview();
+  }
+}
+
+function reviewNext(){
+  if(reviewIndex<TOTAL-1){
+    reviewIndex++;
+    renderReview();
+  }
+}
+
+function savedQuestion(i){
+  try{
+    let x=JSON.parse(localStorage.getItem("gyankshetra_saved")||"[]");
+    return x.some(a=>a.title===TEST_TITLE && a.index===i);
+  }catch(e){
+    return false;
+  }
+}
+
+function saveQuestion(){
+  let key="gyankshetra_saved";
+
+  let list=[];
+
+  try{
+    list=JSON.parse(localStorage.getItem(key)||"[]");
+  }catch(e){
+    list=[];
+  }
+
+  let found=list.findIndex(
+    x=>x.title===TEST_TITLE && x.index===qi
+  );
+
+  if(found>=0){
+    list.splice(found,1);
+  }else{
+    list.push({
+      title:TEST_TITLE,
+      topic:TOPIC,
+      index:qi,
+      question:questions[qi].question
+    });
+  }
+
+  localStorage.setItem(key,JSON.stringify(list));
+
+  render();
+}
+
+function confirmBack(){
+  if(confirm("क्या आप टेस्ट छोड़ना चाहते हैं?")){
+    clearInterval(timerHandle);
+    location.reload();
+  }
+}
+
+startQuiz();
+</script>
+</body>
+</html>
