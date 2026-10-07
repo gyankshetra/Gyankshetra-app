@@ -141,44 +141,46 @@ jobs:
                   "count": count
               }
 
-          def groq_batch(topic, count, previous):
+                   def groq_batch(topic, count, previous):
               previous_text = "\n".join(previous[-20:])
 
               prompt = f"""
-          आप Gyankshetra के लिए प्रतियोगी परीक्षा स्तर के MCQ प्रश्न बनाएं।
+          Create exactly {count} multiple choice questions in Hindi.
 
-          विषय: {topic}
-          प्रश्नों की संख्या: {count}
+          Topic: {topic}
 
-          परीक्षा स्तर:
-          STET / BPSC TRE / शिक्षक भर्ती / प्रतियोगी परीक्षा
+          Level:
+          STET / BPSC TRE / Teacher Recruitment / Competitive Exam
 
-          नियम:
-          1. सभी प्रश्न मौलिक और तथ्यात्मक हों।
-          2. प्रत्येक प्रश्न के 4 विकल्प हों।
-          3. केवल एक सही उत्तर हो।
-          4. उत्तर 0,1,2,3 में दें।
-          5. हर प्रश्न की छोटी लेकिन उपयोगी व्याख्या दें।
-          6. हर प्रश्न के 5 महत्वपूर्ण परीक्षा तथ्य दें।
-          7. भाषा मुख्यतः शुद्ध हिन्दी रखें।
-          8. English scientific names आवश्यक होने पर English में ही रखें।
-          9. प्रश्नों को दोहराएं नहीं।
-          10. JSON के अलावा कोई text न दें।
+          IMPORTANT:
+          Return ONLY valid JSON.
+          Do not use markdown.
+          Do not use ```.
 
-          JSON format:
+          JSON must have exactly this structure:
+
           {{
             "questions": [
               {{
-                "question": "प्रश्न",
-                "options": ["A","B","C","D"],
+                "question": "question text",
+                "options": ["option A", "option B", "option C", "option D"],
                 "answer": 0,
-                "explanation": "व्याख्या",
-                "facts": ["तथ्य 1","तथ्य 2","तथ्य 3","तथ्य 4","तथ्य 5"]
+                "explanation": "short explanation",
+                "facts": ["fact 1", "fact 2", "fact 3"]
               }}
             ]
           }}
 
-          पहले से बने कुछ प्रश्न:
+          Rules:
+          - Exactly {count} questions.
+          - Exactly 4 options per question.
+          - answer must be 0, 1, 2 or 3.
+          - facts must contain exactly 3 short facts.
+          - Do not repeat previous questions.
+          - Questions must be original and factual.
+          - Use pure Hindi where possible.
+
+          Previous questions:
           {previous_text}
           """
 
@@ -187,21 +189,22 @@ jobs:
                   "messages": [
                       {
                           "role": "system",
-                          "content": "आप एक उच्च गुणवत्ता वाले भारतीय प्रतियोगी परीक्षा प्रश्न निर्माता हैं।"
+                          "content": "Return only valid JSON. Never return markdown."
                       },
                       {
                           "role": "user",
                           "content": prompt
                       }
                   ],
-                  "temperature": 0.4,
-                  "max_completion_tokens": 5000,
+                  "temperature": 0.2,
+                  "max_completion_tokens": 4000,
                   "response_format": {
                       "type": "json_object"
                   }
               }
 
               for attempt in range(5):
+
                   r = requests.post(
                       GROQ_URL,
                       headers={
@@ -212,34 +215,138 @@ jobs:
                       timeout=120
                   )
 
+                  print("Groq status:", r.status_code)
+
                   if r.status_code == 429:
                       wait = 25 * (attempt + 1)
-                      print("Groq rate limit. Waiting", wait)
+                      print("Rate limit. Waiting:", wait)
                       time.sleep(wait)
                       continue
 
                   if r.status_code >= 400:
+
+                      print("Groq error:", r.text[:3000])
+
+                      # JSON validation failure होने पर
+                      # बिना response_format दोबारा कोशिश
+                      if (
+                          r.status_code == 400
+                          and "failed_generation" in r.text
+                      ):
+
+                          fallback = dict(payload)
+                          fallback.pop("response_format", None)
+
+                          r2 = requests.post(
+                              GROQ_URL,
+                              headers={
+                                  "Authorization": f"Bearer {GROQ}",
+                                  "Content-Type": "application/json"
+                              },
+                              json=fallback,
+                              timeout=120
+                          )
+
+                          print(
+                              "Fallback status:",
+                              r2.status_code
+                          )
+
+                          if r2.status_code < 400:
+
+                              data2 = r2.json()
+
+                              content2 = data2[
+                                  "choices"
+                              ][0]["message"]["content"]
+
+                              content2 = re.sub(
+                                  r"^```json\s*",
+                                  "",
+                                  content2.strip(),
+                                  flags=re.I
+                              )
+
+                              content2 = re.sub(
+                                  r"\s*```$",
+                                  "",
+                                  content2.strip()
+                              )
+
+                              try:
+                                  obj2 = json.loads(content2)
+
+                                  qs2 = obj2.get(
+                                      "questions",
+                                      []
+                                  )
+
+                                  if isinstance(qs2, list):
+                                      return qs2
+
+                              except Exception as e:
+                                  print(
+                                      "Fallback JSON error:",
+                                      e
+                                  )
+
                       raise RuntimeError(
-                          f"Groq API {r.status_code}: {r.text[:1000]}"
+                          f"Groq API {r.status_code}: "
+                          f"{r.text[:1500]}"
                       )
 
                   data = r.json()
-                  content = data["choices"][0]["message"]["content"]
+
+                  content = data[
+                      "choices"
+                  ][0]["message"]["content"]
+
+                  content = re.sub(
+                      r"^```json\s*",
+                      "",
+                      content.strip(),
+                      flags=re.I
+                  )
+
+                  content = re.sub(
+                      r"\s*```$",
+                      "",
+                      content.strip()
+                  )
 
                   try:
                       obj = json.loads(content)
                   except Exception:
-                      match = re.search(r"\{.*\}", content, re.S)
-                      if not match:
-                          raise RuntimeError("Groq ने valid JSON नहीं दिया")
-                      obj = json.loads(match.group(0))
+                      match = re.search(
+                          r"\{.*\}",
+                          content,
+                          re.S
+                      )
 
-                  qs = obj.get("questions", [])
+                      if not match:
+                          raise RuntimeError(
+                              "Groq ने valid JSON नहीं दिया"
+                          )
+
+                      obj = json.loads(
+                          match.group(0)
+                      )
+
+                  qs = obj.get(
+                      "questions",
+                      []
+                  )
 
                   if not isinstance(qs, list):
-                      raise RuntimeError("questions array नहीं मिला")
+                      raise RuntimeError(
+                          "questions array नहीं मिला"
+                      )
 
                   return qs
+
+              raise RuntimeError(
+                  "Groq rate limit बार-बार आया"
+              )
 
               raise RuntimeError("Groq rate limit बार-बार आया")
 
