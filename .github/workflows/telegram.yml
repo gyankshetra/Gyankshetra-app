@@ -1,330 +1,1038 @@
-name: Gyankshetra Telegram AI Bot
+name: Gyankshetra AI Test Generator
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
 
+permissions:
+  contents: write
+
 concurrency:
-  group: gyankshetra-telegram-bot
-  cancel-in-progress: true
+  group: gyankshetra-ai-generator
+  cancel-in-progress: false
 
 jobs:
-  telegram-bot:
+  generate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Run Telegram Bot
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Python
+        run: |
+          pip install requests
+
+      - name: Start Gyankshetra Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          REPO: ${{ github.repository }}
         run: |
+
           python3 <<'PY'
+
           import os
           import json
           import time
+          import re
+          import html
           import requests
+          import subprocess
+          from datetime import datetime
+
+
+          # ==================================================
+          # CONFIG
+          # ==================================================
 
           BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
           GROQ_KEY = os.environ["GROQ_API_KEY"]
+          REPO = os.environ["REPO"]
 
-          TG_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-          GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+          TG = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-          def telegram(method, data=None):
+          GROQ_URL = (
+              "https://api.groq.com/openai/v1/chat/completions"
+          )
+
+          TEMPLATE = "index.html"
+
+          TEST_DIR = "tests"
+
+          OFFSET_FILE = ".telegram_offset"
+
+
+          # ==================================================
+          # TELEGRAM
+          # ==================================================
+
+          def tg(method, data=None):
+
               r = requests.post(
-                  f"{TG_URL}/{method}",
+                  f"{TG}/{method}",
                   json=data or {},
                   timeout=60
               )
+
               r.raise_for_status()
+
               return r.json()
 
-          def send_message(chat_id, text):
-              # Telegram message limit
+
+          def send(chat_id, text):
+
+              text = str(text)
+
               for i in range(0, len(text), 3900):
-                  telegram("sendMessage", {
-                      "chat_id": chat_id,
-                      "text": text[i:i+3900]
-                  })
+
+                  tg(
+                      "sendMessage",
+                      {
+                          "chat_id": chat_id,
+                          "text": text[i:i+3900],
+                          "disable_web_page_preview": False
+                      }
+                  )
+
+
+          # ==================================================
+          # COMMAND
+          # ==================================================
 
           def parse_command(text):
+
               parts = text.strip().split()
+
               if not parts:
-                  return None, None, 20
+                  return None, "", 20
 
               command = parts[0].lower()
 
               count = 20
-              if parts and parts[-1].isdigit():
+
+              if len(parts) > 1 and parts[-1].isdigit():
+
                   count = int(parts[-1])
+
                   parts = parts[:-1]
 
               topic = " ".join(parts[1:]).strip()
 
-              if count < 1:
-                  count = 1
-              if count > 100:
-                  count = 100
+              count = max(1, min(count, 100))
 
               return command, topic, count
 
-          def generate_batch(topic, count, command):
+
+          # ==================================================
+          # SLUG
+          # ==================================================
+
+          def slugify(topic):
+
+              s = topic.lower()
+
+              s = re.sub(
+                  r"[^a-z0-9\u0900-\u097f]+",
+                  "-",
+                  s
+              )
+
+              s = s.strip("-")
+
+              stamp = datetime.utcnow().strftime(
+                  "%Y%m%d%H%M%S"
+              )
+
+              return f"{s}-{stamp}"
+
+
+          # ==================================================
+          # GROQ
+          # ==================================================
+
+          def groq_batch(topic, count, command):
+
               if command == "/pyq":
-                  type_instruction = """
-                  केवल verified/authentic PYQ की तरह दावा मत करना।
-                  यदि वास्तविक PYQ source उपलब्ध नहीं है तो प्रश्न को
-                  'PYQ-style practice question' के रूप में तैयार करो।
+
+                  instruction = """
+                  Authentic PYQ होने का दावा तभी करो
+                  जब verified source उपलब्ध हो।
+                  अन्यथा PYQ-style practice question बनाओ।
                   """
+
               elif command == "/mock":
-                  type_instruction = "Mock Test के लिए उच्च स्तर के परीक्षा-उपयोगी प्रश्न बनाओ।"
+
+                  instruction = """
+                  Full Mock Test level के conceptual,
+                  application और exam-oriented प्रश्न बनाओ।
+                  """
+
               elif command == "/practice":
-                  type_instruction = "Practice Test के लिए concept + application आधारित प्रश्न बनाओ।"
+
+                  instruction = """
+                  Practice level के concept और application
+                  based प्रश्न बनाओ।
+                  """
+
               else:
-                  type_instruction = "Test Series के लिए उच्च स्तर के MCQ बनाओ।"
+
+                  instruction = """
+                  Test Series के high-level examination
+                  oriented प्रश्न बनाओ।
+                  """
+
 
               prompt = f"""
-          तुम Gyankshetra के परीक्षा-प्रश्न निर्माता हो।
 
-          विषय: {topic}
-          प्रश्नों की संख्या: {count}
+          तुम Gyankshetra के official AI question generator हो।
 
-          {type_instruction}
+          विषय:
+          {topic}
 
-          परीक्षा स्तर:
-          STET / BPSC TRE स्तर का कठिन और उपयोगी स्तर रखो।
+          इस batch में:
+          {count} प्रश्न
+
+          परीक्षा:
+          STET / BPSC TRE level
+
+          {instruction}
 
           नियम:
-          1. हर प्रश्न MCQ हो।
+
+          1. सभी प्रश्न MCQ हों।
           2. प्रत्येक प्रश्न में 4 विकल्प हों।
           3. केवल एक सही उत्तर हो।
-          4. प्रश्न दोहराए नहीं जाएँ।
-          5. तथ्यात्मक रूप से सही उत्तर दो।
-          6. हिंदी में प्रश्न बनाओ।
-          7. आवश्यक English/scientific terms को English में ही रख सकते हो।
-          8. प्रत्येक प्रश्न के साथ छोटा लेकिन उपयोगी explanation दो।
-          9. महत्वपूर्ण परीक्षा तथ्य भी दो।
-          10. गलत या काल्पनिक PYQ को authentic PYQ मत बताना।
+          4. प्रश्न repeat न हों।
+          5. तथ्यात्मक रूप से सही प्रश्न हों।
+          6. प्रश्न हिंदी में हों।
+          7. Scientific/English terms आवश्यकता अनुसार English में रखो।
+          8. प्रत्येक प्रश्न की explanation दो।
+          9. प्रत्येक प्रश्न के साथ 10 महत्वपूर्ण exam facts दो।
+          10. कठिनाई medium से high रखो।
+          11. काल्पनिक तथ्य मत बनाओ।
+          12. Authentic PYQ होने का झूठा दावा मत करो।
 
-          केवल JSON दो। कोई अतिरिक्त text नहीं।
+          केवल JSON लौटाओ।
 
-          JSON format:
+          JSON:
+
           {{
             "questions": [
               {{
                 "question": "प्रश्न",
                 "options": [
-                  "A. विकल्प",
-                  "B. विकल्प",
-                  "C. विकल्प",
-                  "D. विकल्प"
+                  "विकल्प A",
+                  "विकल्प B",
+                  "विकल्प C",
+                  "विकल्प D"
                 ],
-                "answer": "A",
+                "answer": 0,
                 "explanation": "व्याख्या",
                 "facts": [
-                  "महत्वपूर्ण तथ्य 1",
-                  "महत्वपूर्ण तथ्य 2",
-                  "महत्वपूर्ण तथ्य 3"
+                  "तथ्य 1",
+                  "तथ्य 2",
+                  "तथ्य 3",
+                  "तथ्य 4",
+                  "तथ्य 5",
+                  "तथ्य 6",
+                  "तथ्य 7",
+                  "तथ्य 8",
+                  "तथ्य 9",
+                  "तथ्य 10"
                 ]
               }}
             ]
           }}
+
           """
 
+
               payload = {
-                  "model": "openai/gpt-oss-20b",
+
+                  "model":
+                      "openai/gpt-oss-20b",
+
                   "messages": [
+
                       {
                           "role": "system",
-                          "content": "You generate accurate educational MCQs and return valid JSON only."
+                          "content":
+                          "Return valid JSON only."
                       },
+
                       {
                           "role": "user",
                           "content": prompt
                       }
+
                   ],
+
                   "response_format": {
                       "type": "json_object"
                   },
-                  "max_completion_tokens": 6000
+
+                  "max_completion_tokens": 7000
+
               }
 
+
               r = requests.post(
+
                   GROQ_URL,
+
                   headers={
-                      "Authorization": f"Bearer {GROQ_KEY}",
-                      "Content-Type": "application/json"
+                      "Authorization":
+                          f"Bearer {GROQ_KEY}",
+                      "Content-Type":
+                          "application/json"
                   },
+
                   json=payload,
-                  timeout=120
+
+                  timeout=180
+
               )
 
+
               if r.status_code != 200:
+
                   raise Exception(
-                      f"Groq API Error {r.status_code}: {r.text[:1000]}"
+                      f"Groq API Error {r.status_code}: "
+                      f"{r.text[:2000]}"
                   )
+
 
               data = r.json()
 
-              content = data["choices"][0]["message"]["content"]
+              content = (
+                  data["choices"][0]
+                  ["message"]["content"]
+              )
 
               result = json.loads(content)
 
-              questions = result.get("questions", [])
+              questions = result.get(
+                  "questions",
+                  []
+              )
 
-              if not isinstance(questions, list):
-                  raise Exception("AI ने questions list नहीं भेजी।")
+              if not isinstance(
+                  questions,
+                  list
+              ):
+
+                  raise Exception(
+                      "Invalid questions data."
+                  )
 
               return questions
 
-          def main():
-              print("Gyankshetra Telegram Bot started")
 
-              # Telegram polling offset
-              offset = 0
+          # ==================================================
+          # GENERATE ALL QUESTIONS
+          # ==================================================
+
+          def generate_questions(
+              topic,
+              total,
+              command
+          ):
+
+              result = []
+
+              remaining = total
+
+              while remaining > 0:
+
+                  batch = min(
+                      10,
+                      remaining
+                  )
+
+                  qs = groq_batch(
+                      topic,
+                      batch,
+                      command
+                  )
+
+                  result.extend(qs)
+
+                  remaining -= batch
+
+              return result[:total]
+
+
+          # ==================================================
+          # CREATE TEST FROM MASTER UI
+          # ==================================================
+
+          def create_test(
+              topic,
+              questions
+          ):
+
+              if not os.path.exists(
+                  TEMPLATE
+              ):
+
+                  raise Exception(
+                      "Master index.html नहीं मिला।"
+                  )
+
+
+              with open(
+                  TEMPLATE,
+                  "r",
+                  encoding="utf-8"
+              ) as f:
+
+                  template = f.read()
+
+
+              total = len(questions)
+
+              time_seconds = total * 60
+
+
+              # ------------------------------------------
+              # Change static topic text
+              # BEFORE inserting questions.
+              # ------------------------------------------
+
+              template = template.replace(
+                  "विलयन 20Q",
+                  f"{topic} {total}Q"
+              )
+
+              template = template.replace(
+                  "विलयन",
+                  topic
+              )
+
+
+              template = template.replace(
+                  "20 प्रश्न",
+                  f"{total} प्रश्न"
+              )
+
+              template = template.replace(
+                  "20 Questions",
+                  f"{total} Questions"
+              )
+
+              template = template.replace(
+                  "20 अंक",
+                  f"{total} अंक"
+              )
+
+              template = template.replace(
+                  "20 Marks",
+                  f"{total} Marks"
+              )
+
+              template = template.replace(
+                  "20 मिनट",
+                  f"{total} मिनट"
+              )
+
+              template = template.replace(
+                  "20 Minutes",
+                  f"{total} Minutes"
+              )
+
+
+              # ------------------------------------------
+              # Convert AI data to old UI array format
+              # ------------------------------------------
+
+              old_format = []
+
+              for q in questions:
+
+                  question = str(
+                      q.get(
+                          "question",
+                          ""
+                      )
+                  )
+
+                  options = q.get(
+                      "options",
+                      []
+                  )
+
+                  answer = int(
+                      q.get(
+                          "answer",
+                          0
+                      )
+                  )
+
+                  facts = q.get(
+                      "facts",
+                      []
+                  )
+
+                  explanation = str(
+                      q.get(
+                          "explanation",
+                          ""
+                      )
+                  )
+
+
+                  if not isinstance(
+                      options,
+                      list
+                  ):
+
+                      options = [
+                          "",
+                          "",
+                          "",
+                          ""
+                      ]
+
+
+                  options = (
+                      options + ["", "", "", ""]
+                  )[:4]
+
+
+                  facts = (
+                      facts
+                      if isinstance(
+                          facts,
+                          list
+                      )
+                      else []
+                  )
+
+
+                  facts = [
+                      str(x)
+                      for x in facts
+                  ]
+
+
+                  # Existing UI expects
+                  # [question, options, answer, facts]
+
+                  old_format.append(
+                      [
+                          question,
+                          options,
+                          answer,
+                          facts
+                      ]
+                  )
+
+
+              js_questions = json.dumps(
+                  old_format,
+                  ensure_ascii=False
+              )
+
+
+              # ------------------------------------------
+              # Replace the MASTER question data
+              # ------------------------------------------
+
+              pattern = re.compile(
+                  r"const TOTAL=20,TIME=1200;.*?"
+                  r"let qi=0,",
+                  re.S
+              )
+
+
+              replacement = (
+                  f"const TOTAL={total},"
+                  f"TIME={time_seconds};\n"
+                  f"const questions={js_questions};\n"
+                  f"let qi=0,"
+              )
+
+
+              new_html, changed = pattern.subn(
+                  replacement,
+                  template,
+                  count=1
+              )
+
+
+              if changed != 1:
+
+                  raise Exception(
+                      "Master UI में question data block नहीं मिला।"
+                  )
+
+
+              # ------------------------------------------
+              # Make generated title
+              # ------------------------------------------
+
+              new_html = new_html.replace(
+                  "<title>Gyankshetra",
+                  f"<title>Gyankshetra — "
+                  f"{html.escape(topic)} {total}Q"
+              )
+
+
+              # ------------------------------------------
+              # Save
+              # ------------------------------------------
+
+              os.makedirs(
+                  TEST_DIR,
+                  exist_ok=True
+              )
+
+
+              slug = slugify(topic)
+
+              filepath = os.path.join(
+                  TEST_DIR,
+                  slug + ".html"
+              )
+
+
+              with open(
+                  filepath,
+                  "w",
+                  encoding="utf-8"
+              ) as f:
+
+                  f.write(
+                      new_html
+                  )
+
+
+              return filepath, slug
+
+
+          # ==================================================
+          # GIT PUBLISH
+          # ==================================================
+
+          def publish(filepath, topic):
+
+              subprocess.run(
+                  [
+                      "git",
+                      "config",
+                      "user.name",
+                      "Gyankshetra Bot"
+                  ],
+                  check=True
+              )
+
+              subprocess.run(
+                  [
+                      "git",
+                      "config",
+                      "user.email",
+                      "bot@gyankshetra.github.io"
+                  ],
+                  check=True
+              )
+
+
+              subprocess.run(
+                  [
+                      "git",
+                      "add",
+                      filepath
+                  ],
+                  check=True
+              )
+
+
+              subprocess.run(
+                  [
+                      "git",
+                      "commit",
+                      "-m",
+                      f"AI Test: {topic}"
+                  ],
+                  check=False
+              )
+
+
+              result = subprocess.run(
+                  [
+                      "git",
+                      "push",
+                      "origin",
+                      "HEAD:main"
+                  ]
+              )
+
+
+              if result.returncode != 0:
+
+                  raise Exception(
+                      "GitHub push failed."
+                  )
+
+
+          # ==================================================
+          # OFFSET
+          # ==================================================
+
+          def get_offset():
+
+              try:
+
+                  with open(
+                      OFFSET_FILE,
+                      "r"
+                  ) as f:
+
+                      return int(
+                          f.read().strip()
+                      )
+
+              except:
+
+                  return 0
+
+
+          def save_offset(offset):
+
+              with open(
+                  OFFSET_FILE,
+                  "w"
+              ) as f:
+
+                  f.write(
+                      str(offset)
+                  )
+
+
+          # ==================================================
+          # MAIN BOT
+          # ==================================================
+
+          def main():
+
+              print(
+                  "Gyankshetra AI Generator started"
+              )
+
+
+              offset = get_offset()
 
               start_time = time.time()
 
-              while time.time() - start_time < 240:
+
+              while (
+                  time.time() - start_time
+                  < 240
+              ):
 
                   try:
-                      result = telegram(
+
+                      response = tg(
                           "getUpdates",
                           {
                               "offset": offset,
-                              "timeout": 30,
-                              "allowed_updates": ["message"]
+                              "timeout": 25,
+                              "allowed_updates":
+                                  ["message"]
                           }
                       )
 
-                      updates = result.get("result", [])
+
+                      updates = response.get(
+                          "result",
+                          []
+                      )
+
 
                       for update in updates:
-                          offset = update["update_id"] + 1
 
-                          message = update.get("message", {})
-                          chat = message.get("chat", {})
-                          chat_id = chat.get("id")
-                          text = message.get("text", "")
+                          offset = (
+                              update["update_id"]
+                              + 1
+                          )
 
-                          if not chat_id or not text:
+
+                          message = update.get(
+                              "message",
+                              {}
+                          )
+
+                          chat = message.get(
+                              "chat",
+                              {}
+                          )
+
+                          chat_id = chat.get(
+                              "id"
+                          )
+
+                          text = message.get(
+                              "text",
+                              ""
+                          )
+
+
+                          if (
+                              not chat_id
+                              or not text
+                          ):
+
                               continue
 
-                          print("Message:", text)
 
-                          command, topic, count = parse_command(text)
+                          print(
+                              "Telegram:",
+                              text
+                          )
+
+
+                          command, topic, count = (
+                              parse_command(text)
+                          )
+
+
+                          # --------------------------------
+                          # START
+                          # --------------------------------
 
                           if command == "/start":
-                              send_message(
+
+                              send(
+
                                   chat_id,
-                                  "🚀 Gyankshetra AI Bot तैयार है।\n\n"
-                                  "Commands:\n"
+
+                                  "🚀 Gyankshetra AI Bot\n\n"
+
+                                  "Commands:\n\n"
+
                                   "/test इतिहास 20\n"
                                   "/test विलयन 50\n"
-                                  "/mock विज्ञान 20\n"
-                                  "/practice रसायन 30\n"
-                                  "/pyq BPSC TRE Science 20"
+                                  "/mock विज्ञान 30\n"
+                                  "/practice रसायन 20\n"
+                                  "/pyq BPSC TRE Science 20\n\n"
+
+                                  "1 से 100 प्रश्न बनाए जा सकते हैं।"
                               )
 
-                          elif command in [
+                              continue
+
+
+                          # --------------------------------
+                          # VALID COMMAND
+                          # --------------------------------
+
+                          valid = [
                               "/test",
                               "/mock",
                               "/practice",
                               "/pyq"
-                          ]:
+                          ]
 
-                              if not topic:
-                                  send_message(
-                                      chat_id,
-                                      "❌ विषय लिखें।\n\n"
-                                      "उदाहरण:\n"
-                                      "/test इतिहास 20"
-                                  )
-                                  continue
 
-                              send_message(
+                          if command not in valid:
+
+                              send(
                                   chat_id,
-                                  f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n"
-                                  f"📚 विषय: {topic}\n"
-                                  f"📝 प्रश्न: {count}\n"
-                                  f"⚡ Command: {command}"
-                              )
 
-                              all_questions = []
+                                  "❓ Command सही नहीं है।\n\n"
 
-                              remaining = count
-
-                              while remaining > 0:
-                                  batch_size = min(10, remaining)
-
-                                  try:
-                                      questions = generate_batch(
-                                          topic,
-                                          batch_size,
-                                          command
-                                      )
-
-                                      all_questions.extend(questions)
-
-                                  except Exception as e:
-                                      error_text = str(e)
-
-                                      send_message(
-                                          chat_id,
-                                          "❌ AI प्रश्न बनाने में समस्या आई।\n\n"
-                                          + error_text[:3000]
-                                      )
-
-                                      break
-
-                                  remaining -= batch_size
-
-                              if len(all_questions) > 0:
-
-                                  all_questions = all_questions[:count]
-
-                                  output = (
-                                      f"✅ Gyankshetra AI Test तैयार!\n\n"
-                                      f"📚 विषय: {topic}\n"
-                                      f"📝 Requested: {count}\n"
-                                      f"✅ Generated: {len(all_questions)}\n\n"
-                                  )
-
-                                  for i, q in enumerate(
-                                      all_questions,
-                                      start=1
-                                  ):
-                                      output += (
-                                          f"{i}. {q.get('question','')}\n"
-                                      )
-
-                                      options = q.get("options", [])
-
-                                      for option in options:
-                                          output += f"{option}\n"
-
-                                      output += (
-                                          f"✅ उत्तर: {q.get('answer','')}\n"
-                                          f"📖 व्याख्या: "
-                                          f"{q.get('explanation','')}\n\n"
-                                      )
-
-                                  send_message(chat_id, output)
-
-                          else:
-                              send_message(
-                                  chat_id,
-                                  "❓ Unknown command.\n\n"
                                   "उदाहरण:\n"
                                   "/test इतिहास 20"
                               )
 
+                              continue
+
+
+                          if not topic:
+
+                              send(
+                                  chat_id,
+
+                                  "❌ विषय लिखें।\n\n"
+
+                                  "उदाहरण:\n"
+                                  "/test इतिहास 20"
+                              )
+
+                              continue
+
+
+                          # --------------------------------
+                          # START MESSAGE
+                          # --------------------------------
+
+                          send(
+
+                              chat_id,
+
+                              "🤖 Groq AI Test तैयार कर रहा है...\n\n"
+
+                              f"📚 विषय: {topic}\n"
+                              f"📝 प्रश्न: {count}\n"
+                              f"⏱️ समय: {count} मिनट\n\n"
+
+                              "इसके बाद वही Gyankshetra UI "
+                              "में Live Test बनेगा।"
+                          )
+
+
+                          try:
+
+                              # Generate
+
+                              questions = (
+                                  generate_questions(
+                                      topic,
+                                      count,
+                                      command
+                                  )
+                              )
+
+
+                              if len(
+                                  questions
+                              ) < count:
+
+                                  raise Exception(
+                                      "AI ने "
+                                      + str(
+                                          len(
+                                              questions
+                                          )
+                                      )
+                                      + " प्रश्न बनाए।"
+                                  )
+
+
+                              # Create from master UI
+
+                              filepath, slug = (
+                                  create_test(
+                                      topic,
+                                      questions
+                                  )
+                              )
+
+
+                              # Push to GitHub
+
+                              publish(
+                                  filepath,
+                                  topic
+                              )
+
+
+                              owner, repo = (
+                                  REPO.split("/")
+                              )
+
+
+                              link = (
+                                  f"https://"
+                                  f"{owner}.github.io/"
+                                  f"{repo}/tests/"
+                                  f"{slug}.html"
+                              )
+
+
+                              # Final Telegram response
+
+                              send(
+
+                                  chat_id,
+
+                                  "🎉 Gyankshetra Test तैयार!\n\n"
+
+                                  f"📚 {topic}\n"
+                                  f"📝 {len(questions)} प्रश्न\n"
+                                  f"⏱️ {len(questions)} मिनट\n"
+                                  "❌ No Negative Marking\n\n"
+
+                                  "🌐 LIVE TEST:\n"
+                                  f"{link}"
+                              )
+
+
+                          except Exception as e:
+
+                              print(
+                                  "ERROR:",
+                                  repr(e)
+                              )
+
+                              send(
+
+                                  chat_id,
+
+                                  "❌ Test बनाने में समस्या आई।\n\n"
+                                  + str(e)[:3000]
+
+                              )
+
+
+                      # Save Telegram offset
+
+                      save_offset(offset)
+
+
+                      subprocess.run(
+                          [
+                              "git",
+                              "add",
+                              OFFSET_FILE
+                          ],
+                          check=False
+                      )
+
+
+                      subprocess.run(
+                          [
+                              "git",
+                              "commit",
+                              "-m",
+                              "Update Telegram offset"
+                          ],
+                          check=False
+                      )
+
+
+                      subprocess.run(
+                          [
+                              "git",
+                              "push",
+                              "origin",
+                              "HEAD:main"
+                          ],
+                          check=False
+                      )
+
+
                   except Exception as e:
-                      print("Polling error:", str(e))
+
+                      print(
+                          "Polling error:",
+                          repr(e)
+                      )
+
                       time.sleep(5)
 
-              print("Polling cycle finished")
+
+              print(
+                  "Bot cycle finished"
+              )
+
 
           if __name__ == "__main__":
+
               main()
+
           PY
