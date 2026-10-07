@@ -3,48 +3,40 @@ name: Gyankshetra AI Test Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
-
-permissions:
-  contents: write
-
-concurrency:
-  group: gyankshetra-generator
-  cancel-in-progress: false
+    - cron: '*/5 * * * *'
 
 jobs:
-  generate:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
-      - name: Install requests
-        run: pip install requests
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests google-genai python-telegram-bot
 
-      - name: Run Gyankshetra Bot
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python3 .github/scripts/gyankshetra_bot.py
+    - name: Run Gyankshetra Bot
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: python3 .github/scripts/gyankshetra_bot.py
 
-      - name: Commit generated files
-        run: |
-          git config user.name "gyankshetra"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add .
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Generate Gyankshetra AI test"
-            git push
-          fi
+    - name: Commit generated files
+      run: |
+        git config user.name "gyankshetra"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.io"
+        git add .
+        if git diff --cached --quiet; then
+          echo "No changes to commit."
+        else
+          git commit -m "Generate Gyankshetra AI Test"
+          git push
+        fi
