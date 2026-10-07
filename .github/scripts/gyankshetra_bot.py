@@ -1,3 +1,4 @@
+
 import os
 import re
 import json
@@ -515,16 +516,13 @@ def make_master_test(topic, count, questions):
     # QUESTIONS
     # ----------------------------------------------
 
-    pattern = (
-        r"const\s+questions\s*=\s*.*?;"
-        r"\s*let\s+qi"
-    )
+    # Robustly replace the complete questions array from the Master UI.
+    pattern = r"const\s+questions\s*=\s*\[.*?\]\s*;\s*let\s+qi"
 
     replacement = (
         "const questions="
         + questions_json
-        + ";"
-        + "\n"
+        + ";\n"
         + "let qi"
     )
 
@@ -536,42 +534,37 @@ def make_master_test(topic, count, questions):
         flags=re.S
     )
 
+    if questions_json not in source:
+        raise RuntimeError("Master UI में नए questions insert नहीं हुए")
+
     # ----------------------------------------------
-    # OLD TIMER → COUNT UP
+    # TIMER — ALWAYS START AT 00:00 AND COUNT UP
     # ----------------------------------------------
+    source = source.replace("time=TIME;", "time=0;")
 
-    source = source.replace(
-        "time=TIME;",
-        "time=0;"
+    timer_pattern = (
+        r"timerHandle\s*=\s*setInterval\s*\(\s*\(\)\s*=>\s*\{.*?\}\s*,\s*1000\s*\)"
+    )
+    timer_replacement = (
+        "timerHandle=setInterval(()=>{"
+        "if(time<TIME){"
+        "time++;"
+        "renderTimer()"
+        "}else{"
+        "finish()"
+        "}"
+        "},1000)"
+    )
+    source, timer_count = re.subn(
+        timer_pattern,
+        timer_replacement,
+        source,
+        count=1,
+        flags=re.S
     )
 
-    old_timer = """timerHandle=setInterval(()=>{if(time>0){time--;renderTimer()}else finish()},1000)"""
-
-    new_timer = """timerHandle=setInterval(()=>{if(time<TIME){time++;renderTimer()}else finish()},1000)"""
-
-    source = source.replace(
-        old_timer,
-        new_timer
-    )
-
-    # दूसरा possible formatting
-    old_timer_2 = """timerHandle=setInterval(()=>{
-      if(time>0){time--;renderTimer()}else finish()
-    },1000)"""
-
-    new_timer_2 = """timerHandle=setInterval(()=>{
-      if(time<TIME){
-        time++;
-        renderTimer()
-      }else{
-        finish()
-      }
-    },1000)"""
-
-    source = source.replace(
-        old_timer_2,
-        new_timer_2
-    )
+    if timer_count == 0:
+        raise RuntimeError("Master UI का timer block नहीं मिला")
 
     # ----------------------------------------------
     # TOPIC
