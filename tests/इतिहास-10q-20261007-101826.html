@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>Gyankshetra — इतिहास 10Q</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,"Noto Sans Devanagari",sans-serif}
+button{font:inherit}
+.top{height:58px;background:#111827;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 15px;position:sticky;top:0;z-index:5}
+.brand{font-size:20px;font-weight:800}
+.top button{background:none;border:0;color:white;font-size:22px}
+.wrap{max-width:700px;margin:auto;padding:14px}
+.card,.qcard,.resultcard,.reviewcard{background:white;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #00000012}
+.hero{font-size:18px;font-weight:800}
+.small{display:block;color:#687386;margin-top:5px;font-size:13px}
+.primary,.next{background:#2563eb;color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:700}
+.secondary{background:#e5e7eb;border:0;border-radius:10px;padding:12px 18px}
+.quizbar{display:flex;align-items:center;justify-content:space-between;background:white;padding:12px 15px;border-bottom:1px solid #eee}
+.quizbar button{border:0;background:none;font-size:22px}
+.questionline{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-weight:700}
+.star{border:0;background:none;font-size:27px}
+.timer{font-variant-numeric:tabular-nums}
+.qcard h2{font-size:20px;line-height:1.5}
+.option{display:block;width:100%;text-align:left;background:#f8fafc;border:1px solid #d8dee8;padding:13px;border-radius:10px;margin:9px 0}
+.option.selected{border:2px solid #2563eb;background:#eff6ff}
+.actions{display:flex;gap:10px;justify-content:space-between;margin-top:18px}
+.actions button{flex:1}
+.facts{background:#f8fafc;padding:12px;border-radius:10px;margin-top:12px;line-height:1.6}
+.hide{display:none}
+.score{font-size:34px;font-weight:900;text-align:center}
+.nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #ddd;padding:10px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">Gyankshetra</div>
+  <button onclick="alert('Gyankshetra Test')">☰</button>
+</div>
+
+<div id="home" class="wrap">
+  <div class="card">
+    <div class="hero">इतिहास 10Q</div>
+    <span class="small">10 प्रश्न • 10 अंक • 10 मिनट • No Negative</span>
+    <br>
+    <button class="primary" onclick="startQuiz()">Start Test</button>
+  </div>
+</div>
+
+<div id="quiz" class="hide">
+  <div class="quizbar">
+    <button onclick="confirmBack()">‹</button>
+    <b>इतिहास 10Q</b>
+    <button>☰</button>
+  </div>
+
+  <div class="questionline">
+    <span>प्रश्न <span id="qn">1/10</span></span>
+    <button id="star" class="star" onclick="saveQuestion()">☆</button>
+    <span>⏱ <span id="timer">00:00</span></span>
+  </div>
+
+  <div class="wrap">
+    <div class="qcard">
+      <h2 id="question"></h2>
+      <div id="options"></div>
+      <div class="actions">
+        <button class="secondary" onclick="prev()">← पिछला</button>
+        <button id="next" class="next" onclick="next()">अगला →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="wrap hide">
+  <div class="resultcard">
+    <h2>🎉 Test Result</h2>
+    <div class="score" id="score">0/10</div>
+    <p id="resultText"></p>
+    <div class="actions">
+      <button class="secondary" onclick="review()">Review</button>
+      <button class="primary" onclick="startQuiz()">Reattempt</button>
+    </div>
+  </div>
+</div>
+
+<div id="review" class="wrap hide">
+  <div class="reviewcard">
+    <b id="reviewTitle"></b>
+    <h2 id="reviewQuestion"></h2>
+    <p><b>आपका उत्तर:</b> <span id="userAnswer"></span></p>
+    <p><b>सही उत्तर:</b> <span id="correctAnswer"></span></p>
+    <p><b>व्याख्या:</b> <span id="explanation"></span></p>
+    <div class="facts">
+      <b>महत्वपूर्ण तथ्य</b>
+      <div id="facts"></div>
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="reviewPrev()">← पिछला</button>
+      <button class="next" onclick="reviewNext()">अगला →</button>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  Gyankshetra • इतिहास
+</div>
+
+<script>
+const questions=[{"question":"कौन सा राजवंश भारत में पहली बार केंद्रीकृत प्रशासन स्थापित किया?","options":["Maurya","Gupta","Chola","Rashtrakuta"],"answer":0,"explanation":"मौर्य राजवंश ने 322‑185 ईसा पूर्व में पाटलिपुत्र को राजधानी बनाकर केंद्रीकृत शासन की मिसाल कायम की।","facts":["मौर्य सम्राट चंद्रगुप्त मौर्य ने 322 ईसा पूर्व में सत्ता संभाली।","अशोक ने 3rd शताब्दी ईसा पूर्व में बोधि वृक्ष के नीचे बोधि प्राप्त किया।","मौर्य प्रशासन में चक्रव्यूह प्रणाली का प्रयोग हुआ।","साम्राज्य का क्षेत्र भारत के अधिकांश हिस्से तक फैला।","मौर्य साम्राज्य के अंत में 185 ईसा पूर्व में पतन हुआ।"]},{"question":"किस मुग़ल शासक ने ताजमहल का निर्माण कराया?","options":["Shah Jahan","Akbar","Aurangzeb","Jahangir"],"answer":0,"explanation":"शाहजहाँ ने 1632‑1653 में आगरा में ताजमहल का निर्माण कराया, जो उनकी पत्नी मुमताज़ महल की याद में बना।","facts":["शाहजहाँ का शासन 1628‑1658 तक रहा।","ताजमहल का निर्माण 1632 में शुरू हुआ।","मुमताज़ महल 1631 में निधन हुई।","ताजमहल सफेद संगमरमर से बना है।","इसे 1983 में यूनेस्को विश्व धरोहर स्थल घोषित किया गया।"]},{"question":"1857 के विद्रोह की शुरुआत किस शहर में हुई?","options":["Lucknow","Meerut","Kanpur","Delhi"],"answer":1,"explanation":"1857 में भारतीय सैनिकों ने मेहरुत में ब्रिटिश अधिकारी के खिलाफ विद्रोह किया, जो सशस्त्र विद्रोह का प्रारम्भ बिंदु बना।","facts":["मेहरुत में 10 मई 1857 को सैनिकों ने ब्रिटिश अधिकारी को मार डाला।","विद्रोह को सिपाही विद्रोह भी कहा जाता है।","इसका मुख्य कारण नई राइफल की गंध थी।","विद्रोह का प्रसार पूरे भारत में हुआ।","ब्रिटिश ने 1858 में भारत पर पूर्ण नियंत्रण स्थापित किया।"]},{"question":"कौन सा भारतीय राज्य 1948 में भारत में विलय हुआ?","options":["Hyderabad","Bhopal","Mysore","Kashmir"],"answer":0,"explanation":"हैदराबाद के निज़ाम ने 1948 में भारत के साथ विलय कर लिया, जिससे यह राज्य भारतीय संघ में शामिल हुआ।","facts":["हैदराबाद का निज़ाम शहजादुर्दीन नूरुद्दीन था।","1948 में भारत सरकार ने हैदराबाद पर सैन्य कार्रवाई की।","विलय के बाद यह राज्य 'हैदराबाद प्रिंसिपलिटी' बन गया।","हैदराबाद का क्षेत्र अब कर्नाटक और तेलंगाना में विभाजित है।","विलय के बाद 1949 में यह भारत का 26वां राज्य बना।"]},{"question":"भारत का संविधान किस वर्ष लागू हुआ?","options":["1947","1948","1950","1951"],"answer":2,"explanation":"भारत का संविधान 26 जनवरी 1950 को लागू हुआ, जिससे भारत गणराज्य बना।","facts":["संविधान सभा 1949 में संविधान तैयार कर रही थी।","26 जनवरी को 'गणतंत्र दिवस' के रूप में मनाया जाता है।","संविधान में 395 अनुच्छेद हैं।","सर्वोच्च न्यायालय का गठन 1950 में हुआ।","संविधान में 22 शेड्यूल हैं।"]},{"question":"किस भारतीय राजवंश ने 4वीं से 6वीं शताब्दी में गंगा नदी के किनारे पाटलिपुत्र को राजधानी बनाया?","options":["Gupta","Maurya","Chola","Satavahana"],"answer":0,"explanation":"गुप्त राजवंश को अक्सर 'सुवर्ण युग' कहा जाता है और उन्होंने पाटलिपुत्र को अपनी राजधानी बनाया।","facts":["गुप्त राजवंश का उदय 320-550 ईस्वी में हुआ।","पाटलिपुत्र को 4वीं शताब्दी में राजधानी बनाया गया।","गुप्तों ने विज्ञान, गणित और कला में प्रगति की।","कृषि और व्यापार में उन्नति हुई।","गुप्तों ने भारतीय इतिहास में शांति और समृद्धि लाई।"]},{"question":"किस मुग़ल शासक ने 1639 में शाही राजधानी 'शाहजहानाबाद' की स्थापना की?","options":["Shah Jahan","Aurangzeb","Akbar","Jahangir"],"answer":0,"explanation":"शाहजहान ने नई दिल्ली को शाहजहानाबाद नाम दिया और इसे अपनी राजधानी बनाया।","facts":["शाहजहान का शासन 1628-1658 में रहा।","शाहजहानाबाद 1639 में स्थापित हुआ।","यह शहर बाद में नई दिल्ली के रूप में जाना गया।","शाहजहान ने ताजमहल का निर्माण भी कराया।","शाहजहानाबाद में कई ऐतिहासिक इमारतें हैं।"]},{"question":"भारत के प्रथम प्रधानमंत्री कौन थे?","options":["Jawaharlal Nehru","Lal Bahadur Shastri","Indira Gandhi","Rajendra Prasad"],"answer":0,"explanation":"जवाहरलाल नेहरू 1947 से 1964 तक भारत के प्रथम प्रधानमंत्री रहे।","facts":["नेहरू का जन्म 1889 में हुआ।","उन्होंने भारतीय राष्ट्रीय कांग्रेस के प्रमुख नेता रहे।","स्वतंत्रता के बाद उन्होंने लोकतंत्र की स्थापना की।","उनकी नीतियों में औद्योगिकीकरण पर जोर था।","उनकी मृत्यु 1964 में हुई।"]},{"question":"भारत ने अपनी पहली पंचवर्षीय योजना किस वर्ष शुरू की?","options":["1950","1951","1952","1953"],"answer":1,"explanation":"पहली पंचवर्षीय योजना 1951 में शुरू हुई और 1956 में समाप्त हुई।","facts":["पहली योजना का उद्देश्य आर्थिक विकास और गरीबी उन्मूलन था।","इस योजना के तहत उद्योग और कृषि पर ध्यान दिया गया।","केंद्रीय सरकार ने योजना आयोग की स्थापना की।","इस योजना के दौरान कई बुनियादी ढांचे के प्रोजेक्ट शुरू हुए।","पहली योजना का प्रभाव आज भी दिखता है।"]},{"question":"किस वर्ष भारत ने 'भारत छोड़ो आंदोलन' की शुरुआत की?","options":["1940","1942","1944","1946"],"answer":1,"explanation":"भारत छोड़ो आंदोलन 1942 में शुरू हुआ, जिसे महात्मा गांधी ने नेतृत्व किया।","facts":["भारत छोड़ो आंदोलन का मुख्य लक्ष्य ब्रिटिश शासन का अंत था।","इस आंदोलन के दौरान लाखों लोगों ने भाग लिया।","गांधीजी ने सत्याग्रह का उपयोग किया।","इस आंदोलन ने 1947 में स्वतंत्रता की दिशा तेज की।","भारत छोड़ो आंदोलन को 'Quit India' भी कहा जाता है।"]}];
+const TOTAL=questions.length;
+const TEST_TITLE="इतिहास 10Q";
+const TOPIC="इतिहास";
+const MAX_TIME=TOTAL*60;
+
+let qi=0;
+let answers=Array(TOTAL).fill(null);
+let elapsed=0;
+let timerHandle=null;
+let reviewIndex=0;
+
+function $(id){return document.getElementById(id)}
+
+function startQuiz(){
+  qi=0;
+  answers=Array(TOTAL).fill(null);
+  elapsed=0;
+
+  clearInterval(timerHandle);
+
+  $("home").classList.add("hide");
+  $("result").classList.add("hide");
+  $("review").classList.add("hide");
+  $("quiz").classList.remove("hide");
+
+  render();
+
+  timerHandle=setInterval(function(){
+    elapsed++;
+
+    let m=Math.floor(elapsed/60);
+    let s=elapsed%60;
+
+    $("timer").textContent=
+      String(m).padStart(2,"0")+":"+
+      String(s).padStart(2,"0");
+
+    if(elapsed>=MAX_TIME){
+      finish();
+    }
+  },1000);
+}
+
+function render(){
+  let q=questions[qi];
+
+  $("qn").textContent=(qi+1)+"/"+TOTAL;
+  $("question").textContent=q.question;
+
+  let box=$("options");
+  box.innerHTML="";
+
+  q.options.forEach(function(opt,i){
+    let b=document.createElement("button");
+    b.className="option";
+    b.textContent=String.fromCharCode(65+i)+". "+opt;
+
+    if(answers[qi]===i){
+      b.classList.add("selected");
+    }
+
+    b.onclick=function(){
+      answers[qi]=i;
+      render();
+    };
+
+    box.appendChild(b);
+  });
+
+  $("next").textContent=
+    qi===TOTAL-1 ? "Submit Test" : "अगला →";
+
+  $("star").textContent=
+    savedQuestion(qi) ? "★" : "☆";
+}
+
+function prev(){
+  if(qi>0){
+    qi--;
+    render();
+    window.scrollTo(0,0);
+  }
+}
+
+function next(){
+  if(qi<TOTAL-1){
+    qi++;
+    render();
+    window.scrollTo(0,0);
+  }else{
+    finish();
+  }
+}
+
+function finish(){
+  clearInterval(timerHandle);
+
+  let correct=0;
+
+  questions.forEach(function(q,i){
+    if(answers[i]===q.answer) correct++;
+  });
+
+  $("quiz").classList.add("hide");
+  $("result").classList.remove("hide");
+
+  $("score").textContent=correct+"/"+TOTAL;
+
+  $("resultText").textContent=
+    "सही: "+correct+
+    " • गलत: "+answers.filter((x,i)=>x!==null&&x!==questions[i].answer).length+
+    " • छोड़े: "+answers.filter(x=>x===null).length+
+    " • प्रतिशत: "+Math.round(correct/TOTAL*100)+"%";
+}
+
+function review(){
+  reviewIndex=0;
+
+  $("result").classList.add("hide");
+  $("review").classList.remove("hide");
+
+  renderReview();
+}
+
+function renderReview(){
+  let q=questions[reviewIndex];
+
+  $("reviewTitle").textContent=
+    "Review "+(reviewIndex+1)+"/"+TOTAL;
+
+  $("reviewQuestion").textContent=q.question;
+
+  $("userAnswer").textContent=
+    answers[reviewIndex]===null
+    ? "छोड़ा गया"
+    : q.options[answers[reviewIndex]];
+
+  $("correctAnswer").textContent=
+    q.options[q.answer];
+
+  $("explanation").textContent=
+    q.explanation || "—";
+
+  $("facts").innerHTML=
+    (q.facts||[]).map(x=>"• "+x).join("<br>");
+
+  window.scrollTo(0,0);
+}
+
+function reviewPrev(){
+  if(reviewIndex>0){
+    reviewIndex--;
+    renderReview();
+  }
+}
+
+function reviewNext(){
+  if(reviewIndex<TOTAL-1){
+    reviewIndex++;
+    renderReview();
+  }
+}
+
+function savedQuestion(i){
+  try{
+    let x=JSON.parse(localStorage.getItem("gyankshetra_saved")||"[]");
+    return x.some(a=>a.title===TEST_TITLE && a.index===i);
+  }catch(e){
+    return false;
+  }
+}
+
+function saveQuestion(){
+  let key="gyankshetra_saved";
+
+  let list=[];
+
+  try{
+    list=JSON.parse(localStorage.getItem(key)||"[]");
+  }catch(e){
+    list=[];
+  }
+
+  let found=list.findIndex(
+    x=>x.title===TEST_TITLE && x.index===qi
+  );
+
+  if(found>=0){
+    list.splice(found,1);
+  }else{
+    list.push({
+      title:TEST_TITLE,
+      topic:TOPIC,
+      index:qi,
+      question:questions[qi].question
+    });
+  }
+
+  localStorage.setItem(key,JSON.stringify(list));
+
+  render();
+}
+
+function confirmBack(){
+  if(confirm("क्या आप टेस्ट छोड़ना चाहते हैं?")){
+    clearInterval(timerHandle);
+    location.reload();
+  }
+}
+
+startQuiz();
+</script>
+</body>
+</html>

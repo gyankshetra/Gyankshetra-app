@@ -189,4 +189,93 @@ const SWIPE_RIGHT_IS_NEXT=false;
 (function(){let x0=0,y0=0;const w=$('reviewWrap');w.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});w.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.3)return;const right=dx>0;if(right===SWIPE_RIGHT_IS_NEXT)reviewNext();else reviewPrev();const c=$('reviewCard');c.classList.remove('slide');void c.offsetWidth;c.classList.add('slide')},{passive:true})})();
 (function(){let x0=0,y0=0;const w=$('vbody');w.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});w.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.3)return;vGo((dx>0)===SWIPE_RIGHT_IS_NEXT?1:-1)},{passive:true})})();
 applyLanguage();go('home');
-</script></body></html>
+</script>
+<!-- GYANKSHETRA_GENERATED_CONTENT_START -->
+<script>
+(function(){
+  fetch("content/generated_tests.json?ts="+Date.now())
+    .then(r=>r.json())
+    .then(items=>{
+      const tests=document.getElementById("tests");
+      const practice=document.getElementById("practice");
+
+      if(!tests && !practice) return;
+
+      function addBox(parent,title,items){
+        if(!parent || !items.length) return;
+
+        let old=parent.querySelector(
+          '[data-generated-box="'+title+'"]'
+        );
+
+        if(old) old.remove();
+
+        let box=document.createElement("div");
+        box.setAttribute("data-generated-box",title);
+        box.className="card";
+
+        let h=document.createElement("h3");
+        h.textContent=title;
+        box.appendChild(h);
+
+        items.forEach(function(x){
+          let c=document.createElement("div");
+          c.style.cssText=
+            "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:8px 0";
+
+          let b=document.createElement("b");
+          b.textContent=x.title;
+          c.appendChild(b);
+
+          let s=document.createElement("small");
+          s.style.display="block";
+          s.style.margin="5px 0";
+          s.textContent=
+            x.questions+" Questions • "+
+            x.questions+" Marks • "+
+            x.questions+" Minutes • No Negative";
+          c.appendChild(s);
+
+          let a=document.createElement("a");
+          a.href=x.url;
+          a.textContent="Start Test";
+          a.style.cssText=
+            "display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:bold";
+          c.appendChild(a);
+
+          box.appendChild(c);
+        });
+
+        parent.appendChild(box);
+      }
+
+      addBox(
+        tests,
+        "🤖 AI Generated Tests",
+        items.filter(x=>x.type==="test"||x.type==="mock")
+      );
+
+      addBox(
+        practice,
+        "🎯 AI Generated Quiz",
+        items.filter(x=>x.type==="quiz")
+      );
+
+      addBox(
+        practice,
+        "⚡ AI Generated Practice",
+        items.filter(x=>x.type==="practice")
+      );
+
+      addBox(
+        practice,
+        "🎯 PYQ Practice",
+        items.filter(x=>x.type==="pyq")
+      );
+    })
+    .catch(()=>{});
+})();
+</script>
+<!-- GYANKSHETRA_GENERATED_CONTENT_END -->
+
+</body></html>
