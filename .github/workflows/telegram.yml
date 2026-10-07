@@ -1,4 +1,4 @@
-name: Gyankshetra Universal Command Bot
+name: Gyankshetra AI Command Bot
 
 on:
   workflow_dispatch:
@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Universal Telegram Command System
+      - name: AI Test Generator
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          APP_URL: https://gyankshetra.github.io/Gyankshetra-app/
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python3 <<'PY'
           import os
@@ -26,52 +26,132 @@ jobs:
           import html
           import re
 
-          TOKEN = os.environ["BOT_TOKEN"]
-          APP_URL = os.environ["APP_URL"]
+          BOT_TOKEN = os.environ["BOT_TOKEN"]
+          GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 
-          API = f"https://api.telegram.org/bot{TOKEN}"
+          TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-          def api(method, params=None):
+          def telegram(method, params=None):
               data = None
 
               if params:
                   data = urllib.parse.urlencode(params).encode()
 
               req = urllib.request.Request(
-                  API + "/" + method,
+                  TELEGRAM_API + "/" + method,
                   data=data
               )
 
-              with urllib.request.urlopen(req, timeout=30) as response:
-                  return json.loads(response.read().decode())
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  return json.loads(r.read().decode())
 
-          def send(chat_id, text):
-              api("sendMessage", {
+          def send(chat_id, message):
+              telegram("sendMessage", {
                   "chat_id": chat_id,
-                  "text": text,
-                  "parse_mode": "HTML",
-                  "disable_web_page_preview": False
+                  "text": message,
+                  "parse_mode": "HTML"
               })
 
-          # -----------------------------
-          # Telegram Updates
-          # -----------------------------
+          # -----------------------------------------
+          # Gemini
+          # -----------------------------------------
 
-          updates = api("getUpdates", {
-              "limit": 100,
+          def ask_gemini(topic, count, test_type):
+
+              prompt = f"""
+          आप Gyankshetra नाम के भारतीय प्रतियोगी परीक्षा प्लेटफॉर्म के
+          expert question setter हैं।
+
+          विषय: {topic}
+          Test Type: {test_type}
+          प्रश्नों की संख्या: {count}
+
+          STET / BPSC TRE स्तर के उच्च-गुणवत्ता वाले MCQ बनाइए।
+
+          प्रत्येक प्रश्न में:
+          1. प्रश्न
+          2. चार विकल्प A, B, C, D
+          3. सही उत्तर
+          4. संक्षिप्त लेकिन सटीक explanation
+          5. 3-5 महत्वपूर्ण exam facts
+
+          प्रश्न factual, स्पष्ट और परीक्षा-उपयोगी हों।
+          अस्पष्ट या दो सही उत्तर वाले प्रश्न न बनाएं।
+
+          केवल JSON दें।
+
+          Format:
+          {{
+            "questions": [
+              {{
+                "question": "...",
+                "options": {{
+                  "A": "...",
+                  "B": "...",
+                  "C": "...",
+                  "D": "..."
+                }},
+                "answer": "A",
+                "explanation": "...",
+                "facts": [
+                  "...",
+                  "...",
+                  "..."
+                ]
+              }}
+            ]
+          }}
+          """
+
+              url = (
+                  "https://generativelanguage.googleapis.com/"
+                  "v1beta/models/gemini-2.5-flash:generateContent"
+                  "?key=" + urllib.parse.quote(GEMINI_KEY)
+              )
+
+              body = {
+                  "contents": [
+                      {
+                          "parts": [
+                              {
+                                  "text": prompt
+                              }
+                          ]
+                      }
+                  ],
+                  "generationConfig": {
+                      "temperature": 0.2,
+                      "responseMimeType": "application/json"
+                  }
+              }
+
+              req = urllib.request.Request(
+                  url,
+                  data=json.dumps(body).encode(),
+                  headers={
+                      "Content-Type": "application/json"
+                  }
+              )
+
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  result = json.loads(r.read().decode())
+
+              text = result["candidates"][0]["content"]["parts"][0]["text"]
+
+              return json.loads(text)
+
+          # -----------------------------------------
+          # Telegram Updates
+          # -----------------------------------------
+
+          updates = telegram("getUpdates", {
+              "limit": 20,
               "timeout": 5
           })
-
-          if not updates.get("ok"):
-              raise SystemExit("Telegram API error")
 
           items = updates.get("result", [])
 
           last_update_id = None
-
-          # -----------------------------
-          # Process Messages
-          # -----------------------------
 
           for update in items:
 
@@ -80,193 +160,179 @@ jobs:
               message = update.get("message", {})
               chat = message.get("chat", {})
               chat_id = chat.get("id")
-
               text = (message.get("text") or "").strip()
 
               if not chat_id:
                   continue
 
-              # =====================================
+              # -------------------------------------
               # START
-              # =====================================
+              # -------------------------------------
 
               if text.startswith("/start"):
 
-                  reply = (
-                      "🎓 <b>Gyankshetra Universal Command Bot</b>\n\n"
-                      "अब आप अलग-अलग विषय और प्रश्न संख्या के साथ command भेज सकते हैं।\n\n"
-
-                      "📝 <b>Test</b>\n"
-                      "<code>/test इतिहास 50</code>\n"
-                      "<code>/test भूगोल 40</code>\n"
-                      "<code>/test विज्ञान 20</code>\n\n"
-
-                      "🎯 <b>Practice</b>\n"
-                      "<code>/practice रसायन विज्ञान 30</code>\n\n"
-
-                      "🧪 <b>Mock Test</b>\n"
-                      "<code>/mock BPSC TRE-4 100</code>\n\n"
-
-                      "📚 <b>PYQ</b>\n"
-                      "<code>/pyq BPSC TRE-3 Science 40</code>\n\n"
-
-                      "❓ <b>Help</b>\n"
-                      "<code>/help</code>"
+                  send(
+                      chat_id,
+                      "🎓 <b>Gyankshetra AI Bot</b>\n\n"
+                      "अब AI से Test बनाएं:\n\n"
+                      "<code>/test इतिहास 20</code>\n"
+                      "<code>/test भूगोल 50</code>\n"
+                      "<code>/practice विज्ञान 30</code>\n"
+                      "<code>/mock BPSC TRE-4 50</code>\n\n"
+                      "🤖 Gemini AI प्रश्न बनाएगा।"
                   )
 
-                  send(chat_id, reply)
                   continue
 
-              # =====================================
+              # -------------------------------------
               # HELP
-              # =====================================
+              # -------------------------------------
 
               if text.startswith("/help"):
 
-                  reply = (
-                      "🤖 <b>Gyankshetra Universal Commands</b>\n\n"
-
-                      "📝 <b>/test</b>\n"
-                      "<code>/test इतिहास 50</code>\n"
-                      "विषय के अनुसार Test\n\n"
-
-                      "🎯 <b>/practice</b>\n"
-                      "<code>/practice जीव विज्ञान 30</code>\n"
-                      "Practice Questions\n\n"
-
-                      "🧪 <b>/mock</b>\n"
-                      "<code>/mock BPSC TRE-4 100</code>\n"
-                      "Full Mock Test\n\n"
-
-                      "📚 <b>/pyq</b>\n"
-                      "<code>/pyq BPSC TRE-3 Science 40</code>\n"
-                      "Previous Year Questions\n\n"
-
-                      "📌 <b>Question Count</b>\n"
-                      "20, 30, 40, 50, 100 आदि दे सकते हैं।\n\n"
-
-                      "💡 भविष्य में AI जोड़ने के बाद यही command "
-                      "AI से प्रश्न भी generate करेगी।"
+                  send(
+                      chat_id,
+                      "🤖 <b>Gyankshetra AI Commands</b>\n\n"
+                      "📝 /test इतिहास 50\n"
+                      "🎯 /practice रसायन विज्ञान 30\n"
+                      "🧪 /mock BPSC TRE-4 50\n\n"
+                      "AI प्रश्न + उत्तर + Explanation + Facts बनाएगा।"
                   )
 
-                  send(chat_id, reply)
                   continue
 
-              # =====================================
-              # UNIVERSAL COMMAND PARSER
-              # =====================================
+              # -------------------------------------
+              # COMMAND
+              # -------------------------------------
 
-              command_match = re.match(
-                  r"^/(test|mock|practice|pyq)(?:@\w+)?\s+(.+)$",
+              match = re.match(
+                  r"^/(test|practice|mock)(?:@\w+)?\s+(.+)$",
                   text,
                   re.IGNORECASE
               )
 
-              if command_match:
+              if not match:
 
-                  command = command_match.group(1).lower()
-                  content = command_match.group(2).strip()
+                  if text.startswith("/"):
+                      send(
+                          chat_id,
+                          "❓ Command समझ नहीं आया।\n\n"
+                          "उदाहरण:\n"
+                          "<code>/test इतिहास 20</code>"
+                      )
 
-                  # अंतिम number = question count
-                  number_match = re.search(r"(\d+)\s*$", content)
-
-                  if number_match:
-
-                      count = int(number_match.group(1))
-
-                      topic = content[:number_match.start()].strip()
-
-                  else:
-
-                      count = 20
-                      topic = content.strip()
-
-                  # Question limit
-                  if count < 1:
-                      count = 20
-
-                  if count > 200:
-                      count = 200
-
-                  # ---------------------------------
-                  # Command Name
-                  # ---------------------------------
-
-                  names = {
-                      "test": "Test",
-                      "mock": "Mock Test",
-                      "practice": "Practice",
-                      "pyq": "PYQ"
-                  }
-
-                  command_name = names.get(command, "Test")
-
-                  # ---------------------------------
-                  # URL Parameters
-                  # ---------------------------------
-
-                  params = urllib.parse.urlencode({
-                      "type": command,
-                      "topic": topic,
-                      "count": count
-                  })
-
-                  test_url = APP_URL + "?" + params
-
-                  # ---------------------------------
-                  # Response
-                  # ---------------------------------
-
-                  reply = (
-                      f"✅ <b>Gyankshetra {command_name} तैयार है</b>\n\n"
-
-                      f"📚 <b>विषय:</b> {html.escape(topic)}\n"
-                      f"📝 <b>प्रश्न:</b> {count}\n"
-                      f"🎯 <b>Type:</b> {command_name}\n"
-                      f"❌ <b>Negative Marking:</b> नहीं\n\n"
-
-                      f"🌐 <a href=\"{html.escape(test_url)}\">"
-                      "Test खोलें</a>"
-                  )
-
-                  send(chat_id, reply)
                   continue
 
-              # =====================================
-              # UNKNOWN COMMAND
-              # =====================================
+              command = match.group(1).lower()
+              content = match.group(2).strip()
 
-              if text.startswith("/"):
+              number_match = re.search(r"(\d+)\s*$", content)
+
+              if number_match:
+                  count = int(number_match.group(1))
+                  topic = content[:number_match.start()].strip()
+              else:
+                  count = 20
+                  topic = content
+
+              if count < 1:
+                  count = 20
+
+              if count > 100:
+                  count = 100
+
+              type_name = {
+                  "test": "Test",
+                  "practice": "Practice",
+                  "mock": "Mock Test"
+              }[command]
+
+              # -------------------------------------
+              # Processing message
+              # -------------------------------------
+
+              processing = telegram("sendMessage", {
+                  "chat_id": chat_id,
+                  "text": (
+                      "🤖 <b>AI प्रश्न तैयार हो रहे हैं...</b>\n\n"
+                      f"📚 विषय: {html.escape(topic)}\n"
+                      f"📝 प्रश्न: {count}\n\n"
+                      "⏳ कृपया प्रतीक्षा करें..."
+                  ),
+                  "parse_mode": "HTML"
+              })
+
+              # -------------------------------------
+              # Gemini generation
+              # -------------------------------------
+
+              try:
+
+                  data = ask_gemini(
+                      topic,
+                      count,
+                      type_name
+                  )
+
+                  questions = data.get("questions", [])
+
+                  if not questions:
+                      raise Exception("No questions generated")
+
+                  # Telegram preview
+                  preview = questions[:3]
 
                   reply = (
-                      "❓ <b>Command समझ नहीं आया</b>\n\n"
-                      "उदाहरण:\n\n"
+                      "✅ <b>AI Test तैयार है!</b>\n\n"
+                      f"📚 <b>विषय:</b> {html.escape(topic)}\n"
+                      f"📝 <b>मांगे गए प्रश्न:</b> {count}\n"
+                      f"🤖 <b>AI Generated:</b> {len(questions)}\n\n"
+                  )
 
-                      "<code>/test इतिहास 50</code>\n"
-                      "<code>/test भूगोल 40</code>\n"
-                      "<code>/practice विज्ञान 30</code>\n"
-                      "<code>/mock BPSC TRE-4 100</code>\n"
-                      "<code>/pyq BPSC TRE-3 Science 40</code>\n\n"
+                  for i, q in enumerate(preview, 1):
 
-                      "सभी commands देखने के लिए:\n"
-                      "<code>/help</code>"
+                      reply += (
+                          f"<b>{i}. "
+                          f"{html.escape(q.get('question',''))}</b>\n"
+                          f"A. {html.escape(q.get('options',{}).get('A',''))}\n"
+                          f"B. {html.escape(q.get('options',{}).get('B',''))}\n"
+                          f"C. {html.escape(q.get('options',{}).get('C',''))}\n"
+                          f"D. {html.escape(q.get('options',{}).get('D',''))}\n"
+                          f"✅ उत्तर: {html.escape(q.get('answer',''))}\n\n"
+                      )
+
+                  reply += (
+                      "ℹ️ पहले 3 प्रश्न preview में दिखाए गए हैं।\n"
+                      "अगले चरण में इन्हें सीधे Gyankshetra Test UI में भेजेंगे।"
                   )
 
                   send(chat_id, reply)
 
-          # =====================================
-          # ACKNOWLEDGE UPDATES
-          # =====================================
+              except Exception as e:
+
+                  print("AI ERROR:", str(e))
+
+                  send(
+                      chat_id,
+                      "❌ <b>AI Test नहीं बन पाया।</b>\n\n"
+                      "संभावित कारण:\n"
+                      "• Gemini API limit\n"
+                      "• API key समस्या\n"
+                      "• Model/API temporary error\n\n"
+                      "कुछ देर बाद फिर कोशिश करें।"
+                  )
+
+          # -----------------------------------------
+          # Acknowledge processed updates
+          # -----------------------------------------
 
           if last_update_id is not None:
 
-              api("getUpdates", {
+              telegram("getUpdates", {
                   "offset": last_update_id + 1,
                   "limit": 1
               })
 
-          print(
-              f"Processed {len(items)} Telegram update(s)."
-          )
+          print(f"Processed {len(items)} update(s).")
 
           PY
