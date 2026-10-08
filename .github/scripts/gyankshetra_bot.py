@@ -22,12 +22,11 @@ import requests
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 
-# Model: GEMINI_MODEL दें तो वही पहले आज़माया जाएगा। न दें तो bot खुद चालू model ढूँढता है।
-# (Google पुराने models नए खातों के लिए बंद करता रहता है, इसलिए नाम fix नहीं रखा।)
+# Model preference
 MODELS = [m for m in [os.environ.get("GEMINI_MODEL", "").strip()] if m]
-FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash"]
+FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
-# खाली छोड़ेंगे तो हर कोई bot चला सकेगा। /id से अपना chat id पता करके यहाँ रखें।
+# Allowed Chat IDs
 ALLOWED = {
     x.strip()
     for x in os.environ.get("TELEGRAM_ALLOWED_CHAT_IDS", "").split(",")
@@ -39,7 +38,9 @@ TG = "https://api.telegram.org/bot" + BOT_TOKEN
 POLL_SECONDS = 210
 OFFSET_FILE = "content/telegram_offset.txt"
 REGISTRY_FILE = "content/generated_tests.json"
-BATCH = 5
+
+# BATCH size 25 rakha hai taaki 50, 100 questions fast aur bina rate-limit ke banein
+BATCH = 25
 
 
 # ------------------------------------------------------------------ Telegram
@@ -133,7 +134,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
 
 def discover_models():
-    """API से वे flash models लाता है जो generateContent चला सकते हैं (नए पहले)।"""
+    """API से वे flash models लाता है जो generateContent चला सकते हैं।"""
     try:
         found = []
         for m in get_client().models.list():
@@ -177,14 +178,14 @@ def ask_gemini(prompt):
     dead, discovered, last = set(), False, ""
     for attempt in range(10):
         alive = [m for m in MODELS if m not in dead]
-        if not alive:  # सब model बंद मिले -> एक बार नई सूची मँगाओ
+        if not alive:
             if discovered:
                 break
             discovered = True
             MODELS.extend(m for m in discover_models() if m not in MODELS)
             MODELS.extend(m for m in FALLBACK_MODELS if m not in MODELS)
             continue
-        model = alive[attempt % len(alive)]  # व्यस्त model से अगले पर घूमते रहो
+        model = alive[attempt % len(alive)]
         try:
             resp = get_client().models.generate_content(
                 model=model,
@@ -195,7 +196,7 @@ def ask_gemini(prompt):
             )
             if resp.text:
                 MODELS.remove(model)
-                MODELS.insert(0, model)  # चलने वाला model आगे रखो
+                MODELS.insert(0, model)
                 return resp.text
             last = "[%s] खाली जवाब" % model
         except Exception as e:
@@ -237,7 +238,7 @@ def clean_questions(data):
         facts = [str(x).strip() for x in facts if str(x).strip()] if isinstance(facts, list) else []
         explanation = str(q.get("explanation", "")).strip()
         if explanation:
-            facts = [explanation] + facts  # व्याख्या भी "मुख्य बिंदु" में दिखेगी
+            facts = [explanation] + facts
         out.append([question, options, answer, facts[:9]])
     return out
 
@@ -245,7 +246,7 @@ def clean_questions(data):
 def gemini_batch(topic, count, mode, previous):
     prompt = PROMPT.replace("TOPIC", topic).replace("COUNT", str(count)).replace("MODE", mode)
     if previous:
-        prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-20:])
+        prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-30:])
     last = ""
     for _ in range(3):
         raw = ask_gemini(prompt).strip()
@@ -268,22 +269,30 @@ def norm(text):
 
 def generate_all(topic, count, mode):
     result, seen = [], []
+    max_rounds = (count // BATCH) + 10
     rounds = 0
-    while len(result) < count and rounds < count // BATCH + 8:
+    while len(result) < count and rounds < max_rounds:
         rounds += 1
         need = min(BATCH, count - len(result))
-        for q in gemini_batch(topic, need, mode, seen):
-            key = norm(q[0])
-            if key in seen or len(result) >= count:
+        try:
+            batch_qs = gemini_batch(topic, need, mode, seen)
+            for q in batch_qs:
+                key = norm(q[0])
+                if key in seen or len(result) >= count:
+                    continue
+                seen.append(key)
+                result.append(q)
+        except Exception as e:
+            print(f"Round {rounds} failed: {e}")
+            if result:  # agar pehle kuch questions aa chuke hain to continue karne ki koshish karein
                 continue
-            seen.append(key)
-            result.append(q)
+            else:
+                raise e
     return result
 
 
 # ------------------------------------------------------------ Master UI -> test
 def _find_matching(text, start, opening, closing):
-    """JS bracket matching (strings और comments छोड़कर)।"""
     depth, i, n = 0, start, len(text)
     quote_ch, escaped, line_c, block_c = None, False, False, False
     while i < n:
@@ -361,7 +370,6 @@ def make_test_page(topic, count, questions, test_id):
     with open("index.html", "r", encoding="utf-8") as f:
         s = f.read()
 
-    # एक अकेले टेस्ट-पेज को "generated tests" की सूची वाली script नहीं चाहिए।
     s = re.sub(
         r"<!-- GYANKSHETRA_GENERATED_CONTENT_START -->.*?<!-- GYANKSHETRA_GENERATED_CONTENT_END -->",
         "", s, flags=re.S)
@@ -369,7 +377,6 @@ def make_test_page(topic, count, questions, test_id):
         r"<!-- GYANKSHETRA_AUTO_GENERATED_TESTS -->\s*<script>.*?</script>",
         "", s, flags=re.S)
 
-    # ज़रूरी बदलाव: न मिलें तो साफ़ error (चुपचाप पुराना टेस्ट नहीं बनेगा)।
     s, n = re.subn(
         r"const\s+TOTAL\s*=\s*\d+\s*,\s*TIME\s*=\s*[^,;]+",
         "const TOTAL=%d,TIME=%d" % (count, count * 60), s, count=1)
@@ -379,7 +386,6 @@ def make_test_page(topic, count, questions, test_id):
     s = replace_function(s, "startQuiz", START_QUIZ)
     s = replace_function(s, "tick", TICK)
 
-    # हर टेस्ट अलग पेज है, पर localStorage एक ही है -> keys अलग करें
     for old, new in (
         ("'gyankshetraSaved'", "'gyankshetraSaved_%s'" % test_id),
         ("'gyankshetraProgress_'", "'gyankshetraProgress_%s_'" % test_id),
@@ -388,11 +394,9 @@ def make_test_page(topic, count, questions, test_id):
             raise RuntimeError("index.html में " + old + " नहीं मिला")
         s = s.replace(old, new)
 
-    # topic: placeholder से, ताकि topic के अंदर "विलयन"/"20Q" जैसे शब्द दोबारा न बदलें
     s = s.replace("test:'विलयन'", "test:__GK_TOPIC_JS__")
     s = s.replace("विलयन", "__GK_TOPIC_HTML__")
 
-    # count वाले दिखावटी text (न मिलें तो चलेगा)
     for old, new in (
         ("20Q", "%dQ" % count),
         ("20 Questions", "%d Questions" % count),
@@ -430,12 +434,10 @@ def update_registry(topic, count, command, url, test_id):
         registry = []
     info = command_info(command)
     registry.insert(0, {
-        # index.html की सूची-script ये चार fields पढ़ती है
         "title": info["emoji"] + " " + topic,
         "questions": count,
         "type": info["type"],
         "url": url,
-        # बाकी जानकारी
         "id": test_id, "topic": topic, "count": count, "command": command,
         "box": info["box"], "label": info["label"], "emoji": info["emoji"],
         "created": test_id,
@@ -445,7 +447,6 @@ def update_registry(topic, count, command, url, test_id):
 
 
 def git_publish(message):
-    """GitHub Actions में बनी फ़ाइलें तुरंत push करता है (लिंक भेजने से पहले)।"""
     if not os.environ.get("GITHUB_ACTIONS"):
         return True
     try:
@@ -489,9 +490,9 @@ def save_offset(offset):
 # ------------------------------------------------------------------- Handler
 HELP = (
     "🤖 Gyankshetra AI Bot तैयार है!\n\n"
-    "/test इतिहास 20\n/quiz इतिहास 10\n/practice विज्ञान 20\n"
-    "/mock रसायन 30\n/pyq विज्ञान 20\n\n"
-    "प्रश्न-संख्या सबसे अंत में लिखें (25 या 25Q)।"
+    "/test इतिहास 20\n/quiz इतिहास 30\n/practice विज्ञान 50\n"
+    "/mock रसायन 100\n/pyq विज्ञान 20\n\n"
+    "प्रश्न-संख्या सबसे अंत में लिखें (जैसे: 20, 30, 50, 100)।"
 )
 
 
@@ -558,29 +559,20 @@ def process_update(update):
 def main():
     print("Gyankshetra Telegram Bot started")
     if not ALLOWED:
-        print("WARNING: TELEGRAM_ALLOWED_CHAT_IDS खाली है - कोई भी bot चला सकता है")
-    if "GYANKSHETRA_GENERATED_CONTENT_START" not in open("index.html", encoding="utf-8").read():
-        print("WARNING: index.html में generated-tests सूची वाली script नहीं मिली")
+        print("WARNING: TELEGRAM_ALLOWED_CHAT_IDS empty!")
+    
     offset = load_offset()
-    started = time.time()
-    while time.time() - started < POLL_SECONDS:
-        try:
-            result = telegram(
-                "getUpdates",
-                {"timeout": 20, "offset": offset, "allowed_updates": ["message"]},
-            )
-            for update in result.get("result", []):
-                offset = update["update_id"] + 1
-                save_offset(offset)
-                try:
-                    process_update(update)
-                except Exception as e:
-                    print("PROCESS ERROR:", e)
-        except Exception as e:
-            print("POLL ERROR:", e)
-            time.sleep(4)
-    save_offset(offset)
-    print("Gyankshetra Bot finished")
+    print("Checking updates with offset:", offset)
+    
+    try:
+        res = telegram("getUpdates", {"offset": offset, "timeout": 10})
+        updates = res.get("result", [])
+        for u in updates:
+            process_update(u)
+            offset = max(offset, u["update_id"] + 1)
+        save_offset(offset)
+    except Exception as e:
+        print("Error fetching updates:", e)
 
 
 if __name__ == "__main__":
