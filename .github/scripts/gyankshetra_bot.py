@@ -42,7 +42,7 @@ def telegram(method, data=None):
     return r.json()
 
 
-def send_message(chat_id, text, parse_mode="Markdown"):
+def send_message(chat_id, text, parse_mode="HTML"):
     try:
         payload = {
             "chat_id": chat_id,
@@ -50,10 +50,16 @@ def send_message(chat_id, text, parse_mode="Markdown"):
             "parse_mode": parse_mode,
             "disable_web_page_preview": False
         }
-        return telegram("sendMessage", payload)
+        res = telegram("sendMessage", payload)
+        return res
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
-        return None
+        # Fallback to plain text if HTML parsing fails
+        try:
+            clean_text = re.sub(r'<[^>]+>', '', text)
+            return telegram("sendMessage", {"chat_id": chat_id, "text": clean_text})
+        except Exception:
+            return None
 
 
 def schedule_channel_post(chat_id, text, target_timestamp):
@@ -62,7 +68,7 @@ def schedule_channel_post(chat_id, text, target_timestamp):
         wait_seconds = target_timestamp - now_ts
         if wait_seconds > 0:
             time.sleep(wait_seconds)
-        send_message(chat_id, text)
+        send_message(chat_id, text, parse_mode="HTML")
 
     threading.Thread(target=worker, daemon=True).start()
 
@@ -229,12 +235,12 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 """
 
 NOTES_PROMPT = """
-Gyankshetra Study Material के लिए उच्च-स्तरीय परीक्षा उपयोगी नोट्स हिन्दी में तैयार करो।
+Gyankshetra Study Material के लिए उच्च-स्तरीय परीक्षा उपयोगी विस्तृत नोट्स हिन्दी में तैयार करो।
 
 विषय: TOPIC
 
 नियम:
-1. मुख्य परिभाषाएँ, महत्वपूर्ण सूत्र (Formulas), और मुख्य बिंदु स्पष्ट रूप से हों।
+1. मुख्य परिभाषाएँ, महत्वपूर्ण सूत्र (Formulas), और बिंदु स्पष्ट रूप से हों।
 2. STET / BPSC TRE / Board Exam स्तर के महत्वपूर्ण तथ्य और अवधारणाएं शामिल हों।
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
@@ -641,7 +647,7 @@ def process_update(update):
 
     # --- Notes Flow ---
     if cmd["command"] == "/notes":
-        send_message(chat_id, f"🤖 Gemini AI *{topic}* के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...")
+        send_message(chat_id, f"🤖 Gemini AI <b>{html.escape(topic)}</b> के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...", parse_mode="HTML")
         try:
             page = generate_notes_html(topic)
             item_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -656,22 +662,23 @@ def process_update(update):
             git_publish(f"Generate notes: {topic}")
 
             formatted_message = (
-                "✅ *Study Material तैयार है!*\n\n"
-                f"🎯 *विषय:* {topic}\n"
-                f"📌 *प्रकार:* Study Material\n\n"
-                f"[🔗 READ NOTES]({file_url})"
+                "✅ <b>Study Material तैयार है!</b>\n\n"
+                f"🎯 <b>विषय:</b> {html.escape(topic)}\n"
+                f"📌 <b>प्रकार:</b> Study Material\n\n"
+                f'<a href="{file_url}">🔗 READ NOTES</a>'
             )
-            send_message(chat_id, formatted_message)
+            send_message(chat_id, formatted_message, parse_mode="HTML")
             if CHANNEL_ID:
-                send_message(CHANNEL_ID, formatted_message)
+                send_message(CHANNEL_ID, formatted_message, parse_mode="HTML")
         except Exception as e:
-            send_message(chat_id, f"❌ Notes तैयार नहीं हो पाए: {e}")
+            send_message(chat_id, f"❌ Notes तैयार नहीं हो पाए: {html.escape(str(e))}", parse_mode="HTML")
         return
 
     # --- Test/Quiz Flow ---
     send_message(
         chat_id,
-        f"🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} विषय: {topic}\n📌 प्रकार: {info['label']}\n📝 प्रश्न: {count}\n\nथोड़ा समय लगेगा..."
+        f"🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {html.escape(topic)}\n📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा...",
+        parse_mode="HTML"
     )
     try:
         questions = generate_all(topic, count, info["label"])
@@ -692,26 +699,26 @@ def process_update(update):
         git_publish(f"Generate test: {topic} ({count}Q)")
 
         formatted_message = (
-            "✅ *Test तैयार है!*\n\n"
-            f"🎯 *विषय:* {topic}\n"
-            f"📌 *प्रकार:* {info['label']}\n"
-            f"📝 *प्रश्न:* {count}\n\n"
-            f"[🔗 {info['btn_text']}]({test_url})"
+            "✅ <b>Test तैयार है!</b>\n\n"
+            f"🎯 <b>विषय:</b> {html.escape(topic)}\n"
+            f"📌 <b>प्रकार:</b> {info['label']}\n"
+            f"📝 <b>प्रश्न:</b> {count}\n\n"
+            f'<a href="{test_url}">🔗 {info["btn_text"]}</a>'
         )
 
         current_ts = datetime.now(timezone.utc).timestamp()
 
         if schedule_ts and schedule_ts > current_ts:
-            send_message(chat_id, "📅 टेस्ट तैयार है और तय समय पर चैनल में पब्लिश हो जाएगा!\n\n" + formatted_message)
+            send_message(chat_id, "📅 टेस्ट तैयार है और तय समय पर चैनल में पब्लिश हो जाएगा!\n\n" + formatted_message, parse_mode="HTML")
             if CHANNEL_ID:
                 schedule_channel_post(CHANNEL_ID, formatted_message, schedule_ts)
         else:
-            send_message(chat_id, formatted_message)
+            send_message(chat_id, formatted_message, parse_mode="HTML")
             if CHANNEL_ID:
-                send_message(CHANNEL_ID, formatted_message)
+                send_message(CHANNEL_ID, formatted_message, parse_mode="HTML")
 
     except Exception as e:
-        send_message(chat_id, "❌ Test generate नहीं हो पाया\n\nError:\n" + str(e)[:2500])
+        send_message(chat_id, f"❌ Test generate नहीं हो पाया\n\nError:\n{html.escape(str(e)[:2000])}", parse_mode="HTML")
 
 
 def main():
