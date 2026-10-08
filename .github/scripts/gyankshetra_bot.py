@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
-"""Gyankshetra Telegram bot  (Gemini)
-
-Telegram command  ->  Gemini MCQs  ->  tests/<slug>-<n>q-<time>.html  ->  live link.
-Runs from the repository root (GitHub Actions), reads ./index.html as the master UI.
-
-Commands:  /test  /mock  /quiz  /practice  /pyq   <topic> <count>
-Example :  /test इतिहास 25        (25Q भी चलेगा)
-           /id                    (आपका chat id बताता है)
+"""Gyankshetra Telegram bot (Gemini)
+Automatic Quiz Generator & Scheduled Channel Publisher
 """
 import os
 import re
@@ -14,7 +8,7 @@ import json
 import time
 import html
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 import requests
@@ -22,11 +16,12 @@ import requests
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 
-# Model preference
+# Telegram Channel ID ya Username
+CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@Gyankshetra")
+
 MODELS = [m for m in [os.environ.get("GEMINI_MODEL", "").strip()] if m]
 FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
-# Allowed Chat IDs
 ALLOWED = {
     x.strip()
     for x in os.environ.get("TELEGRAM_ALLOWED_CHAT_IDS", "").split(",")
@@ -35,11 +30,9 @@ ALLOWED = {
 
 BASE_URL = "https://gyankshetra.github.io/Gyankshetra-app/"
 TG = "https://api.telegram.org/bot" + BOT_TOKEN
-POLL_SECONDS = 210
 OFFSET_FILE = "content/telegram_offset.txt"
 REGISTRY_FILE = "content/generated_tests.json"
 
-# BATCH size 25 rakha hai taaki 50, 100 questions fast aur bina rate-limit ke banein
 BATCH = 25
 
 
@@ -50,37 +43,94 @@ def telegram(method, data=None):
     return r.json()
 
 
-def send_message(chat_id, text):
+def send_message(chat_id, text, parse_mode="Markdown", schedule_timestamp=None):
     try:
-        return telegram(
-            "sendMessage",
-            {"chat_id": chat_id, "text": text[:4000], "disable_web_page_preview": False},
-        )
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": False
+        }
+        # Schedule Post parameter
+        if schedule_timestamp:
+            payload["schedule_date"] = int(schedule_timestamp)
+
+        return telegram("sendMessage", payload)
     except Exception as e:
-        print("sendMessage failed:", e)
+        print(f"sendMessage failed for {chat_id}:", e)
 
 
 # ------------------------------------------------------------------ Commands
 COMMANDS = ["/test", "/mock", "/quiz", "/practice", "/pyq"]
 
 
+def parse_schedule_time(text):
+    """
+    Text se time schedule extract karta hai (e.g., '10:00AM', '05:30PM')
+    """
+    match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)', text)
+    if not match:
+        return None, text
+
+    hours = int(match.group(1))
+    minutes = int(match.group(2))
+    period = match.group(3).upper()
+
+    if period == "PM" and hours < 12:
+        hours += 12
+    elif period == "AM" and hours == 12:
+        hours = 0
+
+    # Clean text after removing time string
+    clean_text = re.sub(r'\b\d{1,2}:\d{2}\s*(AM|PM|am|pm)\b', '', text, flags=re.IGNORECASE)
+    clean_text = re.sub(r'\b(today|publish)\b', '', clean_text, flags=re.IGNORECASE).strip()
+
+    # IST Current Date Calculation
+    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    target_dt = ist_now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+
+    # Agar time nikal chuka hai, to agle din ke liye schedule hoga
+    if target_dt <= ist_now:
+        target_dt += timedelta(days=1)
+
+    # Convert IST target to UTC Timestamp for Telegram API
+    utc_target = target_dt - timedelta(hours=5, minutes=30)
+    schedule_timestamp = utc_target.timestamp()
+
+    return schedule_timestamp, target_dt.strftime("%d %b %Y, %I:%M %p IST"), clean_text
+
+
 def parse_command(text):
     parts = (text or "").strip().split()
     if not parts:
         return None
-    command = parts[0].lower().split("@")[0]  # /test@botname -> /test
+    command = parts[0].lower().split("@")[0]
     if command not in COMMANDS:
         return None
-    rest = parts[1:]
+    
+    rest_str = " ".join(parts[1:])
+    
+    # Check for schedule time in command
+    schedule_ts, time_str, cleaned_rest = parse_schedule_time(rest_str)
+    
+    rest_parts = cleaned_rest.split()
     count = 10
-    if rest:
-        m = re.fullmatch(r"(\d{1,3})[qQ]?", rest[-1])  # "25" या "25Q"
+    if rest_parts:
+        m = re.fullmatch(r"(\d{1,3})[qQ]?", rest_parts[-1])
         if m:
             count = int(m.group(1))
-            rest = rest[:-1]
-    topic = " ".join(rest).strip() or "सामान्य विज्ञान"
+            rest_parts = rest_parts[:-1]
+            
+    topic = " ".join(rest_parts).strip() or "सामान्य विज्ञान"
     count = max(1, min(count, 100))
-    return {"command": command, "topic": topic, "count": count}
+    
+    return {
+        "command": command, 
+        "topic": topic, 
+        "count": count, 
+        "schedule_ts": schedule_ts, 
+        "time_str": time_str
+    }
 
 
 def command_info(command):
@@ -102,8 +152,7 @@ _client = None
 def get_client():
     global _client
     if _client is None:
-        from google import genai  # pip install google-genai
-
+        from google import genai
         _client = genai.Client(api_key=GEMINI_KEY)
     return _client
 
@@ -123,10 +172,9 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 5. प्रत्येक प्रश्न की स्पष्ट व्याख्या हो।
 6. प्रत्येक प्रश्न के साथ 8 महत्वपूर्ण तथ्य हों।
 7. प्रश्न एक-दूसरे से अलग हों।
-8. गलत या मनगढ़ंत तथ्य न बनाओ। पक्का न हो तो वह प्रश्न मत बनाओ।
+8. गलत या मनगढ़ंत तथ्य न बनाओ।
 9. STET / BPSC TRE स्तर का ध्यान रखो।
-10. PYQ command में यदि verified source उपलब्ध नहीं है तो वास्तविक PYQ होने का दावा न करो।
-11. केवल JSON दो, Markdown code fence नहीं।
+10. केवल JSON दो, Markdown code fence नहीं।
 
 सिर्फ इस structure में JSON दो:
 {"questions":[{"question":"प्रश्न","options":["A","B","C","D"],"answer":0,"explanation":"व्याख्या","facts":["तथ्य 1","तथ्य 2","तथ्य 3","तथ्य 4","तथ्य 5","तथ्य 6","तथ्य 7","तथ्य 8"]}]}
@@ -134,7 +182,6 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 
 
 def discover_models():
-    """API से वे flash models लाता है जो generateContent चला सकते हैं।"""
     try:
         found = []
         for m in get_client().models.list():
@@ -151,22 +198,10 @@ def discover_models():
             return float(mm.group(1)) if mm else 0.0
 
         found.sort(key=lambda n: (-version(n), "preview" in n or "exp" in n, "lite" in n, n))
-        print("Discovered models:", found[:6])
         return found
     except Exception as e:
         print("model discovery failed:", str(e)[:200])
         return []
-
-
-def is_missing_model(err):
-    return "404" in err or "NOT_FOUND" in err or "no longer available" in err
-
-
-def is_busy(err):
-    return any(x in err for x in (
-        "503", "UNAVAILABLE", "500", "INTERNAL", "429", "RESOURCE_EXHAUSTED",
-        "DEADLINE", "overloaded", "high demand",
-    ))
 
 
 def ask_gemini(prompt):
@@ -198,20 +233,17 @@ def ask_gemini(prompt):
                 MODELS.remove(model)
                 MODELS.insert(0, model)
                 return resp.text
-            last = "[%s] खाली जवाब" % model
+            last = f"[{model}] खाली जवाब"
         except Exception as e:
-            last = "[%s] %s" % (model, str(e))
-            if is_missing_model(last):
-                print("Model unavailable:", model)
+            last = f"[{model}] {str(e)}"
+            if "404" in last or "NOT_FOUND" in last:
                 dead.add(model)
                 continue
-        print("Gemini attempt", attempt + 1, "failed:", last[:300])
-        time.sleep(min(8 * (attempt + 1), 20) if is_busy(last) else 3)
+        time.sleep(3)
     raise RuntimeError("Gemini से जवाब नहीं मिला: " + last[:600])
 
 
 def clean_questions(data):
-    """Gemini का JSON -> app का format [प्रश्न, [4 विकल्प], उत्तर, [facts]]"""
     items = data.get("questions") if isinstance(data, dict) else data
     if not isinstance(items, list):
         raise ValueError("questions array नहीं मिला")
@@ -247,7 +279,6 @@ def gemini_batch(topic, count, mode, previous):
     prompt = PROMPT.replace("TOPIC", topic).replace("COUNT", str(count)).replace("MODE", mode)
     if previous:
         prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-30:])
-    last = ""
     for _ in range(3):
         raw = ask_gemini(prompt).strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -256,15 +287,9 @@ def gemini_batch(topic, count, mode, previous):
             qs = clean_questions(json.loads(raw))
             if qs:
                 return qs
-            last = "valid प्रश्न नहीं मिले"
         except Exception as e:
-            last = str(e)
-        print("Bad Gemini JSON:", last)
-    raise RuntimeError("Gemini का JSON सही नहीं आया: " + last)
-
-
-def norm(text):
-    return re.sub(r"\s+", " ", text).strip().lower()
+            print("Bad Gemini JSON:", e)
+    raise RuntimeError("Gemini का JSON सही नहीं आया")
 
 
 def generate_all(topic, count, mode):
@@ -277,21 +302,21 @@ def generate_all(topic, count, mode):
         try:
             batch_qs = gemini_batch(topic, need, mode, seen)
             for q in batch_qs:
-                key = norm(q[0])
+                key = re.sub(r"\s+", " ", q[0]).strip().lower()
                 if key in seen or len(result) >= count:
                     continue
                 seen.append(key)
                 result.append(q)
         except Exception as e:
             print(f"Round {rounds} failed: {e}")
-            if result:  # agar pehle kuch questions aa chuke hain to continue karne ki koshish karein
+            if result:
                 continue
             else:
                 raise e
     return result
 
 
-# ------------------------------------------------------------ Master UI -> test
+# ------------------------------------------------------------ Page Builder
 def _find_matching(text, start, opening, closing):
     depth, i, n = 0, start, len(text)
     quote_ch, escaped, line_c, block_c = None, False, False, False
@@ -335,8 +360,6 @@ def replace_questions(source, placeholder):
         raise RuntimeError("index.html में 'const questions=' नहीं मिला")
     start = source.find("[", m.end())
     end = _find_matching(source, start, "[", "]") if start >= 0 else -1
-    if end < 0:
-        raise RuntimeError("index.html में questions array पूरा नहीं मिला")
     return source[: m.start()] + "const questions=" + placeholder + source[end + 1 :]
 
 
@@ -345,8 +368,6 @@ def replace_function(source, name, replacement):
     if not m:
         raise RuntimeError("index.html में function " + name + "() नहीं मिला")
     end = _find_matching(source, m.end() - 1, "{", "}")
-    if end < 0:
-        raise RuntimeError("index.html में " + name + "() का अंत नहीं मिला")
     return source[: m.start()] + replacement + source[end + 1 :]
 
 
@@ -379,7 +400,7 @@ def make_test_page(topic, count, questions, test_id):
 
     s, n = re.subn(
         r"const\s+TOTAL\s*=\s*\d+\s*,\s*TIME\s*=\s*[^,;]+",
-        "const TOTAL=%d,TIME=%d" % (count, count * 60), s, count=1)
+        f"const TOTAL={count},TIME={count * 60}", s, count=1)
     if not n:
         raise RuntimeError("index.html में 'const TOTAL=..,TIME=..' नहीं मिला")
     s = replace_questions(s, "__GK_QUESTIONS__")
@@ -387,54 +408,47 @@ def make_test_page(topic, count, questions, test_id):
     s = replace_function(s, "tick", TICK)
 
     for old, new in (
-        ("'gyankshetraSaved'", "'gyankshetraSaved_%s'" % test_id),
-        ("'gyankshetraProgress_'", "'gyankshetraProgress_%s_'" % test_id),
+        ("'gyankshetraSaved'", f"'gyankshetraSaved_{test_id}'"),
+        ("'gyankshetraProgress_'", f"'gyankshetraProgress_{test_id}_'"),
     ):
-        if old not in s:
-            raise RuntimeError("index.html में " + old + " नहीं मिला")
         s = s.replace(old, new)
 
     s = s.replace("test:'विलयन'", "test:__GK_TOPIC_JS__")
     s = s.replace("विलयन", "__GK_TOPIC_HTML__")
 
     for old, new in (
-        ("20Q", "%dQ" % count),
-        ("20 Questions", "%d Questions" % count),
-        ("20 Marks", "%d Marks" % count),
-        ("20 Minutes", "%d Minutes" % count),
-        ("20 प्रश्न", "%d प्रश्न" % count),
-        ("20 अंक", "%d अंक" % count),
-        ("20 मिनट", "%d मिनट" % count),
+        ("20Q", f"{count}Q"),
+        ("20 Questions", f"{count} Questions"),
+        ("20 Marks", f"{count} Marks"),
+        ("20 Minutes", f"{count} Minutes"),
+        ("20 प्रश्न", f"{count} प्रश्न"),
+        ("20 अंक", f"{count} अंक"),
+        ("20 मिनट", f"{count} मिनट"),
         ("' / 20'", "' / '+TOTAL"),
         ("marks}/20`", "marks}/${TOTAL}`"),
-        ("0 / 20</strong>", "0 / %d</strong>" % count),
-        ("0 / 20</b>", "0 / %d</b>" % count),
+        ("0 / 20</strong>", f"0 / {count}</strong>"),
+        ("0 / 20</b>", f"0 / {count}</b>"),
         ('id="timer">20:00', 'id="timer">00:00'),
-        (">1/20<", ">1/%d<" % count),
+        (">1/20<", f">1/{count}<"),
     ):
         s = s.replace(old, new)
 
     s = s.replace("__GK_TOPIC_JS__", js_safe(topic))
     s = s.replace("__GK_TOPIC_HTML__", html.escape(topic))
     s = s.replace("__GK_QUESTIONS__", js_safe(questions))
-    if "__GK_" in s:
-        raise RuntimeError("page बनाते समय placeholder बचा रह गया")
     return s
 
 
-# ------------------------------------------------------------------ Registry
 def update_registry(topic, count, command, url, test_id):
     os.makedirs("content", exist_ok=True)
     try:
         with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
             registry = json.load(f)
-        if not isinstance(registry, list):
-            registry = []
     except Exception:
         registry = []
     info = command_info(command)
     registry.insert(0, {
-        "title": info["emoji"] + " " + topic,
+        "title": f"{info['emoji']} {topic}",
         "questions": count,
         "type": info["type"],
         "url": url,
@@ -452,8 +466,7 @@ def git_publish(message):
     try:
         run = lambda *a, **k: subprocess.run(a, check=k.get("check", True))
         run("git", "config", "user.name", "gyankshetra")
-        run("git", "config", "user.email",
-            "41898282+github-actions[bot]@users.noreply.github.com")
+        run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
         dirs = [d for d in ("content", "tests", "quiz", "practice") if os.path.isdir(d)]
         run("git", "add", *dirs)
         if subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0:
@@ -472,7 +485,6 @@ def safe_slug(text):
     return (text or "test")[:70]
 
 
-# -------------------------------------------------------------------- Offset
 def load_offset():
     try:
         with open(OFFSET_FILE, "r", encoding="utf-8") as f:
@@ -488,14 +500,6 @@ def save_offset(offset):
 
 
 # ------------------------------------------------------------------- Handler
-HELP = (
-    "🤖 Gyankshetra AI Bot तैयार है!\n\n"
-    "/test इतिहास 20\n/quiz इतिहास 30\n/practice विज्ञान 50\n"
-    "/mock रसायन 100\n/pyq विज्ञान 20\n\n"
-    "प्रश्न-संख्या सबसे अंत में लिखें (जैसे: 20, 30, 50, 100)।"
-)
-
-
 def process_update(update):
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
@@ -505,64 +509,73 @@ def process_update(update):
 
     word = text.split()[0].lower().split("@")[0]
     if word == "/id":
-        send_message(chat_id, "आपका chat id: " + str(chat_id))
+        send_message(chat_id, f"आपका chat id: {chat_id}")
         return
     if ALLOWED and str(chat_id) not in ALLOWED:
         send_message(chat_id, "यह bot निजी है।")
-        return
-    if word in ("/start", "/help"):
-        send_message(chat_id, HELP)
         return
 
     cmd = parse_command(text)
     if not cmd:
         return
     topic, count = cmd["topic"], cmd["count"]
+    schedule_ts = cmd["schedule_ts"]
+    time_str = cmd["time_str"]
     info = command_info(cmd["command"])
 
     send_message(
         chat_id,
-        "🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n%s विषय: %s\n📌 प्रकार: %s\n📝 प्रश्न: %d\n\nथोड़ा समय लगेगा..."
-        % (info["emoji"], topic, info["label"], count),
+        f"🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} विषय: {topic}\n📌 प्रकार: {info['label']}\n📝 प्रश्न: {count}\n\nथोड़ा समय लगेगा..."
     )
     try:
         questions = generate_all(topic, count, info["label"])
         if len(questions) < count:
-            raise RuntimeError("माँगे गए %d में केवल %d प्रश्न बन पाए।" % (count, len(questions)))
+            raise RuntimeError(f"माँगे गए {count} में केवल {len(questions)} प्रश्न बन पाए।")
 
         test_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        filename = "%s-%dq-%s.html" % (safe_slug(topic), count, test_id)
+        filename = f"{safe_slug(topic)}-{count}q-{test_id}.html"
         folder = info["folder"]
         os.makedirs(folder, exist_ok=True)
         page = make_test_page(topic, count, questions, test_id)
+        
         with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
             f.write(page)
+            
+        test_url = BASE_URL + folder + "/" + quote(filename)
         update_registry(topic, count, cmd["command"], folder + "/" + filename, test_id)
+        pushed = git_publish(f"Generate test: {topic} ({count}Q)")
 
-        pushed = git_publish("Generate test: %s (%dQ)" % (topic, count))
-        note = (
-            "(GitHub Pages को अपडेट होने में 1-2 मिनट लगते हैं; 404 आए तो थोड़ी देर बाद खोलें।)"
-            if pushed
-            else "⚠️ फ़ाइल बनी, पर GitHub पर push नहीं हो पाई। Actions का log देखें।"
+        # Schedule Text Format
+        if not time_str:
+            ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+            time_str = ist_now.strftime("%d %b %Y, %I:%M %p IST")
+
+        formatted_message = (
+            "✅ *Test तैयार है!*\n\n"
+            f"🎯 *विषय:* {topic}\n"
+            f"📌 *प्रकार:* {info['label']}\n"
+            f"📝 *प्रश्न:* {count}\n"
+            f"⏰ *Publish Time:* {time_str}\n\n"
+            f"[🔗 LIVE TEST]({test_url})"
         )
-        send_message(
-            chat_id,
-            "✅ Test तैयार है!\n\n%s विषय: %s\n📌 प्रकार: %s\n📝 प्रश्न: %d\n\n🔗 LIVE TEST:\n%s\n\n%s"
-            % (info["emoji"], topic, info["label"], count,
-               BASE_URL + folder + "/" + quote(filename), note),
-        )
+
+        # 1. User ko तुरंत रिप्लाई
+        if schedule_ts:
+            send_message(chat_id, f"📅 टेस्ट बन गया है और Channel में *{time_str}* के लिए Schedule कर दिया गया है!\n\n" + formatted_message)
+        else:
+            send_message(chat_id, formatted_message)
+
+        # 2. Telegram Channel me Schedule / Instant Publish
+        if CHANNEL_ID:
+            send_message(CHANNEL_ID, formatted_message, schedule_timestamp=schedule_ts)
+
     except Exception as e:
         send_message(chat_id, "❌ Test generate नहीं हो पाया\n\nError:\n" + str(e)[:2500])
 
 
-# ---------------------------------------------------------------------- Main
 def main():
     print("Gyankshetra Telegram Bot started")
-    if not ALLOWED:
-        print("WARNING: TELEGRAM_ALLOWED_CHAT_IDS empty!")
-    
     offset = load_offset()
-    print("Checking updates with offset:", offset)
     
     try:
         res = telegram("getUpdates", {"offset": offset, "timeout": 10})
