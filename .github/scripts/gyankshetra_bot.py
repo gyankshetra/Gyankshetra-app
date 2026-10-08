@@ -280,10 +280,10 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
 
+# Gemini API recommended active models
 FALLBACK_MODELS = [
-    m.strip()
-    for m in os.environ.get("GEMINI_MODELS", "gemini-3.8-flash,gemini-2.5-flash").split(",")
-    if m.strip()
+    "gemini-3.8-flash",
+    "gemini-3.1-pro-preview"
 ]
 
 
