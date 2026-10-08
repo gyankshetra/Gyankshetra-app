@@ -1,5 +1,19 @@
 [
   {
+    "title": "🎯 9th physics gravitation",
+    "questions": 10,
+    "type": "quiz",
+    "url": "quiz/9th-physics-gravitation-10q-20261008-070930.html",
+    "id": "20261008-070930",
+    "topic": "9th physics gravitation",
+    "count": 10,
+    "command": "/quiz",
+    "box": "quiz",
+    "label": "Quiz",
+    "emoji": "🎯",
+    "created": "20261008-070930"
+  },
+  {
     "title": "🎯 9th physics gravitation 50Q (easy-modrate-hard) 6:00AM public ho telegram me",
     "questions": 10,
     "type": "quiz",
