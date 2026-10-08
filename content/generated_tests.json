@@ -1,6 +1,20 @@
 [
   {
     "title": "🎯 9th physics gravitation",
+    "questions": 20,
+    "type": "quiz",
+    "url": "quiz/9th-physics-gravitation-20q-20261008-082957.html",
+    "id": "20261008-082957",
+    "topic": "9th physics gravitation",
+    "count": 20,
+    "command": "/quiz",
+    "box": "quiz",
+    "label": "Quiz",
+    "emoji": "🎯",
+    "created": "20261008-082957"
+  },
+  {
+    "title": "🎯 9th physics gravitation",
     "questions": 10,
     "type": "quiz",
     "url": "quiz/9th-physics-gravitation-10q-20261008-070930.html",
