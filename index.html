@@ -1,379 +1,396 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-<title>Gyankshetra — विलयन 20Q</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#172033;font-family:Arial,"Noto Sans Devanagari",sans-serif}.app{max-width:620px;margin:auto;padding-bottom:76px}.top{height:64px;background:#111827;color:#fff;display:flex;align-items:center;gap:10px;padding:9px 13px;position:sticky;top:0;z-index:20}.top button{background:none;border:0;color:#fff;font-size:22px}.brand{font-size:20px;font-weight:900;flex:1}.brand small{display:block;font-size:9px;color:#aeb8c8;font-weight:400;margin-top:2px}.screen{display:none;padding:16px}.screen.active{display:block}h2{font-size:20px}h3{font-size:17px}.welcome{padding:14px 2px}.welcome b{font-size:20px}.welcome small{display:block;color:#778397;margin-top:4px}.banner{background:linear-gradient(135deg,#0757b8,#1688e8);color:#fff;border-radius:18px;padding:18px;display:flex;align-items:center;gap:12px}.banner span{font-size:31px}.banner b{font-size:18px}.banner small{display:block;margin-top:6px;opacity:.85}.banner button{margin-left:auto;background:#fff;color:#0757b8;border:0;border-radius:10px;padding:10px;font-weight:800}.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tiles>div,.card,.testcard,.examrow{background:#fff;border-radius:15px;box-shadow:0 3px 12px #0000000b}.tiles>div{padding:16px}.tiles b{display:block;margin-top:8px}.tiles small,.card small,.examrow small,.testcard small{display:block;color:#7b8799;margin-top:5px;font-size:11px}.card{padding:15px;margin:9px 0}.testcard{padding:15px;margin:9px 0;display:flex;align-items:center;gap:10px}.testcard div{flex:1}.examrow{padding:15px;margin:9px 0;display:flex;align-items:center;gap:12px}.examrow span{font-size:27px}.examrow div{flex:1}.examrow i{font-size:24px;color:#8b96a6}button{cursor:pointer}.primary,.wide{background:#075fc3;color:#fff;border:0;border-radius:10px;padding:10px 13px;font-weight:800}.wide{width:100%;margin-top:10px}.bottom{position:fixed;bottom:0;left:0;right:0;max-width:620px;margin:auto;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;z-index:25}.bottom button{width:25%;background:none;border:0;padding:8px 4px;color:#68768a}.bottom button.active{color:#075fc3;font-weight:900}.bottom small{display:block;font-size:10px;margin-top:2px}.drawer{display:none;position:fixed;inset:0;background:#0008;z-index:60}.drawer.open{display:block}.menu{width:82%;max-width:340px;height:100%;background:#fff;padding:20px}.menu h2{color:#075fc3}.menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 4px;font-size:15px}.modal{display:none;position:fixed;inset:0;background:#0009;z-index:100;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.modalbox{width:100%;max-width:390px;background:#fff;border-radius:20px;padding:24px;box-shadow:0 15px 50px #0005}.modalbox h2{margin-top:0;color:#075fc3}.modalbox input{width:100%;padding:13px;border:1px solid #d5dde8;border-radius:10px;margin:8px 0 12px;font-size:16px}.modalbox button{width:100%;padding:13px;border:0;border-radius:10px;background:#075fc3;color:#fff;font-weight:800}.userline{text-align:center;color:#68768a;font-size:12px;margin:5px 0 10px}.profile{text-align:center}.avatar{font-size:54px}.profile .card{text-align:left}.quizbar{background:#0c3975;color:#fff;margin:-16px -16px 8px;padding:13px 14px;display:flex;align-items:center;gap:10px}.quizbar button{background:none;border:0;color:#fff;font-size:22px}.quizbar b{flex:1}.questionline{display:flex;align-items:center;gap:8px;padding:9px 2px;margin-bottom:7px;font-weight:800}.questionline .qcount{flex:1}.timer{color:#e0a400}.star{border:0;background:none;color:#f2b400;font-size:24px;padding:0 3px}.qmenu{background:#075fc3;color:#fff;border:0;border-radius:8px;padding:7px 9px;font-size:19px}.qcard{background:#fff;padding:16px;border-radius:16px}.qcard h2{line-height:1.55;font-size:18px}.option{border:1px solid #dce4ed;padding:13px;border-radius:11px;margin:8px 0;transition:.15s}.option.sel{background:#eaf4ff;border-color:#0765c7}.actions{display:flex;gap:8px;margin-top:13px}.actions button{flex:1;padding:12px;border:1px solid #d9e1ea;background:#fff;border-radius:10px;font-weight:800}.actions .next,.actions .submit{background:#075fc3;color:#fff;border-color:#075fc3}.popup{display:none;position:fixed;inset:0;background:#0008;z-index:70}.popup.open{display:block}.popupbox{position:absolute;right:0;top:0;width:min(360px,92%);height:100%;background:#fff;padding:18px;overflow:auto}.popuphead{display:flex;align-items:center;justify-content:space-between}.popupclose{border:0;background:#eef4fb;padding:8px;border-radius:8px}.submenu{padding:0 0 6px 14px}.submenu button{font-size:13px;background:#f5f8fc;border-radius:8px;margin:3px 0;padding:9px 12px}.popupitem{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 5px;border-bottom:1px solid #edf0f4;font-size:15px}.palette{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}.p{background:#e9edf2;padding:9px;text-align:center;border-radius:8px;font-size:12px}.p.done{background:#ccebd8}.p.cur{background:#075fc3;color:#fff}.savedtitle{margin-top:18px}.savedq{background:#f7faff;border:1px solid #e3ebf5;border-radius:11px;padding:11px;margin:8px 0;font-size:13px}.submitbtn{width:100%;background:#075fc3;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:800;margin-top:16px}.score{width:130px;height:130px;border:10px solid #29a55c;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:25px auto;font-size:27px;font-weight:900}.resultgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.resultgrid div{background:#fff;padding:13px;text-align:center;border-radius:12px}.resultgrid b,.resultgrid small{display:block}.reviewnav{display:flex;gap:8px}.reviewnav button{flex:1;padding:11px;border:1px solid #d9e1ea;background:#fff;border-radius:10px;font-weight:800}.reviewnav .next{background:#075fc3;color:#fff}.reviewcard{background:#fff;border-radius:16px;padding:16px;box-shadow:0 3px 12px #0000000b}.reviewstate.ok{color:#16834f}.reviewstate.bad{color:#d92d2d}.analysisbox{display:none;background:#eff9f1;border-left:4px solid #28a35b;padding:12px;margin-top:12px;border-radius:0 10px 10px 0;line-height:1.55;font-size:13px}.analysisbox.open{display:block}.analysisbtn{width:100%;margin-top:12px;padding:11px;border:0;border-radius:10px;background:#eef6ff;color:#075fc3;font-weight:800}.reattempt{width:100%;margin:14px 0;background:#16834f;color:#fff;border:0;border-radius:10px;padding:13px;font-weight:800}.savedempty{text-align:center;color:#7b8799;padding:25px}.note{background:#fff7df;border-left:4px solid #e0a400;padding:11px;border-radius:9px;font-size:12px;margin:12px 0}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gyankshetra - Result & Review</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #f7f9fa;
+      color: #333;
+      padding-bottom: 30px;
+    }
+    /* हेडर */
+    header {
+      background-color: #0b2239;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+    }
+    header .title {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    
+    /* कंटेनर */
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
 
-.bottom button{width:20%;padding:8px 2px}.bottom small{font-size:9.5px}
-.top .sp{flex:1}.top button{padding:4px 6px}
-.quizline{background:#0c3975;color:#fff;margin:-16px -16px 12px;padding:14px 16px;display:flex;align-items:center;gap:8px;font-weight:800}
-.quizline .qcount{flex:1}.quizline .timer{color:#ffd24d}.quizline .star{color:#ffd24d}
-.option.right{background:#e6f6ec;border-color:#28a35b}
-.langrow{display:block;padding:14px 4px;border-bottom:1px solid #edf0f4;font-size:16px}
-.langrow input{margin-right:10px}.sq h3{line-height:1.5}
-.drawer{display:none;position:fixed;inset:0;background:#0008;z-index:60}.drawer.open{display:block}
-.menu{width:82%;max-width:340px;height:100%;background:#fff;padding:18px 16px;overflow:auto}.menu h2{color:#075fc3;margin:0 0 2px}.menu .sub{font-size:11px;color:#7b8799;margin-bottom:10px}
-.menu button.mi{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #edf0f4;padding:14px 4px;font-size:15px;color:#172033}
-.menu .arrow{float:right;color:#8b96a6}.menu .subm{display:none;padding:0 0 4px 14px}.menu .subm.open{display:block}.menu .subm button{font-size:14px;background:#f5f8fc;border-radius:8px;margin:4px 0;padding:11px 12px;border:0;width:100%;text-align:left}
-.menu .langbox{background:#f7f9fc;border-radius:10px;padding:6px 12px;margin:6px 0}.menu .langbox b{display:block;padding:8px 0 2px}
-.resultgrid{grid-template-columns:repeat(4,1fr);gap:6px}.resultgrid div{padding:12px 4px}.resultgrid small{font-size:11px}.reviewcard.slide{animation:slidein .25s}@keyframes slidein{from{opacity:.3;transform:translateX(18px)}to{opacity:1;transform:none}}.analysisbox{background:#f6fbf7;border-left:4px solid #28a35b;padding:16px 16px 12px;margin-top:14px;border-radius:0 12px 12px 0;font-size:17px;line-height:1.85;color:#1d2a3a;letter-spacing:.1px}
-.analysisbox b{display:block;font-size:17px;color:#0f6b3a;margin-bottom:8px}
-.analysisbox ol{margin:6px 0 0;padding-left:22px}.analysisbox li{margin:0 0 10px;padding-left:2px}.analysisbox li::marker{color:#28a35b;font-weight:800}
-.option.rv-ok{border:2px solid #16a34a;background:#f0fbf4}.option.rv-bad{border:2px solid #dc2626;background:#fff1f1}.qcard .quizline{background:none;color:#172033;margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid #edf0f4;font-size:15px}.qcard .quizline .timer{color:#d97706}.qcard .quizline .star{color:#f2b400}#savedList{padding-bottom:78px}.savedfix{position:fixed;left:0;right:0;bottom:60px;max-width:620px;margin:auto;padding:8px 16px;background:#f4f6f9;display:flex;gap:8px;z-index:24}.savedfix button{flex:1;padding:12px;border:1px solid #d9e1ea;background:#fff;border-radius:10px;font-weight:800}.savedfix .next{background:#075fc3;color:#fff;border-color:#075fc3}#viewer{display:none;position:fixed;inset:0;z-index:90;background:#eef0f5;flex-direction:column;max-width:620px;margin:auto}#viewer.open{display:flex}
-.vhead{background:#111827;color:#fff;height:56px;display:flex;align-items:center;gap:14px;padding:0 14px}.vhead button{background:none;border:0;color:#fff;font-size:22px}.vhead span{flex:1;font-size:17px}
-#vbody{flex:1;overflow:auto;padding:14px}
-.vmeta{display:flex;align-items:center;font-size:12px;color:#8b96a6;margin-bottom:8px}.vmeta span{flex:1}.vmeta button{border:0;background:none;font-size:24px;color:#f2b400}
-.vq{font-size:17px;line-height:1.65;margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid #dfe4ec}
-.vopt{background:#fff;border:1px solid #e6ebf2;border-radius:8px;padding:15px 14px;margin:10px 0;font-size:16px}.vopt i{color:#8b96a6;margin-right:12px}.vopt.ok{background:#e1f2e5;border-color:#74c08a}.vopt.bad{background:#fde8e8;border-color:#e58a8a}.vopt .mk{float:right;font-weight:900}.vopt.ok .mk{color:#16834f}.vopt.bad .mk{color:#d92d2d}
-.vsol{width:100%;margin:18px 0 8px;padding:13px;border:1px solid #4a7fe0;background:#fff;color:#2b63c9;border-radius:4px;font-size:16px}.vsol.dis{opacity:.65}
-.vhint{font-size:12px;color:#8b96a6;line-height:1.5}
-.vsolbox{margin-top:16px;font-size:16px;line-height:1.8;color:#1d2a3a}.vsolbox h4{margin:14px 0 4px;letter-spacing:1px;color:#475467}.vsolbox ul{padding-left:20px}.vsolbox li{margin-bottom:8px}
-.vbar{background:#fff;height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-top:1px solid #e3e7ee;font-size:13px}
-.sw{display:inline-block;width:38px;height:20px;border-radius:12px;background:#c7cdd8;position:relative;vertical-align:middle;margin-left:12px;cursor:pointer}.sw i{position:absolute;top:-2px;left:-2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0004;transition:.15s}.sw.on{background:#9db8f5}.sw.on i{left:16px;background:#3b82f6}
-.vnav{display:flex;gap:12px}.vnav button{width:42px;height:42px;border-radius:50%;border:0;background:#3b82f6;color:#fff;font-size:20px}
-#lsheet{display:none;position:fixed;inset:0;background:#0008;align-items:flex-end;justify-content:center;z-index:120}#lsheet.open{display:flex}.sheetbox{background:#fff;width:100%;max-width:620px;border-radius:18px 18px 0 0;padding:16px 22px 24px}.sheetbox h4{color:#8b96a6;margin:0 0 6px}.sheetbox div{padding:15px 0;border-bottom:1px solid #eef1f5;font-size:16px}
-.scard{position:relative;background:#fff;border-radius:12px;padding:14px 40px 12px 14px;margin:10px 0;box-shadow:0 2px 8px #0000000d;cursor:pointer}.scard b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;line-height:1.5}.scard small{display:block;color:#98a2b3;margin-top:6px;font-size:11px}
-.dots{position:absolute;right:4px;top:6px;border:0;background:none;font-size:20px;color:#8b96a6;padding:6px 10px}.dmenu{position:absolute;right:34px;top:12px;background:#fff;border-radius:8px;box-shadow:0 4px 16px #0003;padding:10px 14px;font-size:13px;z-index:3}
-.secthead{border-left:4px solid #3b82f6;padding-left:8px;font-weight:800;margin:16px 0 6px}
-.aE{border:1.5px solid #fff!important;border-radius:6px;padding:3px 6px!important;font-size:12px!important;font-weight:800;color:#fff!important;line-height:1}
-.resumebtn{background:#16834f;margin:10px 0}
-.qcard .quizline .timer{flex:1;text-align:right}
-</style>
+    /* री-अटेम्प्ट बैज */
+    .reattempt-badge {
+      display: inline-block;
+      background-color: #ffeaa7;
+      color: #d63031;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+
+    /* रिजल्ट हेडर */
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #b25800;
+      margin-bottom: 12px;
+    }
+
+    /* छात्र का नाम */
+    .user-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0b2239;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* सर्कुलर प्रोग्रेस */
+    .circle-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 16px 0;
+    }
+    .circle-score {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 8px solid #00a65a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #0b2239;
+    }
+
+    /* स्टेटिस्टिक्स ग्रिड */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      padding: 10px 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .stat-card:hover {
+      border-color: #0d5bb5;
+      background-color: #f0f7ff;
+    }
+    .stat-card .value {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #111;
+      margin-bottom: 4px;
+    }
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: #666;
+    }
+
+    /* ऐक्शन बटन्स */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      text-decoration: none;
+    }
+    .btn-review {
+      background-color: #0d5bb5;
+      color: #fff;
+    }
+    .btn-reattempt {
+      background-color: #00a65a;
+      color: #fff;
+    }
+    .btn-telegram {
+      background-color: #0088cc;
+      color: #fff;
+    }
+
+    /* क्वेश्चन रिव्यू सेक्शन */
+    #review-section {
+      display: none;
+      margin-top: 20px;
+    }
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .question-card {
+      background: #fff;
+      border: 1px solid #dfe4ea;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .question-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .option-list {
+      list-style: none;
+    }
+    .option-item {
+      background: #f8f9fa;
+      border: 1px solid #dcdde1;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .option-item.correct {
+      background: #e8f8f0;
+      border-color: #00a65a;
+      color: #00a65a;
+      font-weight: 600;
+    }
+    .status-badge {
+      font-size: 0.8rem;
+      color: #555;
+      margin-top: 8px;
+    }
+  </style>
 </head>
-<body><div class="app">
-<header class="top"><button aria-label="Menu" onclick="toggleDrawer()">☰</button><div class="brand">Gyankshetra<small data-k="brand"></small></div><button class="aE" aria-label="Language" onclick="langSheet(true)">अ/E</button><button aria-label="Profile" onclick="toggleProfile()">👤</button></header>
+<body>
 
-<main id="home" class="screen active"><section class="welcome"><b id="welcome"></b><small>आज की तैयारी शुरू करें</small></section><section class="banner"><span>🎯</span><div><b>अपनी परीक्षा की तैयारी<br>एक ही जगह</b><small>STET • BPSC TRE-4 • Practice</small></div><button onclick="requireUser(startQuiz)">शुरू करें →</button></section><h3>मुख्य तैयारी</h3><div class="tiles"><div onclick="go('tests')">📝<b>Test Series</b><small>Mock & Chapter Tests</small></div><div onclick="go('study')">📚<b>Study Material</b><small>Notes & Books</small></div><div onclick="go('study')">📄<b>Previous Papers</b><small>PYQ Practice</small></div><div onclick="go('practice')">🎯<b>Practice</b><small>MCQ Practice</small></div></div><button class="wide resumebtn" style="display:none" onclick="requireUser(resumeQuiz)"></button><h3>आज का टेस्ट</h3><div class="testcard"><div><strong>🧪 विलयन</strong><small>20 प्रश्न • 20 अंक • 20 मिनट • No Negative</small></div><button class="primary" onclick="requireUser(startQuiz)">Start Test</button></div></main>
+  <!-- हेडर -->
+  <header>
+    <div class="title">Gyankshetra</div>
+    <div>JEE/NEET</div>
+  </header>
 
-<main id="tests" class="screen"><h2>📝 <span data-k="tests"></span></h2><button class="wide resumebtn" style="display:none" onclick="requireUser(resumeQuiz)"></button><div class="card"><b>🧪 विलयन</b><small>20 Questions • 20 Marks • 20 Minutes • +1 / No Negative</small><button class="primary" onclick="requireUser(startQuiz)">Start Test</button></div><div class="card"><b>📚 अन्य Tests</b><small>अगले विषय जल्द जोड़े जाएंगे।</small></div></main>
+  <div class="container">
+    <!-- Re-attempted लेबल -->
+    <div id="reattempt-badge" class="reattempt-badge" style="display: none;">Re-attempted</div>
 
-<main id="practice" class="screen"><h2>🎯 <span data-k="quiz"></span></h2><button class="wide resumebtn" style="display:none" onclick="requireUser(resumeQuiz)"></button><div class="tiles"><div onclick="requireUser(startQuiz)">⚡<b>Quick MCQ</b><small>विलयन 20Q</small></div><div onclick="requireUser(startQuiz)">🎯<b>Practice</b><small>Exam level</small></div><div onclick="requireUser(startQuiz)">🔀<b>Reattempt</b><small>फिर से टेस्ट</small></div></div></main>
+    <div class="result-header">
+      <span>🏆</span> Result
+    </div>
 
-<main id="saved" class="screen"><div style="display:flex;align-items:center"><h2 style="flex:1;margin:0">⭐ <span data-k="savedTitle"></span></h2><button class="dots" style="position:static;font-size:22px" onclick="toggleSearch()">🔍</button></div><input id="sq" placeholder="🔍 खोजें…" oninput="qFilter=this.value.trim();renderSaved()" style="display:none;width:100%;padding:12px;border:1px solid #d5dde8;border-radius:10px;margin-top:10px;font-size:15px"><div class="secthead" data-k="recent"></div><div id="savedList"></div></main>
+    <!-- छात्र का नाम -->
+    <div class="user-name" id="student-name">विद्यार्थी: लोड हो रहा है...</div>
 
-<main id="study" class="screen"><h2>📚 <span data-k="study"></span></h2><div class="examrow" onclick="soon()"><span>📝</span><div><b data-k="notes"></b></div><i>›</i></div><div class="examrow" onclick="soon()"><span>📚</span><div><b data-k="ncert"></b></div><i>›</i></div><div class="examrow" onclick="soon()"><span>📃</span><div><b data-k="papers"></b></div><i>›</i></div></main>
+    <!-- स्कोर प्रतिशत सर्कल -->
+    <div class="circle-wrap">
+      <div class="circle-score" id="percentage-score">0%</div>
+    </div>
 
-<main id="profile" class="screen"><div class="profile"><div class="avatar">👤</div><h2 id="profileName">Gyankshetra Student</h2><p id="profileId" class="userline"></p></div><div class="card"><b>📊 Test History</b><small id="historyText"></small></div><div class="card"><b>🏆 Best Score</b><strong id="bestScore">0 / 20</strong></div><button id="profileLoginBtn" class="wide" onclick="openAuth()">🔐 Login</button><button id="profileLogoutBtn" class="wide" style="display:none;background:#d92d2d" onclick="logout()">🚪 Logout</button></main>
+    <!-- स्टेटिस्टिक्स कार्ड्स -->
+    <div class="stats-grid">
+      <div class="stat-card" onclick="filterQuestions('all')">
+        <div class="value" id="marks-val">0 / 5</div>
+        <div class="label">Marks</div>
+      </div>
+      <div class="stat-card" onclick="filterQuestions('correct')">
+        <div class="value" id="correct-val">0</div>
+        <div class="label">Correct</div>
+      </div>
+      <div class="stat-card" onclick="filterQuestions('wrong')">
+        <div class="value" id="wrong-val">0</div>
+        <div class="label">Wrong</div>
+      </div>
+      <div class="stat-card" onclick="filterQuestions('skipped')">
+        <div class="value" id="skipped-val">5</div>
+        <div class="label">Skipped</div>
+      </div>
+    </div>
 
-<nav class="bottom"><button id="navHome" onclick="go('home')">⌂<small data-k="home"></small></button><button id="navTests" onclick="go('tests')">📝<small data-k="tests"></small></button><button id="navPractice" onclick="go('practice')">🎯<small data-k="quiz"></small></button><button id="navSaved" onclick="toggleSavedNav()">⭐<small data-k="saved"></small></button><button id="navStudy" onclick="go('study')">📚<small data-k="studyNav"></small></button></nav>
+    <!-- मुख्य ऐक्शन बटन्स -->
+    <button class="btn btn-review" onclick="toggleReview()">📖 Review All Questions</button>
+    <button class="btn btn-reattempt" onclick="triggerReattempt()">🔄 Reattempt</button>
+    <button class="btn btn-telegram" onclick="shareToTelegram()">✈️ Share to Telegram</button>
 
-<div id="drawer" class="drawer" onclick="toggleDrawer()"><div class="menu" onclick="event.stopPropagation()"><h2>Gyankshetra</h2><div class="sub" data-k="brand"></div>
-<button class="mi" onclick="nav('home')">🏠 <span data-k="dHome"></span></button>
-<button class="mi" onclick="nav('tests')">📝 <span data-k="dTests"></span></button>
-<button class="mi" onclick="nav('practice')">☑️ <span data-k="dQuiz"></span></button>
-<button class="mi" onclick="nav('practice')">🎯 <span data-k="dPyq"></span></button>
-<button class="mi" onclick="nav('saved')">⭐ <span data-k="dSaved"></span></button>
-<button class="mi" onclick="sub('studySub','studyArr')">⬇️ <span data-k="dStudy"></span><span class="arrow" id="studyArr">▸</span></button>
-<div id="studySub" class="subm"><button onclick="soon()">📝 <span data-k="notes"></span></button><button onclick="soon()">📚 <span data-k="ncert"></span></button><button onclick="soon()">📃 <span data-k="papers"></span></button></div>
-<button class="mi" onclick="sub('setSub','setArr')">⚙ <span data-k="dSetting"></span><span class="arrow" id="setArr">▸</span></button>
-<div id="setSub" class="subm"><div class="langbox"><b>🌐 <span data-k="language"></span></b><label class="langrow"><input type="radio" name="lang" value="hi" onchange="setLanguage('hi')">हिन्दी</label><label class="langrow"><input type="radio" name="lang" value="en" onchange="setLanguage('en')">English</label><label class="langrow"><input type="radio" name="lang" value="bh" onchange="setLanguage('bh')">भोजपुरी</label></div></div>
-</div></div>
+    <!-- क्वेश्चन एनालिसिस व रिव्यू सेक्शन -->
+    <div id="review-section">
+      <div class="review-header">
+        <h3 id="review-title">प्रश्नों का विवरण</h3>
+        <button onclick="toggleReview()" style="padding: 4px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc;">बंद करें</button>
+      </div>
+      <div id="questions-container"></div>
+    </div>
+  </div>
 
-<div id="lsheet" onclick="langSheet(false)"><div class="sheetbox" onclick="event.stopPropagation()"><h4 id="lsTitle"></h4><div onclick="setLanguage('hi');langSheet(false)">हिन्दी</div><div onclick="setLanguage('en');langSheet(false)">English</div><div onclick="setLanguage('bh');langSheet(false)">भोजपुरी</div></div></div>
-<div id="loginModal" class="modal"><div class="modalbox"><h2 id="authTitle"></h2><p id="authHelp"></p><label id="authLabel"></label><input id="nameInput"><button id="authBtn"></button><button id="authSwitch" style="margin-top:8px;background:none;color:#075fc3;font-weight:700" onclick="switchAuth()"></button><button style="margin-top:4px;background:#eef4fb;color:#075fc3" onclick="closeAuth()">बंद करें</button></div></div>
+  <script>
+    // टेस्ट और स्टूडेंट डेटा
+    const testData = {
+      isReattempted: true, // दोबारा प्रयास होने पर true
+      studentName: "अमित कुमार", // यहाँ लॉगिन छात्र का नाम सेट करें
+      totalMarks: 5,
+      questions: [
+        {
+          id: 1,
+          text: "यदि किसी वस्तु का द्रव्यमान पृथ्वी पर 60 kg है, तो चंद्रमा की सतह पर उसका द्रव्यमान और भार क्रमशः क्या होगा? (g = 10 m/s²)",
+          options: ["10 kg और 100 N", "60 kg और 600 N", "60 kg और 100 N", "10 kg और 600 N"],
+          correctOption: 2,
+          status: "skipped"
+        },
+        {
+          id: 2,
+          text: "केप्लर के तृतीय नियम के अनुसार, किसी ग्रह का परिक्रमण काल वर्ग (T²) सूर्य से औसत दूरी (r) के किस घात के समानुपाती होता है?",
+          options: ["दूरी के वर्ग के", "दूरी के घन के", "दूरी के वर्गमूल के", "चतुर्थ घात के"],
+          correctOption: 1,
+          status: "skipped"
+        },
+        {
+          id: 3,
+          text: "आर्किमिडीज के सिद्धांत के अनुसार, किसी द्रव में डूबी वस्तु पर उत्प्लावन बल किस पर निर्भर करता है?",
+          options: ["वस्तु के द्रव्यमान पर", "द्रव के तापमान पर", "विस्थापित द्रव के आयतन और घनत्व पर", "रासायनिक गुणों पर"],
+          correctOption: 2,
+          status: "skipped"
+        }
+      ]
+    };
 
-<main id="quiz" class="screen"><div class="qcard"><div class="quizline"><span class="qcount"><span data-k="qq"></span> <span id="qn">1/20</span></span><button id="starBtn" class="star" onclick="toggleSave()">☆</button><span class="timer">⏱ <span id="timer">20:00</span></span></div><h2 id="question"></h2><div id="options"></div><div class="actions"><button data-k="prev" onclick="prev()"></button><button id="nextBtn" class="next" onclick="next()"></button></div></div></main>
+    // स्क्रीन लोड होते ही डेटा सेट करना
+    function initScreen() {
+      if (testData.isReattempted) {
+        document.getElementById("reattempt-badge").style.display = "inline-block";
+      }
 
-<main id="review" class="screen"><div id="reviewWrap"><h2 style="margin:0 0 10px;cursor:pointer" onclick="go('result')">📖 Review</h2><div id="reviewCard" class="reviewcard"></div><button id="analysisBtn" class="analysisbtn" onclick="toggleAnalysis()"></button><div id="analysisBox" class="analysisbox"></div><div class="reviewnav"><button data-k="prev" onclick="reviewPrev()"></button><button class="next" data-k="next" onclick="reviewNext()"></button></div></div></main>
-<main id="result" class="screen"><h2>🏆 Result</h2><div class="score" id="score">0%</div><div class="resultgrid"><div><b id="marks">0 / 20</b><small data-k="marks"></small></div><div><b id="correct">0</b><small data-k="correct"></small></div><div><b id="wrong">0</b><small data-k="wrong"></small></div><div><b id="skip">0</b><small data-k="skipped"></small></div></div><button class="primary wide" data-k="review" onclick="showReview()"></button><button class="reattempt" data-k="reattempt" onclick="reattempt()"></button></main>
+      document.getElementById("student-name").innerText = "विद्यार्थी: " + testData.studentName;
 
-</div>
-<div id="viewer"><div class="vhead"><button onclick="closeViewer()">←</button><span id="vtitle"></span><button class="aE" onclick="langSheet(true)">अ/E</button></div><div id="vbody"></div><div class="vbar"><div><span id="vmode"></span><span class="sw" id="sw" onclick="toggleMode()"><i></i></span></div><div class="vnav"><button id="vprev" onclick="vGo(-1)">←</button><button id="vnext" onclick="vGo(1)">→</button></div></div></div>
-<script>
-const TOTAL=20,TIME=1200,$=id=>document.getElementById(id);
-const questions=[
-["मोलरता की परिभाषा के संदर्भ में कौन-सा कथन सही है?",["विलेय के मोल प्रति लीटर विलयन","विलेय के ग्राम प्रति किलोग्राम विलायक","विलायक के मोल प्रति लीटर विलयन","विलेय के मोल प्रति किलोग्राम विलायक"],0,["मोलरता = विलेय के मोल / विलयन का आयतन (L)।","मोलरता का SI-प्रचलित प्रयोग mol L⁻¹ में होता है।","तापमान बदलने पर आयतन बदल सकता है, इसलिए मोलरता बदल सकती है।","मोलरता में denominator विलयन का आयतन होता है।","मोललता में denominator विलायक का mass होता है, विलयन का नहीं।","मोलरता का उपयोग titration में बहुत सामान्य है।","1 M का अर्थ 1 L विलयन में 1 mol विलेय है।","आयतन को mL में दिया हो तो L में बदलना जरूरी है।","पतला करने पर solute के moles समान रहते हैं, पर volume बढ़ता है।","तापमान-निर्भरता के कारण precise work में molality उपयोगी हो सकती है।"]],
-["मोललता किस पर आधारित होती है?",["विलयन के आयतन पर","विलायक के द्रव्यमान पर","विलेय के आयतन पर","विलयन के दाब पर"],1,["मोललता = विलेय के मोल / विलायक का द्रव्यमान (kg)।","मोललता की इकाई mol kg⁻¹ है।","तापमान बदलने पर mass लगभग अपरिवर्तित रहता है।","इसी कारण colligative properties में molality उपयोगी है।","विलयन का कुल mass molality के denominator में नहीं आता।","विलायक और विलयन अलग अवधारणाएँ हैं।","1 mol solute + 1 kg solvent → लगभग 1 m molal concentration नहीं, 1 mol kg⁻¹ है।","m और M को प्रश्न में ध्यान से अलग पहचानें।","moles हमेशा substance की मात्रा बताते हैं।","Numerical में kg conversion सबसे आम गलती है।"]],
-["राउल्ट का नियम मुख्यतः किससे संबंधित है?",["वाष्प-दाब","विद्युत अपघटन","परमाणु क्रमांक","pH"],0,["Raoult law आदर्श विलयनों के vapour pressure से संबंधित है।","वाष्प-दाब solvent के mole fraction से जुड़ता है।","आदर्श विलयन में interactions लगभग समान माने जाते हैं।","Non-volatile solute मिलाने पर solvent का vapour pressure घटता है।","Positive और negative deviation आदर्श व्यवहार से विचलन हैं।","Mole fraction dimensionless होता है।","Raoult law solutions chapter का महत्वपूर्ण नियम है।","Vapour pressure और osmotic pressure अलग properties हैं।","अवाष्पशील solute के कारण relative lowering of vapour pressure हो सकता है।","Exam में statement-based questions बनते हैं।"]],
-["हेनरी का नियम किस घटना को समझाता है?",["गैस की द्रव में विलेयता","ठोस का गलना","लवण का आयनीकरण","अम्ल की शक्ति"],0,["Henry law gas solubility in liquid से संबंधित है।","दाब बढ़ने पर सामान्यतः गैस की solubility बढ़ती है।","यह carbonation जैसे उदाहरणों को समझाने में उपयोगी है।","Constant KH gas-solvent system पर निर्भर करता है।","Temperature बढ़ने पर gases की solubility सामान्यतः घटती है।","गहरे समुद्र में high pressure gas solubility को प्रभावित कर सकता है।","सोडा बोतल खोलने पर pressure घटता है और CO₂ बाहर निकलती है।","Henry law और Raoult law अलग परिस्थितियों के नियम हैं।","Gas की partial pressure महत्वपूर्ण हो सकती है।","MCQ में pressure-solubility relation पूछा जाता है।"]],
-["मोल अंश (mole fraction) की सही विशेषता क्या है?",["इसकी इकाई mol L⁻¹ है","यह dimensionless होता है","यह केवल ठोसों के लिए है","यह हमेशा 1 से बड़ा होता है"],1,["Mole fraction dimensionless quantity है।","किसी component का mole fraction = उसके moles / total moles।","सभी components के mole fractions का योग 1 होता है।","Binary solution में x₁ + x₂ = 1।","Mole fraction temperature की तुलना में composition से सीधे जुड़ा है।","यह vapour-pressure relations में उपयोगी है।","Denominator total moles होते हैं।","mole fraction को x से दर्शाया जाता है।","यह molarity या molality की तरह concentration unit नहीं है।","Numerical में total moles पहले निकालना आसान रहता है।"]],
-["Colligative properties किस पर निर्भर करती हैं?",["विलेय के कणों की संख्या पर","विलेय के रंग पर","विलेय के परमाणु क्रमांक पर","केवल solvent के रंग पर"],0,["Colligative properties solute particles की संख्या पर निर्भर करती हैं।","Particles की chemical identity का प्रभाव ideal dilute case में मुख्य नहीं होता।","Relative lowering of vapour pressure एक colligative property है।","Elevation in boiling point colligative property है।","Depression in freezing point colligative property है।","Osmotic pressure भी colligative property है।","Electrolytes अधिक particles बनाकर effect बढ़ा सकते हैं।","Van't Hoff factor particle count correction देता है।","Molecular mass determination में colligative properties उपयोगी हैं।","Concentration कम होने पर dilute-solution assumptions उपयोगी होते हैं।"]],
-["अवाष्पशील विलेय मिलाने पर विलयन का boiling point क्या होता है?",["घटता है","बढ़ता है","अपरिवर्तित रहता है","पहले घटता फिर बढ़ता है"],1,["Non-volatile solute से boiling point elevation होता है।","ΔTb = Kb m (ideal dilute non-electrolyte case)।","Kb ebullioscopic constant है।","m molality है।","Boiling point तब बढ़ता है जब vapour pressure कम हो जाता है।","Electrolyte के लिए Van't Hoff factor जोड़ा जा सकता है।","Solvent-specific Kb होता है।","Concentration बढ़ने पर elevation बढ़ता है।","Water के लिए Kb का अपना मान होता है।","Question में molality और molarity को confuse न करें।"]],
-["हिमांक अवनमन का सही संबंध कौन-सा है?",["ΔTf = Kf m","ΔTf = Kb m","ΔTf = m/Kf","ΔTf = Kf/M"],0,["Freezing point depression का सामान्य संबंध ΔTf = Kf m है।","Kf cryoscopic constant है।","m molality है।","Solute particles solvent के freezing tendency को प्रभावित करते हैं।","Electrolytes के लिए iKf m उपयोग होता है।","Dilute solutions में यह relation उपयोगी है।","Kf solvent-specific constant है।","Freezing point lowering colligative property है।","Molecular mass determination में इसका उपयोग होता है।","Sign convention में depression की magnitude positive ΔTf ली जाती है।"]],
-["परासरण (osmosis) में solvent molecules किस दिशा में जाते हैं?",["कम solvent concentration से अधिक solvent concentration की ओर, semipermeable membrane के पार","केवल solute की ओर बिना membrane","हमेशा gas की ओर","किसी दिशा में नहीं"],0,["Osmosis में solvent semipermeable membrane से गुजरता है।","यह solvent chemical potential difference से जुड़ी घटना है।","Dilute solution से concentrated solution की ओर solvent का net flow होता है।","Membrane solute particles को रोक सकती है।","Osmotic pressure वह external pressure है जो osmosis रोकता है।","Biological membranes में osmosis महत्वपूर्ण है।","Plant cells में turgor से संबंध है।","Reverse osmosis में बाहरी pressure लगाया जाता है।","Water purification में reverse osmosis का उपयोग होता है।","Isotonic solutions में net osmosis नहीं होता।"]],
-["परासरण दाब (osmotic pressure) किस प्रकार की property है?",["Colligative","Nuclear","Magnetic","Optical"],0,["Osmotic pressure colligative property है।","Dilute solution के लिए π = CRT लिखा जा सकता है।","C concentration in molar form है।","R gas constant है।","T absolute temperature है।","Electrolytes में Van't Hoff factor i शामिल हो सकता है।","Osmotic pressure molecular mass determination में उपयोगी है।","Biological systems में osmotic pressure महत्वपूर्ण है।","Temperature Kelvin में लेना चाहिए।","π pressure की इकाई में व्यक्त होता है।"]],
-["वैन्ट हॉफ गुणांक (i) का उपयोग मुख्यतः किसलिए किया जाता है?",["Electrolyte/non-electrolyte particle effects को account करने के लिए","केवल रंग मापने के लिए","केवल pH मापने के लिए","केवल घनत्व मापने के लिए"],0,["i observed particle effect और expected particle effect का correction देता है।","Dissociation में i सामान्यतः 1 से अधिक हो सकता है।","Association में i सामान्यतः 1 से कम हो सकता है।","Non-electrolyte ideal case में i लगभग 1 होता है।","Boiling elevation में iKb m उपयोग होता है।","Freezing depression में iKf m उपयोग होता है।","Osmotic pressure में iCRT उपयोगी है।","Degree of dissociation से i जोड़ा जा सकता है।","Molecular association molar mass estimation को प्रभावित कर सकती है।","Exam में i की दिशा पहचानना महत्वपूर्ण है।"]],
-["आदर्श विलयन के लिए कौन-सा कथन सही है?",["ΔHmix = 0 और ΔVmix = 0","ΔHmix हमेशा बहुत अधिक positive","ΔVmix हमेशा negative","केवल gases ideal हो सकती हैं"],0,["Ideal solution में heat of mixing लगभग zero माना जाता है।","Volume change on mixing भी zero माना जाता है।","A-B interactions लगभग A-A और B-B के समान होते हैं।","Raoult law पूरे composition range में लागू हो सकता है।","Ideal solution concept वास्तविक systems के approximation में उपयोगी है।","Benzene-toluene एक निकट-आदर्श उदाहरण माना जाता है।","Strong hydrogen bonding अक्सर ideality से deviation दे सकती है।","Ideal solution में enthalpy of mixing zero होती है।","Ideal और dilute एक ही शब्द नहीं हैं।","MCQ में ΔHmix और ΔVmix दोनों पूछे जा सकते हैं।"]],
-["Positive deviation from Raoult's law कब अपेक्षित है?",["A-B interactions अपेक्षाकृत कमजोर हों","A-B interactions बहुत मजबूत हों","जब solution में कोई solvent न हो","केवल solids में"],0,["Positive deviation में observed vapour pressure ideal value से अधिक होता है।","A-B attraction कमजोर होने पर molecules आसानी से escape करते हैं।","Positive deviation में ΔHmix अक्सर positive हो सकता है।","Minimum boiling azeotrope बन सकता है।","Negative deviation इसके विपरीत stronger A-B interactions से जुड़ता है।","Hydrogen bonding बदलने से deviation हो सकता है।","Raoult plot ideal line से ऊपर जा सकता है।","Composition के अनुसार deviation की मात्रा बदलती है।","Azeotrope में vapour और liquid composition समान हो सकता है।","Statement questions में interaction strength महत्वपूर्ण clue है।"]],
-["Negative deviation from Raoult's law का कारण क्या हो सकता है?",["A-B attraction अपेक्षाकृत मजबूत होना","A-B attraction बिल्कुल न होना","केवल pressure zero होना","केवल रंग बदलना"],0,["Negative deviation में vapour pressure ideal value से कम होता है।","Strong A-B attraction molecules को liquid phase में रोकता है।","ΔHmix अक्सर negative हो सकता है।","Maximum boiling azeotrope संभव है।","Hydrogen bonding strong होने पर negative deviation देखा जा सकता है।","Raoult law से downward deviation मिलता है।","Liquid phase stability बढ़ती है।","Positive deviation इसका opposite behavior है।","Azeotropic systems में simple distillation limitation हो सकती है।","Interaction comparison MCQ का key point है।"]],
-["ppm का उपयोग सामान्यतः किस प्रकार की सांद्रता व्यक्त करने में होता है?",["बहुत कम concentration","बहुत अधिक pressure","केवल molarity","केवल तापमान"],0,["ppm = parts per million है।","Trace concentration व्यक्त करने में उपयोगी है।","Water contaminants की concentration में ppm common है।","1 ppm का अर्थ context के अनुसार 10⁻⁶ fraction हो सकता है।","Mass-based ppm dilute aqueous systems में अक्सर mg/L के करीब होता है।","ppm dimensionless ratio concept है।","Environmental chemistry में ppm बहुत उपयोगी है।","ppb इससे भी छोटी concentration के लिए उपयोगी है।","Unit conversion में basis समझना जरूरी है।","Exam में ppm और percentage का relation पूछा जा सकता है।"]],
-["यदि किसी विलयन की मोलरता तापमान बढ़ने पर बदलती है, तो मुख्य कारण क्या है?",["विलयन का आयतन बदल सकता है","विलेय के मोल अचानक बदल जाते हैं","परमाणु संख्या बदल जाती है","विलेय गायब हो जाता है"],0,["Temperature volume को प्रभावित कर सकता है।","Molarity volume-based concentration है।","Solute moles सामान्यतः तापमान से नहीं बदलते।","Thermal expansion से volume बढ़ सकता है।","इसी कारण molarity temperature-dependent है।","Molality mass-based होने के कारण comparatively temperature independent है।","Concentration comparisons में temperature condition लिखना उपयोगी है।","Standard solutions में temperature control महत्वपूर्ण हो सकता है।","Dilution calculations में volume units सही रखें।","Conceptual MCQ में molarity vs molality प्रमुख contrast है।"]],
-["निम्न में से कौन-सा solvent का vapour pressure कम होने का परिणाम है?",["Boiling point बढ़ सकता है","Boiling point निश्चित रूप से घटता है","Freezing point हमेशा बढ़ता है","कोई प्रभाव नहीं"],0,["Boiling तब होता है जब vapour pressure external pressure के बराबर हो।","Solute से vapour pressure कम होने पर उस equality तक पहुँचने के लिए अधिक temperature चाहिए।","इससे boiling point elevation होता है।","Non-volatile solute इसका सामान्य उदाहरण है।","यह colligative behavior से जुड़ा है।","Raoult law vapour pressure lowering को समझाता है।","ΔTb concentration पर निर्भर कर सकता है।","Kb solvent-specific constant है।","Electrolytes particle number बढ़ा सकते हैं।","Exam में cause-effect chain पूछी जा सकती है।"]],
-["संतृप्त विलयन (saturated solution) से क्या तात्पर्य है?",["दिए गए तापमान पर अधिक solute घुलने की सीमा तक पहुँचा विलयन","जिसमें solvent नहीं हो","जिसमें केवल gas हो","जिसका रंग गहरा हो"],0,["Saturated solution में given conditions पर dissolution equilibrium होता है।","Temperature बदलने पर solubility बदल सकती है।","Undissolved solute के साथ dynamic equilibrium हो सकता है।","Unsaturated solution और अधिक solute घोल सकता है।","Supersaturated solution equilibrium से अधिक dissolved solute रख सकता है।","Solubility solvent-solute interaction पर निर्भर है।","Pressure का प्रभाव gases पर अधिक महत्वपूर्ण होता है।","Crystallization saturated solutions से संबंधित है।","Temperature dependence से recrystallization संभव है।","MCQ में saturated vs unsaturated distinction पूछा जाता है।"]],
-["Reverse osmosis में सामान्यतः क्या किया जाता है?",["Osmotic pressure से अधिक बाहरी pressure लगाकर solvent को उल्टी दिशा में प्रवाहित कराया जाता है","केवल heating की जाती है","केवल gas pressure घटाया जाता है","solute को freeze किया जाता है"],0,["Reverse osmosis में external pressure लगाया जाता है।","Applied pressure osmotic pressure से अधिक होना चाहिए।","Water purification में RO widely used है।","Semipermeable membrane महत्वपूर्ण है।","Dissolved salts membrane द्वारा largely retained होते हैं।","Direction natural osmosis के विपरीत होती है।","RO desalination में उपयोगी है।","Membrane selectivity महत्वपूर्ण factor है।","Energy pressure generation में लगती है।","Conceptual question में pressure direction key clue है."]],
-["विलेय के association के कारण van't Hoff factor सामान्यतः कैसा हो सकता है?",["1 से कम","1 से अधिक","हमेशा 2","हमेशा 0"],0,["Association particles की effective संख्या घटाती है।","इसलिए observed colligative effect अपेक्षा से कम हो सकता है।","Van't Hoff factor 1 से कम आ सकता है।","Acetic acid association का classical example है।","Dimerization particle count घटाती है।","Molar mass experimental value प्रभावित हो सकती है।","Dissociation इसके विपरीत particle count बढ़ाती है।","Association में i < 1 का clue याद रखें।","Formula में i को multiply किया जाता है।","Exam में association/dissociation की तुलना महत्वपूर्ण है."]]
-];
+      const correctCount = testData.questions.filter(q => q.status === "correct").length;
+      const wrongCount = testData.questions.filter(q => q.status === "wrong").length;
+      const skippedCount = testData.questions.filter(q => q.status === "skipped").length;
 
-let qi=0,ans=Array(TOTAL).fill(null),time=TIME,timerHandle=null,running=false,pendingAction=null,reviewIndex=0;
-let saved=JSON.parse(localStorage.getItem('gyankshetraSaved')||'[]');
-let currentLang=localStorage.getItem('gyankshetraLang')||'hi';
-const LANG={
-hi:{resume:'Resume Test',qq:'Question',recent:'हाल ही में सहेजा गया',mode:'पुनः प्रयास मोड',hint:'पुनः प्रयास मोड ON है। समाधान देखने के लिए मोड OFF करें या प्रश्न हल करें।',viewSol:'समाधान देखें',hideSol:'समाधान छिपाएँ',corrIs:'सही उत्तर है:',sol:'समाधान',keyp:'मुख्य बिंदु',selLang:'भाषा चुनें',del:'🗑 Saved से हटाएँ',dHome:'Home',dTests:'Test Series',dQuiz:'Quiz/Test',dPyq:'PYQ Practice',dSaved:'Saved',dStudy:'Study Material',dSetting:'Setting',home:'Home',tests:'Tests',quiz:'Quiz',saved:'Saved',studyNav:'Study Material',study:'Study Material',settings:'Setting',language:'भाषा',notes:'Notes',ncert:'Ncert Books',papers:'Previous Papers',soon:'जल्द उपलब्ध होगा।',q:'प्रश्न',submit:'Submit',prev:'← पिछला',next:'अगला →',analysis:'📚 Analysis देखें',analysisClose:'📚 Analysis बंद करें',review:'📖 Review',reattempt:'🔁 Reattempt',brand:'Learning • Practice • Success',hello:'नमस्ते',student:'विद्यार्थी',savedTitle:'Saved Questions',empty:'अभी कोई Saved Question नहीं है।<br>⭐ से प्रश्न सेव करें।',remove:'★ Saved से हटाएँ',yours:'आपका उत्तर',right:'सही उत्तर',none:'नहीं दिया',marks:'अंक',correct:'सही',wrong:'गलत',skipped:'छोड़े गए'},
-en:{resume:'Resume Test',qq:'Question',recent:'Recently saved',mode:'Re-attempt mode',hint:'Re-attempt mode is ON. Turn OFF the mode or answer the question to see the solution.',viewSol:'View Solution',hideSol:'Hide Solution',corrIs:'Correct answer is:',sol:'SOLUTION',keyp:'Key Points',selLang:'Select Language',del:'🗑 Remove from Saved',dHome:'Home',dTests:'Test Series',dQuiz:'Quiz/Test',dPyq:'PYQ Practice',dSaved:'Saved',dStudy:'Study Material',dSetting:'Settings',home:'Home',tests:'Tests',quiz:'Quiz',saved:'Saved',studyNav:'Study Material',study:'Study Material',settings:'Settings',language:'Language',notes:'Notes',ncert:'NCERT Books',papers:'Previous Papers',soon:'Coming soon.',q:'Question',submit:'Submit',prev:'← Previous',next:'Next →',analysis:'📚 View Analysis',analysisClose:'📚 Close Analysis',review:'📖 Review',reattempt:'🔁 Reattempt',brand:'Learning • Practice • Success',hello:'Hello',student:'Student',savedTitle:'Saved Questions',empty:'No saved questions yet.<br>Save a question with the ⭐ star.',remove:'★ Remove from Saved',yours:'Your answer',right:'Correct answer',none:'Not answered',marks:'Marks',correct:'Correct',wrong:'Wrong',skipped:'Skipped'},
-bh:{resume:'टेस्ट फेरु शुरू करीं',qq:'Question',recent:'हाल में सेव कइल',mode:'फेरु से कोसिस मोड',hint:'फेरु से कोसिस मोड ON बा। समाधान देखे खातिर मोड OFF करीं भा सवाल हल करीं।',viewSol:'समाधान देखीं',hideSol:'समाधान छिपाईं',corrIs:'सही जवाब बा:',sol:'समाधान',keyp:'मुख्य बात',selLang:'भाषा चुनीं',del:'🗑 सेव से हटाईं',dHome:'होम',dTests:'टेस्ट सीरीज',dQuiz:'क्विज/टेस्ट',dPyq:'PYQ अभ्यास',dSaved:'सेव्ड',dStudy:'पढ़ाई सामग्री',dSetting:'सेटिंग',home:'होम',tests:'टेस्ट',quiz:'क्विज',saved:'सेव्ड',studyNav:'पढ़ाई सामग्री',study:'पढ़ाई सामग्री',settings:'सेटिंग',language:'भाषा',notes:'नोट्स',ncert:'एनसीईआरटी किताब',papers:'पिछला पेपर',soon:'जल्दी आ जाई।',q:'सवाल',submit:'जमा करीं',prev:'← पिछला',next:'अगिला →',analysis:'📚 विश्लेषण देखीं',analysisClose:'📚 विश्लेषण बंद करीं',review:'📖 समीक्षा',reattempt:'🔁 फेरु से टेस्ट',brand:'सीखी • अभ्यास • सफलता',hello:'नमस्कार',student:'विद्यार्थी',savedTitle:'सेव कइल सवाल',empty:'अभी कवनो सवाल सेव नइखे।<br>⭐ से सवाल सेव करीं।',remove:'★ सेव से हटाईं',yours:'रउआ जवाब',right:'सही जवाब',none:'नइखे दिहल',marks:'अंक',correct:'सही',wrong:'गलत',skipped:'छोड़ल गइल'}};
-function L(k){return (LANG[currentLang]&&LANG[currentLang][k])||LANG.hi[k]||k}
-function applyLanguage(){document.documentElement.lang=currentLang==='bh'?'bho':currentLang;document.querySelectorAll('[data-k]').forEach(e=>e.textContent=L(e.dataset.k));document.querySelectorAll('input[name="lang"]').forEach(r=>r.checked=r.value===currentLang);updateProfile()}
-function setLanguage(l){currentLang=l;localStorage.setItem('gyankshetraLang',l);applyLanguage();if(running)render();if(reviewOpen())renderReview();if($('saved').classList.contains('active'))renderSaved();if(viewerOpen())renderViewer();updateResume()}
-function toggleDrawer(){$('drawer').classList.toggle('open')}
-function nav(id){$('drawer').classList.remove('open');go(id)}
-function sub(id,arr){const e=$(id),o=!e.classList.contains('open');e.classList.toggle('open',o);$(arr).textContent=o?'▾':'▸'}
-function soon(){alert(L('soon'))}
-function users(){const m=JSON.parse(localStorage.getItem('gyankshetraUsers')||'{}');const id=localStorage.getItem('gyankshetraUserId');if(id&&!m[id])m[id]=localStorage.getItem('gyankshetraUserName')||'';return m}
-function getUser(){const id=localStorage.getItem('gyankshetraUserId')||'';return{name:localStorage.getItem('gyankshetraUserName')||'',id,logged:!!id&&localStorage.getItem('gyankshetraLoggedIn')!=='0'}}
-let cur='home',lastScreen='home';
-function toggleSavedNav(){cur==='saved'?go(lastScreen):go('saved')}
-function go(id){if(cur==='quiz'&&id!=='quiz')pauseQuiz();if(cur!==id&&cur!=='saved'&&cur!=='profile')lastScreen=cur==='quiz'?'home':cur;cur=id;document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.bottom button').forEach(b=>b.classList.remove('active'));const m={home:'navHome',tests:'navTests',practice:'navPractice',saved:'navSaved',study:'navStudy'};if(m[id])$(m[id]).classList.add('active');if(id==='saved')openSaved();updateProfile();scrollTo(0,0)}
-function requireUser(a){if(getUser().logged)a();else{pendingAction=a;openAuth()}}
-let authMode='register';
-function openAuth(mode){authMode=mode||(Object.keys(users()).length?'login':'register');renderAuth();$('loginModal').classList.add('open');setTimeout(()=>$('nameInput').focus(),100)}
-function renderAuth(){const r=authMode==='register',has=Object.keys(users()).length>0;$('authTitle').textContent=r?'🎓 नया खाता':'🔐 Login';$('authHelp').textContent=r?'अपना नाम दर्ज करें। आपकी Unique ID अपने-आप बन जाएगी।':'अपनी Unique ID दर्ज करें।';$('authLabel').textContent=r?'👤 आपका नाम':'🆔 Unique ID';$('nameInput').value='';$('nameInput').placeholder=r?'जैसे: Arbind Kumar':'जैसे: @01-ARBIND';$('authBtn').textContent=r?'शुरू करें →':'Login →';$('authBtn').onclick=r?saveUser:loginById;$('authSwitch').textContent=r?'पहले से ID है? Login करें':'नया हूँ? नाम से ID बनाएँ';$('authSwitch').style.display=(r&&!has)?'none':'block'}
-function switchAuth(){authMode=authMode==='register'?'login':'register';renderAuth()}
-function loginById(){const e=$('nameInput').value.trim().toUpperCase(),m=users(),id=Object.keys(m).find(k=>k.toUpperCase()===e);if(!id){alert('गलत Unique ID।');return}localStorage.setItem('gyankshetraUserId',id);localStorage.setItem('gyankshetraUserName',m[id]);localStorage.setItem('gyankshetraLoggedIn','1');$('loginModal').classList.remove('open');updateProfile();const a=pendingAction;pendingAction=null;if(a)a()}
-function logout(){pauseQuiz();localStorage.setItem('gyankshetraLoggedIn','0');updateProfile();go('home')}
-function toggleProfile(){cur==='profile'?go(lastScreen):go('profile')}
-function closeAuth(){$('loginModal').classList.remove('open');pendingAction=null}
-function makeId(name,n){const w=name.trim().split(/\s+/)[0].replace(/[^\p{L}\p{N}]+/gu,'').toUpperCase();return '@'+String(n).padStart(2,'0')+'-'+w}
-function saveUser(){const n=$('nameInput').value.trim();if(!n){alert('कृपया अपना नाम दर्ज करें।');return}const num=Number(localStorage.getItem('gyankshetraNextNumber')||1),id=makeId(n,num),m=users();m[id]=n;localStorage.setItem('gyankshetraUsers',JSON.stringify(m));localStorage.setItem('gyankshetraUserName',n);localStorage.setItem('gyankshetraUserId',id);localStorage.setItem('gyankshetraNextNumber',String(num+1));localStorage.setItem('gyankshetraLoggedIn','1');$('loginModal').classList.remove('open');updateProfile();const a=pendingAction;pendingAction=null;if(a)a()}
-function updateProfile(){const u=getUser();$('profileName').textContent=u.logged?u.name:'Gyankshetra Student';$('profileId').textContent=u.logged?'🆔 '+u.id:'Login करें';$('welcome').textContent=L('hello')+' '+(u.logged?u.name:L('student'))+' 👋';$('profileLoginBtn').style.display=u.logged?'none':'block';$('profileLogoutBtn').style.display=u.logged?'block':'none';const h=JSON.parse(localStorage.getItem('gyankshetraHistory')||'[]');$('historyText').textContent=h.length?`${h.length} टेस्ट पूरे किए • पिछला: ${h[h.length-1].marks}/20`:'अभी कोई टेस्ट नहीं दिया गया।';$('bestScore').textContent=h.reduce((m,x)=>Math.max(m,Number(x.marks)||0),0)+' / 20';updateResume()}
-function startQuiz(){qi=0;ans=Array(TOTAL).fill(null);time=TIME;reviewIndex=0;running=true;clearInterval(timerHandle);go('quiz');render();saveProgress();timerHandle=setInterval(tick,1000)}
-function pKey(){return 'gyankshetraProgress_'+(localStorage.getItem('gyankshetraUserId')||'')}
-function saveProgress(){if(running)localStorage.setItem(pKey(),JSON.stringify({qi,ans,time}))}
-function getProgress(){try{const p=JSON.parse(localStorage.getItem(pKey())||'null');return p&&Array.isArray(p.ans)&&p.time>0?p:null}catch(e){return null}}
-function pauseQuiz(){if(!running)return;saveProgress();running=false;clearInterval(timerHandle);timerHandle=null}
-function tick(){if(time>0){time--;renderTimer();if(time%5===0)saveProgress()}else finish()}
-function resumeQuiz(){const p=getProgress();if(!p){startQuiz();return}qi=p.qi;ans=p.ans;time=p.time;running=true;clearInterval(timerHandle);go('quiz');render();timerHandle=setInterval(tick,1000)}
-function updateResume(){const p=getUser().logged?getProgress():null;document.querySelectorAll('.resumebtn').forEach(b=>{b.style.display=p?'block':'none';if(p)b.textContent='▶ '+L('resume')+' • '+L('q')+' '+(p.qi+1)+'/'+TOTAL+' • '+String(Math.floor(p.time/60)).padStart(2,'0')+':'+String(p.time%60).padStart(2,'0')})}
-function renderTimer(){$('timer').textContent=String(Math.floor(time/60)).padStart(2,'0')+':'+String(time%60).padStart(2,'0')}
-function render(){const q=questions[qi];$('qn').textContent=(qi+1)+'/'+TOTAL;$('question').textContent=q[0];$('options').innerHTML=q[1].map((o,i)=>`<div class="option ${ans[qi]===i?'sel':''}" onclick="choose(${i})">${String.fromCharCode(65+i)}. ${o}</div>`).join('');$('nextBtn').textContent=qi===TOTAL-1?L('submit'):L('next');$('starBtn').textContent=saved.includes(qi)?'★':'☆';renderTimer()}
-function choose(i){ans[qi]=i;saveProgress();render()}
-function next(){if(qi<TOTAL-1){qi++;saveProgress();render()}else finish()}
-function prev(){if(qi>0){qi--;saveProgress();render()}}
-function toggleSave(){const p=saved.indexOf(qi);if(p>=0)saved.splice(p,1);else saved.push(qi);localStorage.setItem('gyankshetraSaved',JSON.stringify(saved));render()}
-let vMode='saved',vOrder=[],vi=0,reMode=true,vAtt={},solOpen=false,qFilter='';
-function savedItems(){return [...saved].reverse().filter(i=>!qFilter||questions[i][0].includes(qFilter))}
-function toggleSearch(){const e=$('sq'),o=e.style.display==='none';e.style.display=o?'block':'none';if(o)e.focus();else{e.value='';qFilter='';renderSaved()}}
-function openSaved(){closeViewer();renderSaved()}
-function renderSaved(){const a=savedItems();$('savedList').innerHTML=a.length?a.map(i=>`<div class="scard" onclick="openViewer(${i})"><b>${questions[i][0]}</b><small>${L('q')} ${i+1}</small><button class="dots" onclick="dotsClick(event,${i})">⋮</button></div>`).join(''):`<div class="savedempty">${L('empty')}</div>`;if(viewerOpen())renderViewer()}
-function dotsClick(e,i){e.stopPropagation();const c=e.target.parentNode,had=c.querySelector('.dmenu');document.querySelectorAll('.dmenu').forEach(x=>x.remove());if(had)return;const m=document.createElement('div');m.className='dmenu';m.textContent=L('del');m.onclick=ev=>{ev.stopPropagation();saved=saved.filter(x=>x!==i);localStorage.setItem('gyankshetraSaved',JSON.stringify(saved));renderSaved()};c.appendChild(m)}
-document.addEventListener('click',()=>document.querySelectorAll('.dmenu').forEach(x=>x.remove()));
-function viewerOpen(){return $('viewer').classList.contains('open')}
-function openViewer(i){vMode='saved';vOrder=savedItems();vi=Math.max(0,vOrder.indexOf(i));solOpen=false;$('viewer').classList.add('open');renderViewer();$('vbody').scrollTop=0}
-function closeViewer(){$('viewer').classList.remove('open');langSheet(false)}
-function langSheet(o){$('lsheet').classList.toggle('open',o);$('lsTitle').textContent=L('selLang')}
-function toggleMode(){reMode=!reMode;if(reMode)vAtt={};solOpen=false;renderViewer()}
-function vChoose(k){const i=vOrder[vi];if(vMode==='saved'&&reMode&&vAtt[i]===undefined){vAtt[i]=k;renderViewer()}}
-function vStar(){const i=vOrder[vi];saved=saved.includes(i)?saved.filter(x=>x!==i):[...saved,i];localStorage.setItem('gyankshetraSaved',JSON.stringify(saved));renderViewer()}
-function vSol(){const i=vOrder[vi];if(vMode==='review'||!reMode||vAtt[i]!==undefined){solOpen=!solOpen;renderViewer()}}
-function vGo(d){const n=vi+d;if(n<0||n>=vOrder.length)return;vi=n;solOpen=false;renderViewer();$('vbody').scrollTop=0}
-function showReview(){vMode='review';vOrder=[...Array(TOTAL).keys()];vi=0;solOpen=false;$('viewer').classList.add('open');renderViewer();$('vbody').scrollTop=0}
-function renderViewer(){const i=vOrder[vi];if(i===undefined){closeViewer();return}const q=questions[i],rv=vMode==='review',att=rv?ans[i]:vAtt[i],tried=att!==undefined&&att!==null,reveal=rv||!reMode||tried;
-$('vtitle').textContent=rv?L('review'):L('savedTitle');$('vmode').textContent=rv?(vi+1)+' / '+vOrder.length:L('mode');$('sw').style.display=rv?'none':'inline-block';$('sw').classList.toggle('on',reMode);
-const opts=q[1].map((o,k)=>{const c=reveal&&k===q[2]?'ok':(tried&&k===att?'bad':'');return `<div class="vopt ${c}" onclick="vChoose(${k})"><i>${k+1}.</i>${o}<span class="mk">${c==='ok'?'✓':(c==='bad'?'✗':'')}</span></div>`}).join('');
-const status=rv?`<p style="font-size:14px;margin:12px 0 0">${tried?(att===q[2]?'✅ '+L('correct'):'❌ '+L('wrong')):'⏭ '+L('skipped')} • ${L('yours')}: <b>${tried?(att+1)+'. '+q[1][att]:L('none')}</b></p>`:'';
-const sol=solOpen&&reveal?`<div class="vsolbox"><b>${L('corrIs')} ${q[2]+1}</b><h4>${L('sol')}</h4><p><b>${L('right')} – ${q[1][q[2]]}</b></p><h3>🔑 ${L('keyp')}</h3><ul>${q[3].map(x=>`<li>${x}</li>`).join('')}</ul></div>`:'';
-$('vbody').innerHTML=`<div class="vmeta"><span>${L('q')} ${i+1}</span><button onclick="vStar()">${saved.includes(i)?'★':'☆'}</button></div><div class="vq" style="cursor:pointer" onclick="vSol()">${q[0]}</div>${opts}${status}<button class="vsol ${reveal?'':'dis'}" onclick="vSol()">${solOpen&&reveal?L('hideSol'):L('viewSol')}</button>${reveal?'':`<div class="vhint">${L('hint')}</div>`}${sol}`;
-$('vprev').style.visibility=vi===0?'hidden':'visible';$('vnext').style.visibility=vi===vOrder.length-1?'hidden':'visible'}
-function starSaved(i,b){const on=saved.includes(i);saved=on?saved.filter(x=>x!==i):[...saved,i];localStorage.setItem('gyankshetraSaved',JSON.stringify(saved));b.textContent=on?'☆':'★'}
-function unsave(i){saved=saved.filter(x=>x!==i);localStorage.setItem('gyankshetraSaved',JSON.stringify(saved));renderSaved()}
-function finish(){if(!running)return;localStorage.removeItem(pKey());running=false;clearInterval(timerHandle);timerHandle=null;const c=ans.filter((a,i)=>a===questions[i][2]).length,w=ans.filter((a,i)=>a!==null&&a!==questions[i][2]).length,s=ans.filter(a=>a===null).length;const h=JSON.parse(localStorage.getItem('gyankshetraHistory')||'[]');h.push({date:new Date().toLocaleString('hi-IN'),test:'विलयन',marks:c,correct:c,wrong:w,skipped:s});localStorage.setItem('gyankshetraHistory',JSON.stringify(h));$('score').textContent=Math.round(c/TOTAL*100)+'%';$('marks').textContent=c+' / 20';$('correct').textContent=c;$('wrong').textContent=w;$('skip').textContent=s;go('result')}
-let analysisOpen=false;
-function reviewOpen(){return $('review').classList.contains('active')}
-function renderReview(){const q=questions[reviewIndex],a=ans[reviewIndex],ok=a===q[2];$('reviewCard').innerHTML=`<small>${L('q')} ${reviewIndex+1} / ${TOTAL}</small><h3 style="cursor:pointer" onclick="toggleAnalysis()">${q[0]}</h3>${q[1].map((o,i)=>`<div class="option ${i===q[2]?'rv-ok':(i===a?'rv-bad':'')}">${String.fromCharCode(65+i)}. ${o}${i===q[2]?' ☑️':(i===a?' ❌':'')}</div>`).join('')}<p class="reviewstate ${ok?'ok':'bad'}"><b>${ok?'✅ '+L('correct'):'❌ '+L('wrong')}</b></p><p>${L('right')}: <b>${String.fromCharCode(65+q[2])}. ${q[1][q[2]]}</b><br>${L('yours')}: <b>${a===null?L('none'):String.fromCharCode(65+a)+'. '+q[1][a]}</b></p>`;$('analysisBox').innerHTML='<ol>'+q[3].map(x=>`<li>${x}</li>`).join('')+'</ol>';$('analysisBox').classList.toggle('open',analysisOpen);$('analysisBtn').textContent=analysisOpen?L('analysisClose'):L('analysis')}
-function toggleAnalysis(){analysisOpen=!analysisOpen;$('analysisBox').classList.toggle('open',analysisOpen);$('analysisBtn').textContent=analysisOpen?L('analysisClose'):L('analysis')}
-function reviewNext(){if(reviewIndex<TOTAL-1){reviewIndex++;renderReview()}}
-function reviewPrev(){if(reviewIndex>0){reviewIndex--;renderReview()}}
-function reattempt(){requireUser(startQuiz)}
-const SWIPE_RIGHT_IS_NEXT=false;
-(function(){let x0=0,y0=0;const w=$('reviewWrap');w.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});w.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.3)return;const right=dx>0;if(right===SWIPE_RIGHT_IS_NEXT)reviewNext();else reviewPrev();const c=$('reviewCard');c.classList.remove('slide');void c.offsetWidth;c.classList.add('slide')},{passive:true})})();
-(function(){let x0=0,y0=0;const w=$('vbody');w.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});w.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.3)return;vGo((dx>0)===SWIPE_RIGHT_IS_NEXT?1:-1)},{passive:true})})();
-applyLanguage();go('home');
-</script>
-<!-- GYANKSHETRA_GENERATED_CONTENT_START -->
-<script>
-(function(){
-  fetch("content/generated_tests.json?ts="+Date.now())
-    .then(r=>r.json())
-    .then(items=>{
-      const tests=document.getElementById("tests");
-      const practice=document.getElementById("practice");
+      document.getElementById("marks-val").innerText = `${correctCount} / ${testData.totalMarks}`;
+      document.getElementById("correct-val").innerText = correctCount;
+      document.getElementById("wrong-val").innerText = wrongCount;
+      document.getElementById("skipped-val").innerText = skippedCount;
 
-      if(!tests && !practice) return;
+      const percentage = Math.round((correctCount / testData.totalMarks) * 100);
+      document.getElementById("percentage-score").innerText = percentage + "%";
+    }
 
-      function addBox(parent,title,items){
-        if(!parent || !items.length) return;
+    // कैटेगरी के अनुसार फ़िल्टर करना
+    function filterQuestions(filterType) {
+      const container = document.getElementById("questions-container");
+      const reviewSection = document.getElementById("review-section");
+      reviewSection.style.display = "block";
 
-        let old=parent.querySelector(
-          '[data-generated-box="'+title+'"]'
-        );
+      let filtered = testData.questions;
+      if (filterType !== 'all') {
+        filtered = testData.questions.filter(q => q.status === filterType);
+        document.getElementById("review-title").innerText = `${filterType.toUpperCase()} प्रश्न (${filtered.length})`;
+      } else {
+        document.getElementById("review-title").innerText = "सभी प्रश्न";
+      }
 
-        if(old) old.remove();
+      container.innerHTML = "";
 
-        let box=document.createElement("div");
-        box.setAttribute("data-generated-box",title);
-        box.className="card";
+      if (filtered.length === 0) {
+        container.innerHTML = "<p style='color:#777; padding: 10px 0;'>इस श्रेणी में कोई प्रश्न नहीं है।</p>";
+        return;
+      }
 
-        let h=document.createElement("h3");
-        h.textContent=title;
-        box.appendChild(h);
+      filtered.forEach((q) => {
+        const card = document.createElement("div");
+        card.className = "question-card";
 
-        items.forEach(function(x){
-          let c=document.createElement("div");
-          c.style.cssText=
-            "background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:8px 0";
-
-          let b=document.createElement("b");
-          b.textContent=x.title;
-          c.appendChild(b);
-
-          let s=document.createElement("small");
-          s.style.display="block";
-          s.style.margin="5px 0";
-          s.textContent=
-            x.questions+" Questions • "+
-            x.questions+" Marks • "+
-            x.questions+" Minutes • No Negative";
-          c.appendChild(s);
-
-          let a=document.createElement("a");
-          a.href=x.url;
-          a.textContent="Start Test";
-          a.style.cssText=
-            "display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:bold";
-          c.appendChild(a);
-
-          box.appendChild(c);
+        let optionsHtml = "";
+        q.options.forEach((opt, idx) => {
+          const isCorrect = idx === q.correctOption;
+          optionsHtml += `
+            <li class="option-item ${isCorrect ? 'correct' : ''}">
+              <span>${idx + 1}. ${opt}</span>
+              ${isCorrect ? '<span>✔</span>' : ''}
+            </li>
+          `;
         });
 
-        parent.appendChild(box);
-      }
-
-      addBox(
-        tests,
-        "🤖 AI Generated Tests",
-        items.filter(x=>x.type==="test"||x.type==="mock")
-      );
-
-      addBox(
-        practice,
-        "🎯 AI Generated Quiz",
-        items.filter(x=>x.type==="quiz")
-      );
-
-      addBox(
-        practice,
-        "⚡ AI Generated Practice",
-        items.filter(x=>x.type==="practice")
-      );
-
-      addBox(
-        practice,
-        "🎯 PYQ Practice",
-        items.filter(x=>x.type==="pyq")
-      );
-    })
-    .catch(()=>{});
-})();
-</script>
-<!-- GYANKSHETRA_GENERATED_CONTENT_END -->
-
-
-<!-- GYANKSHETRA_AUTO_GENERATED_TESTS -->
-<script>
-(function(){
-
-  fetch('content/generated_tests.json')
-    .then(function(r){
-      if(!r.ok) return [];
-      return r.json();
-    })
-    .then(function(items){
-
-      if(!Array.isArray(items)) return;
-
-      var testsBox =
-        document.getElementById('tests');
-
-      var practiceBox =
-        document.getElementById('practice');
-
-      if(!testsBox && !practiceBox) return;
-
-      function addCard(box,item){
-
-        if(!box) return;
-
-        var card =
-          document.createElement('div');
-
-        card.className = 'card';
-
-        var title =
-          document.createElement('b');
-
-        title.textContent =
-          (item.emoji || '📝')
-          + ' '
-          + item.topic
-          + ' '
-          + item.count
-          + 'Q';
-
-        var small =
-          document.createElement('small');
-
-        small.textContent =
-          item.label
-          + ' • '
-          + item.count
-          + ' Questions';
-
-        var button =
-          document.createElement('button');
-
-        button.className = 'primary';
-
-        button.textContent = 'Start Test';
-
-        button.onclick = function(){
-
-          location.href =
-            item.url;
-
-        };
-
-        card.appendChild(title);
-        card.appendChild(small);
-        card.appendChild(button);
-
-        box.appendChild(card);
-      }
-
-      items.forEach(function(item){
-
-        if(item.box === 'test'){
-
-          addCard(
-            testsBox,
-            item
-          );
-
-        }else{
-
-          addCard(
-            practiceBox,
-            item
-          );
-
-        }
-
+        card.innerHTML = `
+          <div class="question-title">Question ${q.id}: ${q.text}</div>
+          <ul class="option-list">${optionsHtml}</ul>
+          <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+        `;
+        container.appendChild(card);
       });
 
-    })
-    .catch(function(){});
+      reviewSection.scrollIntoView({ behavior: 'smooth' });
+    }
 
-})();
-</script>
+    function toggleReview() {
+      const section = document.getElementById("review-section");
+      if (section.style.display === "block") {
+        section.style.display = "none";
+      } else {
+        filterQuestions('all');
+      }
+    }
 
-</body></html>
+    function triggerReattempt() {
+      alert("टेस्ट फिर से शुरू किया जा रहा है...");
+    }
+
+    // टेलीग्राम चैनल लिंक इंटिग्रेशन
+    function shareToTelegram() {
+      const channelLink = "https://t.me/gyankshetra";
+      const score = document.getElementById("percentage-score").innerText;
+      const marks = document.getElementById("marks-val").innerText;
+
+      const shareText = encodeURIComponent(
+        `🎯 Gyankshetra Quiz Result\n\n` +
+        `👤 विद्यार्थी: ${testData.studentName}\n` +
+        `📊 स्कोर: ${score}\n` +
+        `📝 अंक: ${marks}\n\n` +
+        `चैनल से जुड़ें:`
+      );
+
+      // Telegram शेयर API यूआरएल (जो सीधे आपके चैनल लिंक के साथ शेयर करेगा)
+      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(channelLink)}&text=${shareText}`;
+      window.open(telegramUrl, "_blank");
+    }
+
+    initScreen();
+  </script>
+</body>
+</html>
