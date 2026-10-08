@@ -54,7 +54,6 @@ def send_message(chat_id, text, parse_mode="HTML"):
         return res
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
-        # Fallback to plain text if HTML parsing fails
         try:
             clean_text = re.sub(r'<[^>]+>', '', text)
             return telegram("sendMessage", {"chat_id": chat_id, "text": clean_text})
@@ -245,12 +244,11 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
 
+# Stable supported models
 FALLBACK_MODELS = [
     "gemini-2.5-flash",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro"
+    "gemini-2.0-flash"
 ]
 
 
