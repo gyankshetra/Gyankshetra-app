@@ -7,7 +7,6 @@ import re
 import json
 import time
 import html
-import threading
 import subprocess
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
@@ -31,6 +30,7 @@ TG = "https://api.telegram.org/bot" + BOT_TOKEN
 OFFSET_FILE = "content/telegram_offset.txt"
 REGISTRY_FILE = "content/generated_tests.json"
 STUDY_MATERIAL_FILE = "content/study_material.json"
+SCHEDULE_FILE = "content/scheduled_posts.json"
 
 BATCH = 25
 
@@ -50,8 +50,7 @@ def send_message(chat_id, text, parse_mode="HTML"):
             "parse_mode": parse_mode,
             "disable_web_page_preview": False
         }
-        res = telegram("sendMessage", payload)
-        return res
+        return telegram("sendMessage", payload)
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
         try:
@@ -61,15 +60,42 @@ def send_message(chat_id, text, parse_mode="HTML"):
             return None
 
 
-def schedule_channel_post(chat_id, text, target_timestamp):
-    def worker():
-        now_ts = datetime.now(timezone.utc).timestamp()
-        wait_seconds = target_timestamp - now_ts
-        if wait_seconds > 0:
-            time.sleep(wait_seconds)
-        send_message(chat_id, text, parse_mode="HTML")
+# ------------------------------------------------------- Scheduled posts queue
+# GitHub Actions me process har run ke baad band ho jata hai, isliye
+# scheduled posts ko file me save karte hain aur har run me due posts bhejte hain.
+def _load_queue():
+    try:
+        with open(SCHEDULE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
 
-    threading.Thread(target=worker, daemon=True).start()
+
+def _save_queue(queue):
+    os.makedirs("content", exist_ok=True)
+    with open(SCHEDULE_FILE, "w", encoding="utf-8") as f:
+        json.dump(queue, f, ensure_ascii=False, indent=2)
+
+
+def schedule_channel_post(chat_id, text, target_timestamp):
+    queue = _load_queue()
+    queue.append({"chat_id": chat_id, "text": text, "ts": target_timestamp})
+    _save_queue(queue)
+
+
+def run_due_posts():
+    queue = _load_queue()
+    if not queue:
+        return
+    now = datetime.now(timezone.utc).timestamp()
+    pending = []
+    for p in queue:
+        if p.get("ts", 0) <= now:
+            send_message(p["chat_id"], p["text"], parse_mode="HTML")
+        else:
+            pending.append(p)
+    _save_queue(pending)
 
 
 # ------------------------------------------------------------------ Commands
@@ -95,10 +121,16 @@ def parse_schedule_time(text):
 
     IST = timezone(timedelta(hours=5, minutes=30))
     ist_now = datetime.now(IST)
-    target_dt = ist_now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+    try:
+        target_dt = ist_now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+    except ValueError:
+        return None, clean_text
 
-    schedule_timestamp = target_dt.timestamp()
-    return schedule_timestamp, clean_text
+    # Agar time nikal chuka hai to agle din ka lo
+    if target_dt <= ist_now:
+        target_dt += timedelta(days=1)
+
+    return target_dt.timestamp(), clean_text
 
 
 def parse_command(text):
@@ -116,7 +148,9 @@ def parse_command(text):
     count = 10
     if rest_parts and command != "/notes":
         m = re.fullmatch(r"(\d{1,3})[qQ]?", rest_parts[-1])
-        if m:
+        prev = rest_parts[-2].lower() if len(rest_parts) > 1 else ""
+        # "class 10" ke 10 ko count na samjho
+        if m and prev != "class":
             count = int(m.group(1))
             rest_parts = rest_parts[:-1]
 
@@ -152,8 +186,15 @@ def command_info(command):
 
 
 def extract_metadata(topic_text):
-    class_match = re.search(r'\b(\d{1,2}(?:st|nd|rd|th)?|\bclass\s*\d{1,2})\b', topic_text, flags=re.IGNORECASE)
-    grade = class_match.group(0).strip().upper() if class_match else "GENERAL"
+    # Sirf "class 10" ya "10th" jaisa pattern class mana jayega
+    class_match = re.search(
+        r'\bclass\s*(\d{1,2})\b|\b(\d{1,2})(?:st|nd|rd|th)\b',
+        topic_text, flags=re.IGNORECASE)
+    if class_match:
+        grade = "CLASS " + (class_match.group(1) or class_match.group(2))
+        grade_text = class_match.group(0)
+    else:
+        grade, grade_text = "GENERAL", None
 
     subject_map = [
         ("hindi grammar", "Hindi Grammar"),
@@ -189,12 +230,12 @@ def extract_metadata(topic_text):
             break
 
     clean_topic = topic_text
-    if grade != "GENERAL":
-        clean_topic = re.sub(r'\b' + re.escape(grade) + r'\b', '', clean_topic, flags=re.IGNORECASE)
+    if grade_text:
+        clean_topic = re.sub(re.escape(grade_text), '', clean_topic, count=1, flags=re.IGNORECASE)
     if matched_term:
         clean_topic = re.sub(r'\b' + re.escape(matched_term) + r'\b', '', clean_topic, flags=re.IGNORECASE)
 
-    clean_topic = clean_topic.strip(" -_") or topic_text
+    clean_topic = re.sub(r"\s+", " ", clean_topic).strip(" -_") or topic_text
     return {"class": grade, "subject": found_sub, "topic": clean_topic}
 
 
@@ -244,11 +285,12 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
 
-# Latest 2026 active Gemini models
+# Models env se badal sakte ho: GEMINI_MODELS="model-1,model-2"
+# Naam wahi rakho jo Gemini API ke error message me recommend hota hai.
 FALLBACK_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-2.5-flash",
-    "gemini-2.5-pro"
+    m.strip()
+    for m in os.environ.get("GEMINI_MODELS", "gemini-3.8-flash,gemini-3.1-pro-preview").split(",")
+    if m.strip()
 ]
 
 
@@ -353,13 +395,14 @@ def generate_notes_html(topic):
     raw = ask_gemini(NOTES_PROMPT.replace("TOPIC", topic)).strip()
     raw = re.sub(r"^```(?:html)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
+    safe_topic = html.escape(topic)
 
     return f"""<!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{topic} - Study Notes | Gyankshetra</title>
+    <title>{safe_topic} - Study Notes | Gyankshetra</title>
     <style>
         body {{
             font-family: system-ui, -apple-system, sans-serif;
@@ -415,7 +458,7 @@ def generate_notes_html(topic):
         <button class="print-btn" onclick="window.print()">📥 Download / Print PDF</button>
     </div>
     <div class="header">
-        <h1>📖 {topic}</h1>
+        <h1>📖 {safe_topic}</h1>
         <p style="color: #666; margin: 0;">Gyankshetra AI Study Notes</p>
     </div>
     <div class="content">
@@ -469,7 +512,9 @@ def replace_questions(source, placeholder):
         raise RuntimeError("index.html में 'const questions=' नहीं मिला")
     start = source.find("[", m.end())
     end = _find_matching(source, start, "[", "]") if start >= 0 else -1
-    return source[: m.start()] + "const questions=" + placeholder + source[end + 1 :]
+    if end < 0:
+        raise RuntimeError("index.html में questions array का अंत नहीं मिला")
+    return source[: m.start()] + "const questions=" + placeholder + source[end + 1:]
 
 
 def replace_function(source, name, replacement):
@@ -477,7 +522,9 @@ def replace_function(source, name, replacement):
     if not m:
         raise RuntimeError("index.html में function " + name + "() नहीं मिला")
     end = _find_matching(source, m.end() - 1, "{", "}")
-    return source[: m.start()] + replacement + source[end + 1 :]
+    if end < 0:
+        raise RuntimeError("index.html में function " + name + "() का अंत नहीं मिला")
+    return source[: m.start()] + replacement + source[end + 1:]
 
 
 START_QUIZ = (
@@ -721,17 +768,29 @@ def process_update(update):
 
 def main():
     print("Gyankshetra Telegram Bot started")
-    offset = load_offset()
 
+    # Pehle se queue me rakhi due posts bhejo
+    try:
+        run_due_posts()
+    except Exception as e:
+        print("Error running due posts:", e)
+
+    offset = load_offset()
     try:
         res = telegram("getUpdates", {"offset": offset, "timeout": 10})
-        updates = res.get("result", [])
-        for u in updates:
-            process_update(u)
+        for u in res.get("result", []):
+            # Offset pehle save karo, taaki crash par wahi command dobara na chale
             offset = max(offset, u["update_id"] + 1)
-        save_offset(offset)
+            save_offset(offset)
+            try:
+                process_update(u)
+            except Exception as e:
+                print("process_update failed:", e)
     except Exception as e:
         print("Error fetching updates:", e)
+
+    # Queue, offset aur registry ko repo me commit karo
+    git_publish("Update bot state")
 
 
 if __name__ == "__main__":
