@@ -235,17 +235,18 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 
 नियम:
 1. मुख्य परिभाषाएँ, महत्वपूर्ण सूत्र (Formulas), और मुख्य बिंदु स्पष्ट रूप से हों।
-2. STET / BPSC TRE / Board Exam स्तर के 8-10 महत्वपूर्ण तथ्य और अवधारणाएं शामिल हों।
+2. STET / BPSC TRE / Board Exam स्तर के महत्वपूर्ण तथ्य और अवधारणाएं शामिल हों।
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
 
-
 FALLBACK_MODELS = [
+    "gemini-2.5-flash",
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
     "gemini-2.0-flash-exp",
     "gemini-1.5-pro"
 ]
+
 
 def ask_gemini(prompt, is_json=False):
     from google.genai import types
@@ -268,8 +269,10 @@ def ask_gemini(prompt, is_json=False):
             print(f"Model {model_name} failed: {e}")
             time.sleep(1)
             continue
-            
-raise RuntimeError(f"Gemini API Error: {last_err[:250]}")
+
+    raise RuntimeError(f"Gemini API Error: {last_err[:250]}")
+
+
 def clean_questions(data):
     items = data.get("questions") if isinstance(data, dict) else data
     if not isinstance(items, list):
