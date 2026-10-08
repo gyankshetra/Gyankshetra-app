@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Gyankshetra Telegram bot (Gemini)
-Automatic Quiz Generator & Scheduled Channel Publisher
+Automatic Quiz Generator, Notes Generator & Scheduled Channel Publisher
 """
 import os
 import re
 import json
 import time
 import html
+import threading
 import subprocess
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
@@ -19,9 +20,6 @@ GEMINI_KEY = os.environ["GEMINI_API_KEY"]
 # Telegram Channel ID ya Username
 CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@Gyankshetra")
 
-MODELS = [m for m in [os.environ.get("GEMINI_MODEL", "").strip()] if m]
-FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"]
-
 ALLOWED = {
     x.strip()
     for x in os.environ.get("TELEGRAM_ALLOWED_CHAT_IDS", "").split(",")
@@ -32,6 +30,7 @@ BASE_URL = "https://gyankshetra.github.io/Gyankshetra-app/"
 TG = "https://api.telegram.org/bot" + BOT_TOKEN
 OFFSET_FILE = "content/telegram_offset.txt"
 REGISTRY_FILE = "content/generated_tests.json"
+STUDY_MATERIAL_FILE = "content/study_material.json"
 
 BATCH = 25
 
@@ -43,7 +42,7 @@ def telegram(method, data=None):
     return r.json()
 
 
-def send_message(chat_id, text, parse_mode="Markdown", schedule_timestamp=None):
+def send_message(chat_id, text, parse_mode="Markdown"):
     try:
         payload = {
             "chat_id": chat_id,
@@ -51,24 +50,29 @@ def send_message(chat_id, text, parse_mode="Markdown", schedule_timestamp=None):
             "parse_mode": parse_mode,
             "disable_web_page_preview": False
         }
-        # Schedule Post parameter
-        if schedule_timestamp:
-            payload["schedule_date"] = int(schedule_timestamp)
-
         return telegram("sendMessage", payload)
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
+        return None
+
+
+def schedule_channel_post(chat_id, text, target_timestamp):
+    def worker():
+        now_ts = datetime.now(timezone.utc).timestamp()
+        wait_seconds = target_timestamp - now_ts
+        if wait_seconds > 0:
+            time.sleep(wait_seconds)
+        send_message(chat_id, text)
+
+    threading.Thread(target=worker, daemon=True).start()
 
 
 # ------------------------------------------------------------------ Commands
-COMMANDS = ["/test", "/mock", "/quiz", "/practice", "/pyq"]
+COMMANDS = ["/test", "/mock", "/quiz", "/practice", "/pyq", "/notes"]
 
 
 def parse_schedule_time(text):
-    """
-    Text se time schedule extract karta hai (e.g., '10:00AM', '05:30PM')
-    """
-    match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)', text)
+    match = re.search(r'\b(\d{1,2}):(\d{2})\s*(AM|PM)\b', text, flags=re.IGNORECASE)
     if not match:
         return None, text
 
@@ -81,23 +85,15 @@ def parse_schedule_time(text):
     elif period == "AM" and hours == 12:
         hours = 0
 
-    # Clean text after removing time string
-    clean_text = re.sub(r'\b\d{1,2}:\d{2}\s*(AM|PM|am|pm)\b', '', text, flags=re.IGNORECASE)
+    clean_text = re.sub(r'\b\d{1,2}:\d{2}\s*(AM|PM)\b', '', text, flags=re.IGNORECASE)
     clean_text = re.sub(r'\b(today|publish)\b', '', clean_text, flags=re.IGNORECASE).strip()
 
-    # IST Current Date Calculation
-    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    IST = timezone(timedelta(hours=5, minutes=30))
+    ist_now = datetime.now(IST)
     target_dt = ist_now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
 
-    # Agar time nikal chuka hai, to agle din ke liye schedule hoga
-    if target_dt <= ist_now:
-        target_dt += timedelta(days=1)
-
-    # Convert IST target to UTC Timestamp for Telegram API
-    utc_target = target_dt - timedelta(hours=5, minutes=30)
-    schedule_timestamp = utc_target.timestamp()
-
-    return schedule_timestamp, target_dt.strftime("%d %b %Y, %I:%M %p IST"), clean_text
+    schedule_timestamp = target_dt.timestamp()
+    return schedule_timestamp, clean_text
 
 
 def parse_command(text):
@@ -107,42 +103,94 @@ def parse_command(text):
     command = parts[0].lower().split("@")[0]
     if command not in COMMANDS:
         return None
-    
+
     rest_str = " ".join(parts[1:])
-    
-    # Check for schedule time in command
-    schedule_ts, time_str, cleaned_rest = parse_schedule_time(rest_str)
-    
+    schedule_ts, cleaned_rest = parse_schedule_time(rest_str)
+
     rest_parts = cleaned_rest.split()
     count = 10
-    if rest_parts:
+    if rest_parts and command != "/notes":
         m = re.fullmatch(r"(\d{1,3})[qQ]?", rest_parts[-1])
         if m:
             count = int(m.group(1))
             rest_parts = rest_parts[:-1]
-            
-    topic = " ".join(rest_parts).strip() or "सामान्य विज्ञान"
+
+    topic = " ".join(rest_parts).strip() or "सामान्य अध्ययन"
     count = max(1, min(count, 100))
-    
+
     return {
-        "command": command, 
-        "topic": topic, 
-        "count": count, 
-        "schedule_ts": schedule_ts, 
-        "time_str": time_str
+        "command": command,
+        "topic": topic,
+        "count": count,
+        "schedule_ts": schedule_ts
     }
 
 
 def command_info(command):
     table = {
-        "/quiz": ("quiz", "quiz", "quiz", "Quiz", "🎯"),
-        "/practice": ("practice", "practice", "practice", "Practice", "📝"),
-        "/pyq": ("practice", "pyq", "pyq", "PYQ Practice", "📚"),
-        "/mock": ("tests", "test", "mock", "Mock Test", "🎯"),
-        "/test": ("tests", "test", "test", "Test Series", "📝"),
+        "/quiz": ("quiz", "quiz", "quiz", "Quiz", "🎯", "QUIZ NOW"),
+        "/practice": ("practice", "practice", "practice", "Practice", "📝", "PRACTICE NOW"),
+        "/pyq": ("practice", "pyq", "pyq", "PYQ Practice", "📚", "PRACTICE NOW"),
+        "/mock": ("tests", "test", "mock", "Mock Test", "🎯", "MOCK TEST NOW"),
+        "/test": ("tests", "test", "test", "Test Series", "📝", "TEST NOW"),
+        "/notes": ("notes", "notes", "notes", "Study Material", "📖", "READ NOTES"),
     }
-    folder, box, kind, label, emoji = table.get(command, table["/test"])
-    return {"folder": folder, "box": box, "type": kind, "label": label, "emoji": emoji}
+    folder, box, kind, label, emoji, btn_text = table.get(command, table["/test"])
+    return {
+        "folder": folder,
+        "box": box,
+        "type": kind,
+        "label": label,
+        "emoji": emoji,
+        "btn_text": btn_text
+    }
+
+
+def extract_metadata(topic_text):
+    class_match = re.search(r'\b(\d{1,2}(?:st|nd|rd|th)?|\bclass\s*\d{1,2})\b', topic_text, flags=re.IGNORECASE)
+    grade = class_match.group(0).strip().upper() if class_match else "GENERAL"
+
+    subject_map = [
+        ("hindi grammar", "Hindi Grammar"),
+        ("english grammar", "English Grammar"),
+        ("general science", "General Science"),
+        ("social science", "Social Science"),
+        ("physics", "Physics"),
+        ("chemistry", "Chemistry"),
+        ("biology", "Biology"),
+        ("maths", "Maths"),
+        ("math", "Maths"),
+        ("mathematics", "Maths"),
+        ("history", "History"),
+        ("geography", "Geography"),
+        ("polity", "Polity"),
+        ("political science", "Polity"),
+        ("economics", "Economics"),
+        ("reasoning", "Reasoning"),
+        ("computer", "Computer"),
+        ("pedagogy", "Pedagogy"),
+        ("evs", "EVS"),
+        ("hindi", "Hindi"),
+        ("english", "English"),
+        ("sanskrit", "Sanskrit")
+    ]
+
+    found_sub = "General"
+    matched_term = None
+    for term, label in subject_map:
+        if re.search(r'\b' + re.escape(term) + r'\b', topic_text, flags=re.IGNORECASE):
+            found_sub = label
+            matched_term = term
+            break
+
+    clean_topic = topic_text
+    if grade != "GENERAL":
+        clean_topic = re.sub(r'\b' + re.escape(grade) + r'\b', '', clean_topic, flags=re.IGNORECASE)
+    if matched_term:
+        clean_topic = re.sub(r'\b' + re.escape(matched_term) + r'\b', '', clean_topic, flags=re.IGNORECASE)
+
+    clean_topic = clean_topic.strip(" -_") or topic_text
+    return {"class": grade, "subject": found_sub, "topic": clean_topic}
 
 
 # -------------------------------------------------------------------- Gemini
@@ -180,67 +228,37 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 {"questions":[{"question":"प्रश्न","options":["A","B","C","D"],"answer":0,"explanation":"व्याख्या","facts":["तथ्य 1","तथ्य 2","तथ्य 3","तथ्य 4","तथ्य 5","तथ्य 6","तथ्य 7","तथ्य 8"]}]}
 """
 
+NOTES_PROMPT = """
+Gyankshetra Study Material के लिए उच्च-स्तरीय परीक्षा उपयोगी नोट्स हिन्दी में तैयार करो।
 
-def discover_models():
-    try:
-        found = []
-        for m in get_client().models.list():
-            name = (getattr(m, "name", "") or "").replace("models/", "")
-            actions = getattr(m, "supported_actions", None) or []
-            if "flash" not in name or "generateContent" not in actions:
-                continue
-            if any(x in name for x in ("image", "tts", "live", "audio", "embedding", "robotics", "computer")):
-                continue
-            found.append(name)
+विषय: TOPIC
 
-        def version(n):
-            mm = re.search(r"gemini-(\d+(?:\.\d+)?)", n)
-            return float(mm.group(1)) if mm else 0.0
-
-        found.sort(key=lambda n: (-version(n), "preview" in n or "exp" in n, "lite" in n, n))
-        return found
-    except Exception as e:
-        print("model discovery failed:", str(e)[:200])
-        return []
+नियम:
+1. मुख्य परिभाषाएँ, महत्वपूर्ण सूत्र (Formulas), और मुख्य बिंदु स्पष्ट रूप से हों।
+2. STET / BPSC TRE / Board Exam स्तर के 8-10 महत्वपूर्ण तथ्य और अवधारणाएं शामिल हों।
+3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
+"""
 
 
-def ask_gemini(prompt):
+def ask_gemini(prompt, is_json=False):
     from google.genai import types
+    config = types.GenerateContentConfig(temperature=0.3)
+    if is_json:
+        config.response_mime_type = "application/json"
 
-    if not MODELS:
-        MODELS.extend(discover_models()[:4] or FALLBACK_MODELS)
-
-    dead, discovered, last = set(), False, ""
-    for attempt in range(10):
-        alive = [m for m in MODELS if m not in dead]
-        if not alive:
-            if discovered:
-                break
-            discovered = True
-            MODELS.extend(m for m in discover_models() if m not in MODELS)
-            MODELS.extend(m for m in FALLBACK_MODELS if m not in MODELS)
-            continue
-        model = alive[attempt % len(alive)]
+    for attempt in range(5):
         try:
             resp = get_client().models.generate_content(
-                model=model,
+                model="gemini-2.5-flash",
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.4, response_mime_type="application/json"
-                ),
+                config=config,
             )
             if resp.text:
-                MODELS.remove(model)
-                MODELS.insert(0, model)
                 return resp.text
-            last = f"[{model}] खाली जवाब"
         except Exception as e:
-            last = f"[{model}] {str(e)}"
-            if "404" in last or "NOT_FOUND" in last:
-                dead.add(model)
-                continue
-        time.sleep(3)
-    raise RuntimeError("Gemini से जवाब नहीं मिला: " + last[:600])
+            print(f"Gemini attempt {attempt+1} failed:", e)
+            time.sleep(3)
+    raise RuntimeError("Gemini से जवाब नहीं मिला")
 
 
 def clean_questions(data):
@@ -280,7 +298,7 @@ def gemini_batch(topic, count, mode, previous):
     if previous:
         prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-30:])
     for _ in range(3):
-        raw = ask_gemini(prompt).strip()
+        raw = ask_gemini(prompt, is_json=True).strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
         try:
@@ -294,7 +312,7 @@ def gemini_batch(topic, count, mode, previous):
 
 def generate_all(topic, count, mode):
     result, seen = [], []
-    max_rounds = (count // BATCH) + 10
+    max_rounds = (count // BATCH) + 5
     rounds = 0
     while len(result) < count and rounds < max_rounds:
         rounds += 1
@@ -311,9 +329,84 @@ def generate_all(topic, count, mode):
             print(f"Round {rounds} failed: {e}")
             if result:
                 continue
-            else:
-                raise e
+            raise e
     return result
+
+
+def generate_notes_html(topic):
+    raw = ask_gemini(NOTES_PROMPT.replace("TOPIC", topic)).strip()
+    raw = re.sub(r"^```(?:html)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+
+    return f"""<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{topic} - Study Notes | Gyankshetra</title>
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+            max-width: 850px;
+            margin: auto;
+            background: #fdfdfd;
+            color: #222;
+        }}
+        h1, h2, h3 {{ color: #1a73e8; }}
+        .action-bar {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1a73e8;
+            padding-bottom: 12px;
+        }}
+        .back-btn {{
+            text-decoration: none;
+            color: #1a73e8;
+            font-weight: bold;
+            font-size: 15px;
+        }}
+        .print-btn {{
+            background: #1a73e8;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }}
+        .content {{
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }}
+        @media print {{
+            body {{ padding: 0; background: #fff; }}
+            .action-bar {{ display: none !important; }}
+            .content {{ border: none !important; padding: 0 !important; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="action-bar">
+        <a href="../index.html" class="back-btn">⬅ Back to App</a>
+        <button class="print-btn" onclick="window.print()">📥 Download / Print PDF</button>
+    </div>
+    <div class="header">
+        <h1>📖 {topic}</h1>
+        <p style="color: #666; margin: 0;">Gyankshetra AI Study Notes</p>
+    </div>
+    <div class="content">
+        {raw}
+    </div>
+</body>
+</html>"""
 
 
 # ------------------------------------------------------------ Page Builder
@@ -439,44 +532,56 @@ def make_test_page(topic, count, questions, test_id):
     return s
 
 
-def update_registry(topic, count, command, url, test_id):
+def update_registry(topic, count, command, url, item_id):
     os.makedirs("content", exist_ok=True)
+    info = command_info(command)
+    meta = extract_metadata(topic)
+
+    entry = {
+        "id": item_id,
+        "title": f"{info['emoji']} {topic}",
+        "class": meta["class"],
+        "subject": meta["subject"],
+        "topic": meta["topic"],
+        "category": info["label"],
+        "type": info["type"],
+        "url": url,
+        "btn_text": info["btn_text"],
+        "created_at": item_id
+    }
+
+    target_file = STUDY_MATERIAL_FILE if command == "/notes" else REGISTRY_FILE
+    if command != "/notes":
+        entry["questions"] = count
+
     try:
-        with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
+        with open(target_file, "r", encoding="utf-8") as f:
             registry = json.load(f)
     except Exception:
         registry = []
-    info = command_info(command)
-    registry.insert(0, {
-        "title": f"{info['emoji']} {topic}",
-        "questions": count,
-        "type": info["type"],
-        "url": url,
-        "id": test_id, "topic": topic, "count": count, "command": command,
-        "box": info["box"], "label": info["label"], "emoji": info["emoji"],
-        "created": test_id,
-    })
-    with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
-        json.dump(registry[:200], f, ensure_ascii=False, indent=2)
+
+    registry.insert(0, entry)
+    with open(target_file, "w", encoding="utf-8") as f:
+        json.dump(registry[:500], f, ensure_ascii=False, indent=2)
 
 
 def git_publish(message):
     if not os.environ.get("GITHUB_ACTIONS"):
         return True
     try:
-        run = lambda *a, **k: subprocess.run(a, check=k.get("check", True))
+        run = lambda *a: subprocess.run(a, check=True)
         run("git", "config", "user.name", "gyankshetra")
         run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-        dirs = [d for d in ("content", "tests", "quiz", "practice") if os.path.isdir(d)]
+        dirs = [d for d in ("content", "tests", "quiz", "practice", "notes") if os.path.isdir(d)]
         run("git", "add", *dirs)
         if subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0:
             return True
         run("git", "commit", "-m", message)
-        run("git", "pull", "--rebase", "--autostash", check=False)
+        run("git", "pull", "--rebase", "--autostash")
         run("git", "push")
         return True
     except Exception as e:
-        print("git push failed:", e)
+        print("Git push error:", e)
         return False
 
 
@@ -520,9 +625,38 @@ def process_update(update):
         return
     topic, count = cmd["topic"], cmd["count"]
     schedule_ts = cmd["schedule_ts"]
-    time_str = cmd["time_str"]
     info = command_info(cmd["command"])
 
+    # --- Notes Flow ---
+    if cmd["command"] == "/notes":
+        send_message(chat_id, f"🤖 Gemini AI *{topic}* के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...")
+        try:
+            page = generate_notes_html(topic)
+            item_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            filename = f"{safe_slug(topic)}-notes-{item_id}.html"
+            folder = "notes"
+            os.makedirs(folder, exist_ok=True)
+            with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
+                f.write(page)
+
+            file_url = BASE_URL + folder + "/" + quote(filename)
+            update_registry(topic, 0, cmd["command"], file_url, item_id)
+            git_publish(f"Generate notes: {topic}")
+
+            formatted_message = (
+                "✅ *Study Material तैयार है!*\n\n"
+                f"🎯 *विषय:* {topic}\n"
+                f"📌 *प्रकार:* Study Material\n\n"
+                f"[🔗 READ NOTES]({file_url})"
+            )
+            send_message(chat_id, formatted_message)
+            if CHANNEL_ID:
+                send_message(CHANNEL_ID, formatted_message)
+        except Exception as e:
+            send_message(chat_id, f"❌ Notes तैयार नहीं हो पाए: {e}")
+        return
+
+    # --- Test/Quiz Flow ---
     send_message(
         chat_id,
         f"🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} विषय: {topic}\n📌 प्रकार: {info['label']}\n📝 प्रश्न: {count}\n\nथोड़ा समय लगेगा..."
@@ -537,37 +671,32 @@ def process_update(update):
         folder = info["folder"]
         os.makedirs(folder, exist_ok=True)
         page = make_test_page(topic, count, questions, test_id)
-        
+
         with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
             f.write(page)
-            
-        test_url = BASE_URL + folder + "/" + quote(filename)
-        update_registry(topic, count, cmd["command"], folder + "/" + filename, test_id)
-        pushed = git_publish(f"Generate test: {topic} ({count}Q)")
 
-        # Schedule Text Format
-        if not time_str:
-            ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-            time_str = ist_now.strftime("%d %b %Y, %I:%M %p IST")
+        test_url = BASE_URL + folder + "/" + quote(filename)
+        update_registry(topic, count, cmd["command"], test_url, test_id)
+        git_publish(f"Generate test: {topic} ({count}Q)")
 
         formatted_message = (
             "✅ *Test तैयार है!*\n\n"
             f"🎯 *विषय:* {topic}\n"
             f"📌 *प्रकार:* {info['label']}\n"
-            f"📝 *प्रश्न:* {count}\n"
-            f"⏰ *Publish Time:* {time_str}\n\n"
-            f"[🔗 LIVE TEST]({test_url})"
+            f"📝 *प्रश्न:* {count}\n\n"
+            f"[🔗 {info['btn_text']}]({test_url})"
         )
 
-        # 1. User ko तुरंत रिप्लाई
-        if schedule_ts:
-            send_message(chat_id, f"📅 टेस्ट बन गया है और Channel में *{time_str}* के लिए Schedule कर दिया गया है!\n\n" + formatted_message)
+        current_ts = datetime.now(timezone.utc).timestamp()
+
+        if schedule_ts and schedule_ts > current_ts:
+            send_message(chat_id, "📅 टेस्ट तैयार है और तय समय पर चैनल में पब्लिश हो जाएगा!\n\n" + formatted_message)
+            if CHANNEL_ID:
+                schedule_channel_post(CHANNEL_ID, formatted_message, schedule_ts)
         else:
             send_message(chat_id, formatted_message)
-
-        # 2. Telegram Channel me Schedule / Instant Publish
-        if CHANNEL_ID:
-            send_message(CHANNEL_ID, formatted_message, schedule_timestamp=schedule_ts)
+            if CHANNEL_ID:
+                send_message(CHANNEL_ID, formatted_message)
 
     except Exception as e:
         send_message(chat_id, "❌ Test generate नहीं हो पाया\n\nError:\n" + str(e)[:2500])
@@ -576,7 +705,7 @@ def process_update(update):
 def main():
     print("Gyankshetra Telegram Bot started")
     offset = load_offset()
-    
+
     try:
         res = telegram("getUpdates", {"offset": offset, "timeout": 10})
         updates = res.get("result", [])
