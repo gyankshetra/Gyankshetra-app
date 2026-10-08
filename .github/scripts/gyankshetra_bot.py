@@ -240,27 +240,36 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 """
 
 
+FALLBACK_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro"
+]
+
 def ask_gemini(prompt, is_json=False):
     from google.genai import types
     config = types.GenerateContentConfig(temperature=0.3)
     if is_json:
         config.response_mime_type = "application/json"
 
-    for attempt in range(5):
+    last_err = ""
+    for model_name in FALLBACK_MODELS:
         try:
             resp = get_client().models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=prompt,
                 config=config,
             )
-            if resp.text:
+            if resp and resp.text:
                 return resp.text
         except Exception as e:
-            print(f"Gemini attempt {attempt+1} failed:", e)
-            time.sleep(3)
-    raise RuntimeError("Gemini से जवाब नहीं मिला")
-
-
+            last_err = str(e)
+            print(f"Model {model_name} failed: {e}")
+            time.sleep(1)
+            continue
+            
+raise RuntimeError(f"Gemini API Error: {last_err[:250]}")
 def clean_questions(data):
     items = data.get("questions") if isinstance(data, dict) else data
     if not isinstance(items, list):
