@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>9th chemistry | Gyankshetra</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --success: #34a853;
+            --danger: #ea4335;
+            --warning: #fbbc05;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #202124;
+            --text-muted: #5f6368;
+            --border: #dadce0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .title { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .student-info { font-size: 13px; color: var(--text-muted); }
+        .timer { font-weight: bold; font-size: 15px; color: var(--danger); background: #fce8e6; padding: 4px 10px; border-radius: 6px; }
+        
+        /* 3 line hamburger icon button */
+        .hamburger-btn {
+            background: #f1f3f4;
+            color: #202124;
+            border: 1px solid var(--border);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+        .hamburger-btn:active { background: #e8eaed; }
+
+        main { flex: 1; padding: 16px; max-width: 800px; margin: 0 auto; width: 100%; touch-action: pan-y; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+        .question-meta { display: flex; justify-content: space-between; margin-bottom: 15px; color: var(--text-muted); font-size: 14px; }
+        .q-text { font-size: 17px; line-height: 1.5; font-weight: 500; margin-bottom: 20px; }
+
+        .options-list { display: flex; flex-direction: column; gap: 12px; }
+        .opt-item { border: 1.5px solid var(--border); border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 15px; }
+        .opt-item.selected { border-color: var(--primary); background: #e8f0fe; font-weight: 500; }
+
+        .nav-bar { display: flex; justify-content: space-between; margin-top: 25px; gap: 10px; }
+        .btn { padding: 9px 16px; border-radius: 6px; font-weight: 500; border: none; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-success { background: var(--success); color: #fff; }
+
+        /* Modal Palette */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; padding: 16px; }
+        .modal.active { display: flex; }
+        .modal-content { background: #fff; border-radius: 12px; width: 100%; max-width: 440px; max-height: 80vh; overflow-y: auto; padding: 18px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .grid-nodes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .palette-node { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; position: relative; font-size: 14px; }
+        .palette-node.answered { background: var(--success); color: #fff; border-color: var(--success); }
+        .palette-node.current { border: 2px solid var(--primary); }
+        .palette-node .reattempt-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); display: none; }
+        .palette-node.reattempted .reattempt-badge { display: block; }
+
+        /* Result & Review */
+        .status-badge { background: #f1f3f4; padding: 8px 12px; border-radius: 6px; margin: 10px 0; font-size: 14px; }
+        .tg-share-btn { display: inline-flex; align-items: center; gap: 8px; background: #0088cc; color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; margin-top: 15px; }
+        .review-card { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title">Gyankshetra · 9th chemistry</div>
+        <div class="header-actions">
+            <div class="student-info">विद्यार्थी: छात्र</div>
+            <div class="timer" id="timerBox">00:00</div>
+            <button class="hamburger-btn" onclick="togglePalette()" title="Question Palette">☰</button>
+        </div>
+    </header>
+
+    <main id="mainSwipeArea">
+        <div id="quizScreen" class="card">
+            <div class="question-meta">
+                <span>प्रश्न <strong id="qNum">1</strong> / <span id="qTotal">1</span></span>
+                <span id="topicHeading">सामान्य अध्ययन</span>
+            </div>
+            <div id="questionContainer"></div>
+            <div class="nav-bar">
+                <button class="btn btn-outline" onclick="prevQuestion()">पिछला</button>
+                <button class="btn btn-primary" id="nextQuestionBtn" onclick="nextQuestion()">अगला</button>
+                <button class="btn btn-success" id="finishBtn" onclick="submitTest()" style="display:none;">सबमिट</button>
+            </div>
+        </div>
+
+        <div id="resultScreen" class="card" style="display:none;">
+            <h2>परीक्षा परिणाम</h2>
+            <div class="status-badge" id="scoreOverview"></div>
+            <a id="telegramShareLink" href="#" target="_blank" class="tg-share-btn">✈ Share on Telegram</a>
+            <div id="reviewContainer"></div>
+        </div>
+    </main>
+
+    <div class="modal" id="paletteModal" onclick="overlayClose(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>प्रश्नावली सूची</h3>
+                <button class="btn btn-outline" onclick="togglePalette()">✕</button>
+            </div>
+            <div class="grid-nodes" id="paletteGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        const testData = {"isReattempted":false,"studentName":"छात्र","topic":"9th chemistry","questions":[{"id":1,"text":"पानी में घुलनशीलता के क्रम में कौन-सा आयन सबसे अधिक घुलता है?","options":["K⁺","Na⁺","Mg²⁺","Ca²⁺"],"correctOption":1,"selected":null,"status":"skipped","facts":["सामान्य आयनों में Na⁺ की जल में घुलनशीलता सबसे अधिक होती है, क्योंकि इसका हाइड्रेशन एनर्जी कम और आयन आकार छोटा होता है।","Na⁺ का आयनिक त्रिज्या 102 pm है","K⁺ का आयनिक त्रिज्या 138 pm है","Ca²⁺ का आयनिक त्रिज्या 100 pm है","Mg²⁺ का आयनिक त्रिज्या 72 pm है","सॉल्वेशन एनर्जी आयन के आकार पर निर्भर करती है","जल में NaCl का घुलनशीलता 35.7 g/100 mL है","जल में KCl का घुलनशीलता 34.2 g/100 mL है","जल में CaCl₂ का घुलनशीलता 74.5 g/100 mL है (परंतु दो‑वैलेंट आयन के कारण)"]},{"id":2,"text":"निम्नलिखित में से कौन-सा एंजाइम का कोफ़ैक्टर नहीं है?","options":["Mg²⁺","Coenzyme A","H₂O","NAD⁺"],"correctOption":2,"selected":null,"status":"skipped","facts":["कोफ़ैक्टर वह अकार्बनिक या कार्बनिक अणु होता है जो एंजाइम की सक्रियता में सहायक होता है; पानी (H₂O) केवल अभिकर्मक है, कोफ़ैक्टर नहीं।","NAD⁺ ऑक्सीकरण‑विचलन प्रतिक्रियाओं में इलेक्ट्रॉन वाहक है","Mg²⁺ कई फॉस्फेट‑ट्रांसफ़र एंजाइमों में आवश्यक है","Coenzyme A थायोएस्टर बंधन बनाता है","कोफ़ैक्टर को प्रोटीन से बंधा या मुक्त रूप में हो सकता है","कोफ़ैक्टर की कमी एंजाइम की गतिविधि घटा देती है","एंजाइम‑कोफ़ैक्टर जटिल को एंजाइमेटिक कॉम्प्लेक्स कहा जाता है","कोफ़ैक्टर अक्सर धातु आयन या विटामिन व्युत्पन्न होते हैं","पानी सभी रासायनिक प्रतिक्रियाओं में माध्यम के रूप में कार्य करता है"]},{"id":3,"text":"हाइड्रोजन बंधन के निर्माण में कौन-सा कारक सबसे महत्वपूर्ण है?","options":["इलेक्ट्रोनैगेटिविटी अंतर","आइऑनाइजेशन एनर्जी","ध्रुवीयता","आणविक आकार"],"correctOption":2,"selected":null,"status":"skipped","facts":["हाइड्रोजन बंधन के लिए ध्रुवीयता आवश्यक है; केवल ध्रुवीय अणु ही H‑बॉन्ड बना सकते हैं, जबकि इलेक्ट्रोनैगेटिविटी अंतर और आकार सहायक होते हैं।","हाइड्रोजन बंधन में H‑आणु को अत्यधिक इलेक्ट्रोनैगेटिव अणु (F, O, N) के साथ जुड़ना चाहिए","ध्रुवीय अणु में सकारात्मक और नकारात्मक ध्रुव होते हैं","हाइड्रोजन बंधन की ऊर्जा 5‑30 kJ/mol के बीच होती है","जल में हाइड्रोजन बंधन के कारण उच्च उबाल बिंदु है","हाइड्रोजन बंधन के कारण DNA की डबल‑हेलिक्स स्थिर रहती है","इलेक्ट्रोनैगेटिविटी अंतर >1.7 होने पर आयनिक बंधन बनता है","आकार छोटा होने पर बंधन दूरी घटती है","आइऑनाइजेशन एनर्जी इलेक्ट्रॉन हटाने की ऊर्जा है, बंधन में सीधे नहीं"]},{"id":4,"text":"किस अभिक्रिया में एंजाइम की सक्रियता ऊर्जा (Ea) सबसे अधिक घटती है?","options":["ऑक्सीकरण‑विचलन","इज़ोमेराइज़ेशन","फॉस्फोरिलेशन","हाइड्रोलिसिस"],"correctOption":3,"selected":null,"status":"skipped","facts":["हाइड्रोलिसिस में अक्सर एंजाइम (हाइड्रोलेज) द्वारा सब्सट्रेट को जल के साथ तोड़ने में सक्रियता ऊर्जा सबसे अधिक घटती है, क्योंकि जल का अणु सक्रिय साइट में सही ढंग से स्थित होता है।","हाइड्रोलेज एंजाइम जल को सक्रिय साइट में बाइंड करता है","ऑक्सीकरण‑विचलन एंजाइम अक्सर कोफ़ैक्टर NAD⁺/NADH की जरूरत होती है","फॉस्फोरिलेशन में ATP का उपयोग ऊर्जा स्रोत के रूप में होता है","इज़ोमेराइज़ेशन में केवल अणु के भीतर पुनर्व्यवस्था होती है","सक्रियता ऊर्जा घटाने की प्रक्रिया को कैटालिसिस कहा जाता है","एंजाइम‑सब्सट्रेट कॉम्प्लेक्स में संक्रमण अवस्था स्थिर होती है","हाइड्रोलिसिस में पानी का अणु इलेक्ट्रोफिलिक होता है","हाइड्रोलेज की सक्रिय साइट में अक्सर हिस्टिडीन, एस्पार्जिन या सिस्टीन होते हैं"]},{"id":5,"text":"निम्नलिखित में से कौन-सा पदार्थ अम्लीय ऑक्सीकरण का उदाहरण है?","options":["CH₃COOH","H₂SO₄","Na₂CO₃","C₆H₁₂O₆"],"correctOption":3,"selected":null,"status":"skipped","facts":["ग्लूकोज़ (C₆H₁₂O₆) का ऑक्सीकरण अम्लीय माध्यम में किया जाता है, जहाँ यह कार्बन को +4 ऑक्सीकरण अवस्था से +6 (CO₂) में बदलता है।","ग्लूकोज़ का औक्सीकरण एंजाइम ग्लूकोज़ ऑक्सीडेज द्वारा किया जाता है","अम्लीय ऑक्सीकरण में H⁺ आयन उपस्थित होते हैं","H₂SO₄ एक मजबूत अम्ल है, लेकिन यह ऑक्सीकरण एजेंट नहीं है","Na₂CO₃ एक क्षारीय लवण है","CH₃COOH एसीटिक एसिड है, यह ऑक्सीकरण में कम सक्रिय है","ऑक्सीकरण अवस्था परिवर्तन इलेक्ट्रॉन स्थानांतरण दर्शाता है","अम्लीय ऑक्सीकरण में अक्सर MnO₂, K₂Cr₂O₇ जैसे एजेंट प्रयोग होते हैं","ग्लूकोज़ के पूर्ण ऑक्सीकरण से CO₂ और H₂O बनते हैं"]},{"id":6,"text":"किस प्रक्रिया में इलेक्ट्रॉन ट्रांसफ़र श्रृंखला (ETC) का मुख्य कार्य क्या है?","options":["CO₂ का उत्सर्जन","पानी का उत्पादन","ATP का संश्लेषण","ऑक्सीजन का उपभोग"],"correctOption":2,"selected":null,"status":"skipped","facts":["ETC में इलेक्ट्रॉनों के क्रमिक स्थानांतरण से प्रोटॉन ग्रेडिएंट बनता है, जिससे ATP सिंथेज़ द्वारा ADP + Pi → ATP का संश्लेषण होता है।","ETC माइटोकॉन्ड्रिया के इंट्रामाइटोकॉन्ड्रियल मेम्ब्रेन में स्थित है","इलेक्ट्रॉन NADH और FADH₂ से आते हैं","प्रोटॉन ग्रेडिएंट को रासायनिक पोटेंशियल कहा जाता है","ATP सिंथेज़ इस ग्रेडिएंट का उपयोग करता है","पानी का उत्पादन अंतिम इलेक्ट्रॉन स्वीकर्ता (O₂) के साथ होता है","प्रति NADH लगभग 2.5 ATP बनते हैं","प्रति FADH₂ लगभग 1.5 ATP बनते हैं","ETC का विफल होना कोशिका श्वसन को रोक देता है"]},{"id":7,"text":"निम्नलिखित में से कौन-सा यौगिक एंजाइम‑इनहिबिटर के रूप में कार्य नहीं करता?","options":["किटोन्स","सैपोनिन","स्ट्रॉन्ग एसीड्स","स्ट्रॉन्ग बेसिस"],"correctOption":3,"selected":null,"status":"skipped","facts":["स्ट्रॉन्ग बेसिस (जैसे NaOH) आमतौर पर एंजाइम को डिनैचर कर सकते हैं, परन्तु वह विशिष्ट इनहिबिटर नहीं है; किटोन्स, सैपोनिन और कुछ एसिड एंजाइम के सक्रिय साइट को प्रतिस्पर्धी रूप से बाधित करते हैं।","किटोन्स में कार्बोनिल समूह होता है जो सक्रिय साइट के साथ बंध सकता है","स्ट्रॉन्ग एसीड्स (HCl) एंजाइम को डिनैचर कर सकते हैं","स्ट्रॉन्ग बेसिस उच्च pH पर प्रोटीन को डिनैचर करता है","सैपोनिन एक सर्फेक्टेंट है जो एंजाइम के हाइड्रोफोबिक भाग को बाधित करता है","इनहिबिटर दो प्रकार के होते हैं: प्रतिस्पर्धी और गैर‑प्रतिस्पर्धी","प्रतिस्पर्धी इनहिबिटर सब्सट्रेट के साथ सक्रिय साइट साझा करता है","गैर‑प्रतिस्पर्धी इनहिबिटर अलग साइट से एंजाइम को बदलता है","इनहिबिटर की प्रभावशीलता Ki मान द्वारा मापी जाती है"]},{"id":8,"text":"किस अभिक्रिया में एंजाइम की Vmax मान सबसे अधिक बदलती है?","options":["सबस्ट्रेट सांद्रता बदलने पर","तापमान बदलने पर","कोफ़ैक्टर की उपस्थिति बदलने पर","pH बदलने पर"],"correctOption":1,"selected":null,"status":"skipped","facts":["तापमान में परिवर्तन एंजाइम की संरचना को प्रभावित कर Vmax को अत्यधिक बदलता है; बहुत अधिक तापमान डिनैचर कर देता है, जबकि उचित तापमान पर गति बढ़ती है।","Vmax एंजाइम की अधिकतम गति को दर्शाता है","सबस्ट्रेट सांद्रता बढ़ाने से Vmax नहीं बदलता, केवल V₀ बढ़ता है","pH परिवर्तन Km को प्रभावित कर सकता है, Vmax पर कम प्रभाव","कोफ़ैक्टर की उपस्थिति अक्सर Vmax को बढ़ा सकती है","तापमान वृद्धि से एंजाइम की गतिज ऊर्जा बढ़ती है","उच्च तापमान पर प्रोटीन डिनैचर हो जाता है","एंजाइम का ऑप्टिमल तापमान आमतौर पर 35‑40 °C होता है","Arrhenius समीकरण तापमान‑निर्भरता को दर्शाता है"]},{"id":9,"text":"निम्नलिखित में से कौन-सा यौगिक एंजाइम‑काइनेटिक में 'सबस्ट्रेट इनहिबिशन' का कारण बनता है?","options":["इन्हिबिटर I","इन्हिबिटर II","इन्हिबिटर III","साइट्रेट"],"correctOption":3,"selected":null,"status":"skipped","facts":["साइट्रेट कुछ एंजाइमों (जैसे साइट्रेट सिंथेज़) में सब्सट्रेट के रूप में बंधता है और उच्च सांद्रता पर प्रतिस्पर्धी इनहिबिशन उत्पन्न करता है।","साइट्रेट ट्रायकार्बोक्सिलिक एसिड चक्र में मध्यवर्ती है","साइट्रेट का आयनिक रूप (Cit³⁻) एंजाइम के सक्रिय साइट में बंधता है","उच्च साइट्रेट सांद्रता प्रतिस्पर्धी इनहिबिशन दर्शाती है","इन्हिबिटर I‑IV शब्दावली सामान्य नहीं है, बल्कि प्रतिस्पर्धी, अनप्रतिस्पर्धी आदि होते हैं","सबस्ट्रेट इनहिबिशन में Vmax घटता है, Km बढ़ता है","साइट्रेट का pKa 3.1 है","साइट्रेट का उपयोग बफर समाधान में किया जाता है","साइट्रेट के बंधन से एंजाइम की कॉन्फ़ॉर्मेशन बदलती है"]},{"id":10,"text":"निम्नलिखित में से कौन-सा पदार्थ क्षारीय पृथक्करण (alkaline electrolysis) में जल के विघटन के लिए प्रमुख उत्प्रेरक है?","options":["निकल","तांबा","रजत","प्लैटिनम"],"correctOption":3,"selected":null,"status":"skipped","facts":["प्लैटिनम की उच्च सतह ऊर्जा और इलेक्ट्रॉनिक संरचना इसे जल के इलेक्ट्रोलिसिस में उत्प्रेरक बनाती है, जिससे हाइड्रोजन और ऑक्सीजन के उत्पादन में ऊर्जा दक्षता बढ़ती है।","प्लैटिनम का मानक इलेक्ट्रोड पोटेंशियल +1.188 V है","प्लैटिनम की सतह पर हाइड्रोजन अणु के अवशोषण की ऊर्जा कम होती है","इलेक्ट्रोलिसिस में प्लैटिनम को अक्सर अनोड पर उपयोग किया जाता है","प्लैटिनम का रासायनिक स्थायित्व उच्च तापमान पर भी बना रहता है","प्लैटिनम के कण आकार को नैनो-स्केल पर घटाने से सक्रियता बढ़ती है","रजत की तुलना में प्लैटिनम की ओवरपोटेंशियल कम होती है","निकल और तांबा इलेक्ट्रोड पर ऑक्सीकरण प्रतिक्रिया तेज़ी से जंग लगती है","प्लैटिनम को अक्सर डाइऑक्साइड (PtO2) रूप में भी उपयोग किया जाता है"]},{"id":11,"text":"निम्नलिखित में से कौन-सा यौगिक क्षारीय पृथक्करण (alkaline) में इलेक्ट्रोलाइट के रूप में प्रयोग नहीं किया जाता?","options":["LiOH","NaOH","Na2SO4","KOH"],"correctOption":2,"selected":null,"status":"skipped","facts":["सोडियम सल्फेट (Na2SO4) का आयनिक चालकता क्षारीय इलेक्ट्रोलाइट की तुलना में बहुत कम होती है, इसलिए यह इलेक्ट्रोलिसिस में इलेक्ट्रोलाइट के रूप में प्रयुक्त नहीं होता।","KOH का जल में घुलनशीलता बहुत अधिक है","NaOH भी उच्च चालकता प्रदान करता है","LiOH का घुलनशीलता KOH से थोड़ा कम परन्तु पर्याप्त है","Na2SO4 का आयनिक शक्ति कम है","क्षारीय इलेक्ट्रोलिसिस में pH 13‑14 बनाए रखने के लिये मजबूत क्षार आवश्यक होते हैं","KOH और NaOH दोनों ही जल में पूर्णतः आयनित होते हैं","Li+ आयन का आकार छोटा होने से जल संरचना पर प्रभाव पड़ता है","Na2SO4 का उपयोग मुख्यतः न्यूट्रल या अम्लीय इलेक्ट्रोलाइट में किया जाता है"]},{"id":12,"text":"निम्नलिखित में से कौन-सा पदार्थ एंजाइम‑इनहिबिटर के रूप में नहीं माना जाता?","options":["सिट्रिक एसिड","एथेनॉल","सोडियम क्लोराइड","सिलिकॉन डाइऑक्साइड"],"correctOption":3,"selected":null,"status":"skipped","facts":["सिलिकॉन डाइऑक्साइड (SiO2) एक निष्क्रिय पदार्थ है और एंजाइम की सक्रियता स्थल पर बंधन नहीं करता, इसलिए यह इनहिबिटर नहीं माना जाता।","सिलिकॉन डाइऑक्साइड का रासायनिक अभिक्रिया में बहुत कम सक्रियता है","सिट्रिक एसिड कई एंजाइमों के प्रतिस्पर्धी इनहिबिटर के रूप में कार्य करता है","एथेनॉल अल्कोहल डिहाइड्रोजेनेज़ को प्रतिस्पर्धी रूप से बाधित करता है","सोडियम क्लोराइड उच्च आयनिक शक्ति के कारण एंजाइम की संरचना को स्थिर कर सकता है","SiO2 का उपयोग मुख्यतः एंटी‑स्लिप और फिलर के रूप में होता है","सिलिकॉन डाइऑक्साइड का पॉलिमर नेटवर्क एंजाइम के सक्रिय स्थल तक नहीं पहुँचता","सिट्रिक एसिड का pKa 3.13 है, जिससे वह प्रोटॉन डोनर बनता है","एथेनॉल का हाइड्रोजन बंधन एंजाइम के हाइड्रोफोबिक साइट से बंध सकता है"]},{"id":13,"text":"निम्नलिखित में से कौन-सा पदार्थ क्षारीय पृथक्करण (alkaline) में उत्प्रेरक के रूप में नहीं प्रयोग किया जाता?","options":["निकल (Ni)","जिंक (Zn)","प्लैटिनम (Pt)","रजत (Ag)"],"correctOption":1,"selected":null,"status":"skipped","facts":["जिंक का मानक इलेक्ट्रोड पोटेंशियल -0.763 V है, जिससे यह इलेक्ट्रोलिसिस में अनोड पर उपयोग नहीं किया जाता; यह जल के ऑक्सीकरण को तेज़ नहीं करता।","रजत का मानक इलेक्ट्रोड पोटेंशियल +0.799 V है","प्लैटिनम का मानक इलेक्ट्रोड पोटेंशियल +1.188 V है","निकल का मानक इलेक्ट्रोड पोटेंशियल -0.250 V है","जिंक का मानक इलेक्ट्रोड पोटेंशियल -0.763 V है","अनोड पर उच्च ओवरपोटेंशियल वाले धातु जल के ऑक्सीकरण को बाधित करते हैं","निकल को अक्सर कैथोड पर हाइड्रोजन उत्पन्न करने के लिये प्रयोग किया जाता है","रजत का उपयोग अक्सर कम लागत वाले इलेक्ट्रोड में किया जाता है","जिंक का जल में आसानी से ऑक्सीडेशन हो जाता है, जिससे इलेक्ट्रोड का जीवनकाल घटता है"]},{"id":14,"text":"निम्नलिखित में से कौन-सा यौगिक क्षारीय पृथक्करण (alkaline) में उत्प्रेरक के रूप में उपयोग नहीं किया जाता?","options":["प्लैटिनम (Pt)","रजत (Ag)","टाइटेनियम डाइऑक्साइड (TiO2)","मैंगनीज़ डाइऑक्साइड (MnO2)"],"correctOption":2,"selected":null,"status":"skipped","facts":["टाइटेनियम डाइऑक्साइड मुख्यतः फोटो‑कैटलिसिस में उपयोग होता है, न कि जल के इलेक्ट्रोलिसिस में।","MnO2 का उपयोग अक्सर अनोड पर ऑक्सीकरण को तेज़ करने के लिये किया जाता है","TiO2 का बैंड‑गैप 3.2 eV है, जो प्रकाश‑सक्रियता के लिये उपयुक्त है","Ag और Pt दोनों ही जल के इलेक्ट्रोलिसिस में उच्च सक्रियता दिखाते हैं","TiO2 का मुख्य कार्य फोटो‑केटलिसिस में है, न कि इलेक्ट्रोलिसिस में","MnO2 की सतह पर ऑक्सीजन उत्पन्न करने की दर उच्च होती है","Ag का उपयोग कम लागत वाले इलेक्ट्रोड में किया जाता है","Pt का उपयोग उच्च स्थायित्व वाले इलेक्ट्रोड में किया जाता है","TiO2 को अक्सर सौर कोशिकाओं में एंटी‑रिफ्लेक्टिव लेयर के रूप में प्रयोग किया जाता है"]},{"id":15,"text":"निम्नलिखित में से कौन-सा पदार्थ क्षारीय इलेक्ट्रोलिसिस में उत्पन्न हाइड्रोजन के शुद्धीकरण के लिये उपयोग नहीं किया जाता?","options":["प्लैटिनम मेम्ब्रेन","एल्यूमिनियम ऑक्साइड","सिलिका जेल","पेट्रोलियम एक्टिवेटेड कार्बन"],"correctOption":1,"selected":null,"status":"skipped","facts":["एल्यूमिनियम ऑक्साइड का पोरोसिटी हाइड्रोजन गैस को प्रभावी रूप से फ़िल्टर नहीं करता, इसलिए यह शुद्धीकरण में प्रयुक्त नहीं होता।","पेट्रोलियम एक्टिवेटेड कार्बन हाइड्रोजन के साथ मौजूद कार्बन मोनोऑक्साइड को अवशोषित करता है","सिलिका जेल माइक्रो‑पोर आकार से हाइड्रोजन को शुद्ध करता है","प्लैटिनम मेम्ब्रेन उच्च चयनात्मकता के साथ हाइड्रोजन को पास करता है","एल्यूमिनियम ऑक्साइड का पोर आकार आमतौर पर 0.1‑0.5 µm होता है","शुद्धीकरण में उच्च सतह क्षेत्र वाला पदार्थ आवश्यक होता है","पेट्रोलियम एक्टिवेटेड कार्बन का सतह क्षेत्र 800‑1200 m²/g होता है","सिलिका जेल का पोर वितरण मोनोडिस्पर्स है","प्लैटिनम मेम्ब्रेन को अक्सर PEM (Proton Exchange Membrane) में उपयोग किया जाता है"]},{"id":16,"text":"निम्नलिखित में से कौन-सा यौगिक क्षारीय इलेक्ट्रोलिसिस में उत्पन्न ऑक्सीजन के संग्रह के लिये उपयुक्त नहीं है?","options":["सिलिकॉन कार्बाइड (SiC)","प्लैटिनम","स्टेनलेस स्टील","ग्लास फाइबर"],"correctOption":2,"selected":null,"status":"skipped","facts":["स्टेनलेस स्टील ऑक्सीजन के साथ प्रतिक्रिया कर सकता है और जंग लगने की संभावना रहती है, इसलिए यह संग्रह सामग्री के रूप में उपयुक्त नहीं है।","SiC का उच्च तापीय प्रतिरोध और रासायनिक स्थायित्व है","ग्लास फाइबर ऑक्सीजन के प्रति निष्क्रिय है और उच्च तापमान सहन करता है","स्टेनलेस स्टील में क्रोम की उपस्थिति के बावजूद ऑक्सीजन के साथ धीरे‑धीरे ऑक्सीडेशन होता है","प्लैटिनम ऑक्सीजन के साथ कोई रासायनिक प्रतिक्रिया नहीं करता","ऑक्सीजन संग्रह में सामग्री का बंधन ऊर्जा कम होना चाहिए","SiC का उपयोग अक्सर इलेक्ट्रोड सपोर्ट में किया जाता है","ग्लास फाइबर को अक्सर फ़िल्टर के रूप में उपयोग किया जाता है","स्टेनलेस स्टील की पिटिंग कॉर्रोजन की संभावना रहती है"]},{"id":17,"text":"सिलिकॉन (Si) के इलेक्ट्रॉनिक विन्यास के अनुसार, कौन-सा आयन सबसे अधिक ध्रुवीयता (polarity) दर्शाता है?","options":["Si⁴⁺","Si⁺","Si²⁺","Si³⁺"],"correctOption":0,"selected":null,"status":"skipped","facts":["सिलिकॉन का वैलेन्स शेल 3s²3p² है। जब वह चार इलेक्ट्रॉन खोकर Si⁴⁺ बनता है, तो उसका चार्ज अधिकतम और आकार सबसे छोटा हो जाता है, जिससे ध्रुवीयता अधिकतम होती है।","सिलिकॉन का परमाणु क्रमांक 14 है।","सिलिकॉन का वैलेन्स इलेक्ट्रॉन 3s²3p² होते हैं।","Si⁴⁺ आयन का आयनिक त्रिज्या लगभग 0.40 Å है।","आयन का चार्ज बढ़ने से इलेक्ट्रॉन घनत्व केंद्र की ओर बढ़ती है।","ध्रुवीयता आयन के चार्ज और आकार पर निर्भर करती है।","Si⁴⁺ का इलेक्ट्रॉनिक विन्यास [Ne] 3s⁰3p⁰ है।","सिलिकॉन समूह में सबसे छोटा आयन Si⁴⁺ है।","उच्च चार्ज वाले आयन आमतौर पर अधिक ध्रुवीय होते हैं।"]},{"id":18,"text":"निम्नलिखित में से कौन-सा यौगिक कार्बनिक रसायन में 'हाइड्रोजन बंध' (hydrogen bond) के निर्माण में सबसे प्रभावी नहीं माना जाता?","options":["ऑक्सीजन युक्त अल्कोहल (R‑OH)","नाइट्रोजन युक्त अमीन (R‑NH₂)","फ्लोरीन युक्त कार्बन (R‑F)","सिलिकॉन युक्त सिलैन (R‑SiH₃)"],"correctOption":3,"selected":null,"status":"skipped","facts":["हाइड्रोजन बंध के लिए हाइड्रोजन को अत्यधिक इलेक्ट्रोनैगेटिव एटम (O, N, F) से बंधा होना चाहिए। सिलिकॉन की इलेक्ट्रोनैगेटिविटी कम है, इसलिए Si‑H बंध हाइड्रोजन बंध नहीं बनाते।","हाइड्रोजन बंध में H‑X (X = O, N, F) आवश्यक है।","ऑक्सीजन की इलेक्ट्रोनैगेटिविटी 3.44 है, नाइट्रोजन 3.04, फ्लोरीन 3.98।","सिलिकॉन की इलेक्ट्रोनैगेटिविटी 1.90 है।","हाइड्रोजन बंध की ऊर्जा 5‑30 kJ/mol होती है।","हाइड्रोजन बंध का निर्माण जल, अमोनिया, HF में देखा जाता है।","सिलैन में Si‑H बंध ध्रुवीय नहीं होते।","हाइड्रोजन बंध के कारण उच्च क्वथनांक और गलनांक होते हैं।","सिलिकॉन‑हाइड्रोजन बंध के बजाय केवल वैन‑डर‑वाल्स बल होते हैं।"]},{"id":19,"text":"9वीं कक्षा के रसायन में, कौन-सा अभिकारक (catalyst) एंजाइम नहीं है, बल्कि अकार्बनिक उत्प्रेरक माना जाता है?","options":["जिंक ऑक्साइड (ZnO)","प्लैटिनम (Pt)","हाइड्रोजन पेरऑक्साइड (H₂O₂)","मैंगनीज डाइऑक्साइड (MnO₂)"],"correctOption":1,"selected":null,"status":"skipped","facts":["प्लैटिनम एक धातु है और एंजाइम नहीं, बल्कि अकार्बनिक उत्प्रेरक है, जो हाइड्रोजन और ऑक्सीजन के मिश्रण में जल उत्पन्न करने में प्रयोग होता है।","एंजाइम प्रोटीन या RNA होते हैं।","प्लैटिनम धातु है, अकार्बनिक।","ZnO और MnO₂ भी अकार्बनिक उत्प्रेरक हैं, पर एंजाइम नहीं।","H₂O₂ स्वयं उत्प्रेरक नहीं, बल्कि ऑक्सीडाइज़र है।","प्लैटिनम का उपयोग कार्बन मोनोऑक्साइड को जल में बदलने में होता है।","अकार्बनिक उत्प्रेरक सतह पर प्रतिक्रिया को तेज़ करते हैं।","एंजाइम का सक्रिय स्थल (active site) विशिष्ट होता है।","प्लैटिनम का इलेक्ट्रॉनिक संरचना d‑सहायक है।"]},{"id":20,"text":"निम्नलिखित में से कौन-सा यौगिक 9वीं कक्षा के रसायन में 'आधार' (base) के रूप में वर्गीकृत नहीं किया जाता?","options":["पोटैशियम हाइड्रॉक्साइड (KOH)","अमोनिया (NH₃)","सोडियम हाइड्रॉक्साइड (NaOH)","कैल्शियम कार्बोनेट (CaCO₃)"],"correctOption":3,"selected":null,"status":"skipped","facts":["कैल्शियम कार्बोनेट एक क्षारीय लवण है, लेकिन यह सामान्य बेस नहीं माना जाता; यह पानी में हल्का क्षारीय बनाता है, पर मुख्य बेस नहीं है।","NaOH एक मजबूत बेस है।","NH₃ पानी में घुलकर NH₄⁺ और OH⁻ बनाता है, कमजोर बेस।","CaCO₃ का घुलनशीलता बहुत कम है, पानी में लगभग 0.001 g/100 mL।","KOH भी एक मजबूत बेस है।","बेस की परिभाषा ब्रॉन्स्टेड‑लोरी में OH⁻ देने वाला पदार्थ है।","CaCO₃ का pH लगभग 9.5 होता है, पर यह लवण है।","सोडियम हाइड्रॉक्साइड का उपयोग साबुन बनाने में होता है।","अमोनिया का उपयोग उर्वरक में किया जाता है।"]}]};
+
+        function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    let currentIndex = 0;
+        const total = testData.questions.length;
+        let timeRemaining = total * 60;
+        let timerInterval = null;
+
+        function initApp() {
+            document.getElementById('qTotal').innerText = total;
+            document.getElementById('topicHeading').innerText = testData.topic || 'Gyankshetra Test';
+            renderQuestion();
+            renderPalette();
+            startTimer();
+        }
+
+        function renderQuestion() {
+            const q = testData.questions[currentIndex];
+            document.getElementById('qNum').innerText = currentIndex + 1;
+            const container = document.getElementById('questionContainer');
+
+            let optHtml = q.options.map((opt, idx) => `
+                <div class="opt-item ${q.selected === idx ? 'selected' : ''}" onclick="pickOption(${idx})">
+                    <span>${String.fromCharCode(65 + idx)}. ${esc(opt)}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="q-text">${esc(q.text)}</div>
+                <div class="options-list">${optHtml}</div>
+            `;
+
+            document.getElementById('nextQuestionBtn').style.display = currentIndex === total - 1 ? 'none' : 'block';
+            document.getElementById('finishBtn').style.display = currentIndex === total - 1 ? 'block' : 'none';
+            renderPalette();
+        }
+
+        function pickOption(idx) {
+            const q = testData.questions[currentIndex];
+            if (q.selected !== null && q.selected !== idx) {
+                q.reattempted = true;
+            }
+            q.selected = idx;
+            q.status = 'answered';
+            renderQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentIndex < total - 1) { currentIndex++; renderQuestion(); }
+        }
+
+        function prevQuestion() {
+            if (currentIndex > 0) { currentIndex--; renderQuestion(); }
+        }
+
+        function togglePalette() {
+            document.getElementById('paletteModal').classList.toggle('active');
+        }
+
+        function overlayClose(e) {
+            if (e.target.id === 'paletteModal') togglePalette();
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('paletteGrid');
+            grid.innerHTML = testData.questions.map((q, i) => `
+                <div class="palette-node ${q.selected !== null ? 'answered' : ''} ${i === currentIndex ? 'current' : ''} ${q.reattempted ? 'reattempted' : ''}" onclick="jumpTo(${i})">
+                    <span>${i + 1}</span>
+                    <span class="reattempt-badge"></span>
+                </div>
+            `).join('');
+        }
+
+        function jumpTo(i) {
+            currentIndex = i;
+            renderQuestion();
+            togglePalette();
+        }
+
+        function startTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                if (timeRemaining > 0) {
+                    timeRemaining--;
+                    updateTimerDisplay();
+                } else {
+                    submitTest();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            let m = Math.floor(timeRemaining / 60);
+            let s = timeRemaining % 60;
+            document.getElementById('timerBox').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        function submitTest() {
+            clearInterval(timerInterval);
+            document.getElementById('quizScreen').style.display = 'none';
+            document.getElementById('resultScreen').style.display = 'block';
+
+            let correct = 0;
+            testData.questions.forEach(q => {
+                if (q.selected === q.correctOption) correct++;
+            });
+
+            document.getElementById('scoreOverview').innerHTML = `<b>कुल अंक: ${correct} / ${total}</b>`;
+
+            const shareUrl = window.location.href;
+            const shareText = encodeURIComponent(`🎯 Gyankshetra Mock Test\nविषय: ${testData.topic}\nस्कोर: ${correct}/${total}\nहल करें: ${shareUrl}`);
+            document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${shareUrl}&text=${shareText}`;
+
+            renderReview();
+        }
+
+        function renderReview() {
+            const container = document.getElementById('reviewContainer');
+            container.innerHTML = testData.questions.map((q, i) => `
+                <div class="review-card">
+                    <div class="q-text">${q.text}</div>
+                    <div class="options-list">
+                        ${q.options.map((opt, idx) => `
+                            <div class="opt-item ${idx === q.correctOption ? 'selected' : ''}">
+                                <span>${String.fromCharCode(65 + idx)}.${opt}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          ${q.facts && q.facts.length ? '<div class="status-badge"><b>📌 व्याख्या / तथ्य:</b><ul style="margin:6px 0 0 18px">' + q.facts.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        /* Mobile Touch Swipe */
+        let touchstartX = 0;
+        let touchendX = 0;
+        const swipeArea = document.getElementById('mainSwipeArea');
+
+        swipeArea.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        swipeArea.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX;
+            if (touchendX < touchstartX - 50) nextQuestion();
+            if (touchendX > touchstartX + 50) prevQuestion();
+        }, { passive: true });
+
+        initApp();
+    </script>
+</body>
+</html>
