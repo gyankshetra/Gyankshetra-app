@@ -6,182 +6,191 @@
   <title>Gyankshetra</title>
   <style>
     :root {
-      --primary: #1a73e8;
-      --primary-dark: #1557b0;
-      --success: #1e8e3e;
-      --danger: #d93025;
-      --warning: #f9ab00;
-      --bg: #f8f9fa;
+      --primary-dark: #0f172a;
+      --navy: #0d1b2a;
+      --blue: #0284c7;
+      --blue-accent: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --bg: #f8fafc;
       --card-bg: #ffffff;
-      --text: #202124;
-      --text-muted: #5f6368;
-      --border: #dadce0;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
-    
-    /* Header */
-    header { background: #ffffff; border-bottom: 1px solid var(--border); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-    .title { font-size: 1.15rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; cursor: pointer; }
-    .header-right { display: flex; align-items: center; gap: 10px; }
-    .student-info { font-size: 13px; color: var(--text-muted); background: #f1f3f4; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
-    .timer-box { font-weight: 700; font-size: 15px; color: var(--danger); background: #fce8e6; padding: 5px 12px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 70px; }
 
-    /* Dashboard Layout */
-    #dashboardView { max-width: 900px; margin: 0 auto; width: 100%; padding: 16px; }
-    .tab-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
-    .tab-btn { background: #fff; border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; color: var(--text-muted); transition: 0.15s; }
-    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    
-    .filters-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 14px; }
-    .filter-chip { background: #e8eaed; border: none; padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text); }
-    .filter-chip.active { background: var(--primary); color: #fff; }
+    /* Top Navy Header */
+    header { background: var(--navy); color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .menu-trigger { font-size: 22px; cursor: pointer; color: #fff; line-height: 1; }
+    .header-title-box h1 { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: #fff; }
+    .header-title-box span { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.3px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .profile-icon { width: 30px; height: 30px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .test-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(60,64,67,0.08); display: flex; flex-direction: column; justify-content: space-between; }
-    .test-card-head { margin-bottom: 10px; }
-    .test-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; background: #e8f0fe; color: var(--primary); padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
-    .test-card-title { font-size: 15.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
-    .test-card-meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .card-btn { margin-top: 14px; display: block; text-align: center; background: var(--primary); color: #fff; text-decoration: none; padding: 8px; border-radius: 6px; font-size: 13.5px; font-weight: 600; }
+    /* Sidebar Drawer */
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
+    .drawer.open { left: 0; }
+    .drawer-head { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+    .drawer-head h2 { font-size: 1.2rem; color: #0284c7; font-weight: 700; }
+    .drawer-head p { font-size: 11px; color: var(--text-muted); }
+    .drawer-nav { list-style: none; padding: 12px 0; flex: 1; overflow-y: auto; }
+    .drawer-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14.5px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; }
+    .drawer-nav li a:hover { background: #f1f5f9; }
 
-    /* Test Player Layout */
-    #quizView { display: none; }
-    main { flex: 1; padding: 16px; max-width: 780px; margin: 0 auto; width: 100%; touch-action: pan-y; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 22px; box-shadow: 0 1px 3px rgba(60,64,67,0.08); }
-    
-    .question-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #f1f3f4; padding-bottom: 12px; font-size: 14px; color: var(--text-muted); }
-    .question-header b { color: var(--text); }
-    .topic-tag { background: #e8f0fe; color: var(--primary); font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 4px; }
+    /* Main Container */
+    main { flex: 1; padding: 16px; max-width: 540px; margin: 0 auto; width: 100%; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
 
-    /* ☰ attached to the left of the question */
+    /* Test Header */
+    .q-meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .q-count { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .star-icon { color: #f59e0b; font-size: 19px; cursor: pointer; }
+    .timer-pill { color: #d97706; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+
+    /* Question Row */
     .question-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
-    .q-menu-btn { background: #f1f3f4; border: 1px solid var(--border); color: var(--text); width: 34px; height: 34px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 2px; transition: 0.15s; }
-    .q-menu-btn:active { background: #e2e5e9; }
-    .q-text { font-size: 1.15rem; line-height: 1.6; font-weight: 500; color: #202124; flex: 1; }
-    
+    .q-menu-btn { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-main); width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 3px; }
+    .q-text { font-size: 16.5px; font-weight: 700; line-height: 1.55; color: #0f172a; flex: 1; }
+
     /* Options */
     .options-list { display: flex; flex-direction: column; gap: 12px; }
-    .opt-item { border: 1.5px solid var(--border); border-radius: 8px; padding: 13px 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; font-size: 15.5px; transition: all 0.15s; background: #fff; }
-    .opt-item:hover { border-color: #b0c4de; background: #fdfdfd; }
-    .opt-item.selected { border-color: var(--primary); background: #e8f0fe; font-weight: 500; }
-    .opt-item.correct { border-color: var(--success); background: #e6f4ea; font-weight: 600; color: var(--success); }
-    .opt-item.incorrect { border-color: var(--danger); background: #fce8e6; font-weight: 600; color: var(--danger); }
-    .opt-badge { width: 28px; height: 28px; border-radius: 50%; background: #f1f3f4; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
-    .opt-item.selected .opt-badge { background: var(--primary); color: #fff; }
-    .opt-item.correct .opt-badge { background: var(--success); color: #fff; }
-    .opt-item.incorrect .opt-badge { background: var(--danger); color: #fff; }
+    .opt-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-size: 15px; font-weight: 500; background: #ffffff; transition: 0.15s; display: flex; align-items: center; gap: 10px; }
+    .opt-item.selected { border-color: #0284c7; background: #f0f9ff; font-weight: 600; }
+    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
 
-    /* Navigation */
-    .nav-bar { display: flex; justify-content: space-between; margin-top: 26px; gap: 12px; }
-    .btn { padding: 10px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; font-size: 14.5px; transition: 0.15s; }
-    .btn-secondary { background: #fff; border: 1px solid var(--border); color: var(--text); }
-    .btn-secondary:active { background: #f1f3f4; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:active { background: var(--primary-dark); }
-    .btn-submit { background: var(--success); color: #fff; }
+    /* Nav Buttons */
+    .nav-bar { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
+    .btn-nav-prev { flex: 1; background: #ffffff; border: 1.5px solid var(--border); padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #0f172a; cursor: pointer; }
+    .btn-nav-next { flex: 1; background: #0284c7; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; }
+    .btn-nav-submit { flex: 1; background: #10b981; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; display: none; }
 
-    /* 5-Column Grid Palette Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: center; padding: 16px; }
+    /* 5-Column Question Palette Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; justify-content: center; align-items: center; padding: 16px; }
     .modal-overlay.open { display: flex; }
-    .modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 440px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
-    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #f1f3f4; padding-bottom: 10px; }
-    .modal-head h3 { font-size: 17px; font-weight: 600; }
-    
-    /* 5-Columns Grid */
+    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 16.5px; font-weight: 700; }
     .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-    .palette-node { aspect-ratio: 1; border-radius: 8px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14.5px; cursor: pointer; position: relative; color: var(--text); }
-    .palette-node.active-node { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.3); }
-    .palette-node.answered { background: var(--success); color: #ffffff; border-color: var(--success); }
-    .palette-node .dot-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); display: none; }
+    .palette-node { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; }
+    .palette-node.active-node { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.3); }
+    .palette-node.answered { background: #10b981; color: #fff; border-color: #10b981; }
+    .palette-node .dot-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: none; }
     .palette-node.reattempted .dot-badge { display: block; }
+    .modal-submit-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .modal-submit-btn { width: 100%; background: #10b981; color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 10px; cursor: pointer; }
 
-    /* Modal Submit Button Container */
-    .modal-submit-wrap { margin-top: 20px; border-top: 1px solid #f1f3f4; padding-top: 14px; text-align: center; }
-    .modal-submit-btn { width: 100%; background: var(--success); color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.15s; }
-    .modal-submit-btn:active { opacity: 0.9; }
+    /* Result Screen Original UI */
+    .result-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; margin-bottom: 18px; }
+    .score-circle-wrap { display: flex; justify-content: center; margin: 20px 0; }
+    .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #0f172a; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 24px 0; text-align: center; }
+    .stat-pill { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .stat-pill b { font-size: 16px; color: #0f172a; display: block; margin-bottom: 2px; }
+    .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .btn-review-blue { width: 100%; background: #0284c7; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-reattempt-green { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-share-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; }
 
-    /* Result, Share & Review */
-    .result-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
-    .tg-share-btn { display: inline-flex; align-items: center; gap: 8px; background: #0088cc; color: #ffffff; text-decoration: none; padding: 11px 20px; border-radius: 6px; font-weight: 700; font-size: 14.5px; }
-    .tg-share-btn:hover { background: #0077b5; }
-    .btn-reattempt { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1.5px solid var(--primary); color: var(--primary); padding: 9px 18px; border-radius: 6px; font-weight: 700; font-size: 14.5px; cursor: pointer; }
-    .btn-reattempt:hover { background: #e8f0fe; }
+    /* Review Area */
+    .review-wrap { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; display: none; }
+    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #f1f5f9; }
+    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13.5px; }
+    .facts-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+    .facts-box ul { margin-left: 18px; margin-top: 4px; }
 
-    .status-badge { background: #f1f3f4; padding: 10px 14px; border-radius: 6px; margin: 12px 0 8px 0; font-size: 14px; line-height: 1.5; }
-    .review-wrap { margin-top: 24px; border-top: 2px solid #e8eaed; padding-top: 20px; }
-    .review-item { margin-bottom: 24px; border-bottom: 1px solid #dadce0; padding-bottom: 18px; }
+    /* Bottom Sticky Tab Bar */
+    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
+    .b-tab { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); font-size: 10.5px; font-weight: 600; gap: 3px; cursor: pointer; }
+    .b-tab.active { color: #0284c7; }
+    .b-tab-icon { font-size: 17px; }
   </style>
 </head>
 <body>
 
+  <!-- Navy Header -->
   <header>
-    <div class="title" onclick="showDashboard()">Gyankshetra</div>
+    <div class="header-left">
+      <span class="menu-trigger" onclick="toggleDrawer()">☰</span>
+      <div class="header-title-box">
+        <h1>Gyankshetra</h1>
+        <span>Learning • Practice • Success</span>
+      </div>
+    </div>
     <div class="header-right">
-      <div class="student-info">विद्यार्थी: अमित कुमार</div>
-      <div class="timer-box" id="timerBox" style="display:none;">00:00</div>
+      <span class="lang-badge">अ/E</span>
+      <div class="profile-icon">👤</div>
     </div>
   </header>
 
-  <!-- Dashboard Section -->
-  <div id="dashboardView">
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('quiz')">🎯 Daily Quiz</button>
-      <button class="tab-btn" onclick="switchTab('test')">📝 Test Series</button>
-      <button class="tab-btn" onclick="switchTab('practice')">📚 Practice / PYQ</button>
-      <button class="tab-btn" onclick="switchTab('notes')">📖 Study Notes</button>
+  <!-- Sidebar Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="sideDrawer">
+    <div class="drawer-head">
+      <h2>Gyankshetra</h2>
+      <p>Learning • Practice • Success</p>
     </div>
-
-    <!-- Subject Filters (Active in Test Series) -->
-    <div class="filters-bar" id="subjectFilterBar" style="display:none;">
-      <button class="filter-chip active" onclick="filterBySubject('ALL')">All Subjects</button>
-      <button class="filter-chip" onclick="filterBySubject('Science')">Science</button>
-      <button class="filter-chip" onclick="filterBySubject('History')">History</button>
-      <button class="filter-chip" onclick="filterBySubject('Maths')">Maths</button>
-      <button class="filter-chip" onclick="filterBySubject('Hindi')">Hindi</button>
-      <button class="filter-chip" onclick="filterBySubject('General')">General</button>
-    </div>
-
-    <div class="cards-grid" id="cardsGrid">
-      <div style="color:var(--text-muted); font-size:14px;">लोड हो रहा है...</div>
-    </div>
+    <ul class="drawer-nav">
+      <li><a href="/">🏠 Home</a></li>
+      <li><a href="/tests/">📝 Test Series</a></li>
+      <li><a href="/quiz/">☑️ Quiz/Test</a></li>
+      <li><a href="/practice/">🎯 PYQ Practice</a></li>
+      <li><a href="#saved">⭐ Saved</a></li>
+      <li><a href="/notes/">⬇️ Study Material</a></li>
+      <li><a href="#settings">⚙️ Settings</a></li>
+    </ul>
   </div>
 
-  <!-- Interactive Test Player Section -->
-  <main id="quizView">
+  <main id="touchContainer">
+    <!-- Quiz Screen -->
     <div id="quizScreen" class="card">
-      <div class="question-header">
-        <span>प्रश्न <b id="currQ">1</b> / <span id="totQ">1</span></span>
-        <span class="topic-tag" id="topicLabel">Test</span>
+      <div class="q-meta-bar">
+        <span class="q-count">Question <span id="currQ">1</span>/<span id="totQ">5</span></span>
+        <span class="star-icon">⭐</span>
+        <span class="timer-pill">⏱ <span id="timerBox">00:00</span></span>
       </div>
-      
+
+      <!-- ☰ button attached to left of question -->
       <div class="question-row">
         <button class="q-menu-btn" onclick="togglePalette()" title="Questions Palette">☰</button>
         <div class="q-text" id="questionText"></div>
       </div>
 
       <div class="options-list" id="optionsContainer"></div>
-      
+
       <div class="nav-bar">
-        <button class="btn btn-secondary" onclick="prevQ()">पिछला</button>
-        <button class="btn btn-primary" id="nextBtn" onclick="nextQ()">अगला</button>
-        <button class="btn btn-submit" id="submitBtn" onclick="finishTest()" style="display:none;">सबमिट करें</button>
+        <button class="btn-nav-prev" onclick="prevQ()">← Previous</button>
+        <button class="btn-nav-next" id="nextBtn" onclick="nextQ()">Next →</button>
+        <button class="btn-nav-submit" id="submitBtn" onclick="finishTest()">सबमिट करें</button>
       </div>
     </div>
 
+    <!-- Result Screen -->
     <div id="resultScreen" class="card" style="display:none;">
-      <h2 style="margin-bottom:8px;">🏆 टेस्ट समाप्त!</h2>
-      <div class="status-badge" id="scoreBadge"></div>
+      <div class="result-title">🏆 Result</div>
       
-      <div class="result-actions">
-        <button class="btn-reattempt" onclick="reattemptQuiz()">🔄 Re-attempt Test</button>
-        <a id="telegramShareLink" href="#" target="_blank" class="tg-share-btn">✈ Share on Telegram</a>
+      <div class="score-circle-wrap">
+        <div class="score-circle" id="scoreCircle">0%</div>
       </div>
 
-      <div class="review-wrap">
-        <h3 style="margin-bottom: 14px;">📝 विस्तृत उत्तर एवं व्याख्या (Review)</h3>
-        <div id="reviewContainer"></div>
+      <div class="stats-grid">
+        <div class="stat-pill"><b id="statMarks">0/5</b><span>Marks</span></div>
+        <div class="stat-pill"><b id="statCorrect">0</b><span>Correct</span></div>
+        <div class="stat-pill"><b id="statWrong">0</b><span>Wrong</span></div>
+        <div class="stat-pill"><b id="statSkipped">0</b><span>Skipped</span></div>
       </div>
+
+      <button class="btn-review-blue" onclick="toggleReviewArea()">📖 Review</button>
+      <button class="btn-reattempt-green" onclick="reattemptQuiz()">🔁 Reattempt</button>
+      <a id="telegramShareLink" href="#" target="_blank" class="btn-share-tg">✈ Share on Telegram</a>
+
+      <div id="reviewContainer" class="review-wrap"></div>
     </div>
   </main>
 
@@ -189,150 +198,51 @@
   <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event)">
     <div class="modal-box">
       <div class="modal-head">
-        <h3>प्रश्नावली पैलेट</h3>
-        <button class="btn btn-secondary" onclick="togglePalette()" style="padding: 4px 10px;">✕</button>
+        <h3>Question Palette</h3>
+        <button class="btn-nav-prev" onclick="togglePalette()" style="padding:4px 10px; width:auto; border-radius:6px;">✕</button>
       </div>
       <div class="palette-grid" id="paletteNodes"></div>
-      
       <div class="modal-submit-wrap">
         <button class="modal-submit-btn" onclick="submitFromModal()">सबमिट करें</button>
       </div>
     </div>
   </div>
 
-  <script>
-    // Global Data Registry injected by Bot
-    let registryData = [];
-    let notesData = [];
-    let currentTab = 'quiz';
-    let currentSubjectFilter = 'ALL';
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-bar">
+    <a href="/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
+    <a href="/tests/" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
+    <a href="/quiz/" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
+    <a href="#saved" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
+    <a href="/notes/" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
+  </nav>
 
-    // Bot Template Object: DO NOT REMOVE
+  <script>
+    // Injected by Bot
     const testData = {
       "isReattempted": false,
       "studentName": "छात्र",
-      "topic": "इतिहास",
+      "topic": "Physics",
       "questions": [
         {
           "id": 1,
-          "text": "हड़प्पा सभ्यता की खोज किस वर्ष हुई थी?",
-          "options": ["1921", "1922", "1935", "1942"],
+          "text": "गुरुत्वाकर्षण नियतांक (G) का मान क्या होता है?",
+          "options": ["6.67 × 10^-11 N m²/kg²", "9.8 m/s²", "6.4 × 10^6 m", "1.6 × 10^-19 C"],
           "correctOption": 0,
           "selected": null,
           "status": "skipped",
-          "facts": ["दयाराम साहनी ने 1921 में हड़प्पा की खोज की थी।"]
+          "facts": ["G का मान हेनरी कैवेंडिश ने संवेदनशील तुला द्वारा ज्ञात किया था।"]
         }
       ]
     };
 
     let currentIndex = 0;
-    let totalQuestions = testData.questions.length;
+    const totalQuestions = testData.questions.length;
     let secondsLeft = totalQuestions * 60;
     let timerTimer = null;
 
-    // Load content dynamically for dashboard
-    async function loadDashboardData() {
-      try {
-        const res = await fetch('content/generated_tests.json');
-        if (res.ok) registryData = await res.json();
-      } catch (e) { console.log('generated_tests.json load error', e); }
-
-      try {
-        const resN = await fetch('content/study_material.json');
-        if (resN.ok) notesData = await resN.json();
-      } catch (e) { console.log('study_material.json load error', e); }
-
-      renderDashboardCards();
-    }
-
-    function switchTab(tab) {
-      currentTab = tab;
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-
-      document.getElementById('subjectFilterBar').style.display = (tab === 'test') ? 'flex' : 'none';
-      currentSubjectFilter = 'ALL';
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-      const allChip = document.querySelector('.filter-chip');
-      if (allChip) allChip.classList.add('active');
-
-      renderDashboardCards();
-    }
-
-    function filterBySubject(subj) {
-      currentSubjectFilter = subj;
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
-      renderDashboardCards();
-    }
-
-    function renderDashboardCards() {
-      const grid = document.getElementById('cardsGrid');
-      grid.innerHTML = '';
-
-      let list = (currentTab === 'notes') ? notesData : registryData;
-      let filtered = [];
-
-      if (currentTab === 'quiz') {
-        filtered = list.filter(item => item.type === 'quiz' || (item.category && item.category.toLowerCase().includes('quiz')));
-      } else if (currentTab === 'test') {
-        filtered = list.filter(item => item.type === 'test' || item.type === 'mock' || (item.category && item.category.toLowerCase().includes('test')));
-        if (currentSubjectFilter !== 'ALL') {
-          filtered = filtered.filter(item => (item.subject || '').toLowerCase().includes(currentSubjectFilter.toLowerCase()));
-        }
-      } else if (currentTab === 'practice') {
-        filtered = list.filter(item => item.type === 'practice' || item.type === 'pyq');
-      } else if (currentTab === 'notes') {
-        filtered = list;
-      }
-
-      if (!filtered.length) {
-        grid.innerHTML = `<div style="color:var(--text-muted); font-size:14px;">इस श्रेणी में अभी कोई सामग्री उपलब्ध नहीं है।</div>`;
-        return;
-      }
-
-      filtered.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'test-card';
-        card.innerHTML = `
-          <div class="test-card-head">
-            <span class="test-badge">${item.class || item.category || 'TEST'}</span>
-            <div class="test-card-title">${item.title || item.topic || 'Gyankshetra'}</div>
-            <div class="test-card-meta">विषय: ${item.subject || 'General'} · प्रश्न: ${item.questions || 'N/A'}</div>
-          </div>
-          <a class="card-btn" href="${item.url}">${item.btn_text || 'START NOW'}</a>
-        `;
-        grid.appendChild(card);
-      });
-    }
-
-    function showDashboard() {
-      clearInterval(timerTimer);
-      document.getElementById('quizView').style.display = 'none';
-      document.getElementById('dashboardView').style.display = 'block';
-      document.getElementById('timerBox').style.display = 'none';
-    }
-
-    // Direct quiz runner when inside a standalone test page
-    function initStandaloneQuiz() {
-      const isTestFile = window.location.pathname.includes('/quiz/') || 
-                         window.location.pathname.includes('/tests/') || 
-                         window.location.pathname.includes('/practice/');
-      if (isTestFile) {
-        document.getElementById('dashboardView').style.display = 'none';
-        document.getElementById('quizView').style.display = 'block';
-        document.getElementById('timerBox').style.display = 'block';
-        initQuiz();
-      } else {
-        loadDashboardData();
-      }
-    }
-
     function initQuiz() {
-      totalQuestions = testData.questions.length;
-      secondsLeft = totalQuestions * 60;
       document.getElementById('totQ').innerText = totalQuestions;
-      document.getElementById('topicLabel').innerText = testData.topic || 'Test';
       renderQuestion();
       renderPalette();
       startTimer();
@@ -346,7 +256,6 @@
       const optsContainer = document.getElementById('optionsContainer');
       optsContainer.innerHTML = q.options.map((opt, idx) => `
         <div class="opt-item ${q.selected === idx ? 'selected' : ''}" onclick="pickOpt(${idx})">
-          <span class="opt-badge">${String.fromCharCode(65 + idx)}</span>
           <span>${String.fromCharCode(65 + idx)}. ${opt}</span>
         </div>
       `).join('');
@@ -428,22 +337,41 @@
       document.getElementById('resultScreen').style.display = 'block';
 
       let correct = 0;
+      let wrong = 0;
+      let skipped = 0;
+
       testData.questions.forEach(q => {
-        if (q.selected === q.correctOption) correct++;
+        if (q.selected === null) {
+          skipped++;
+        } else if (q.selected === q.correctOption) {
+          correct++;
+        } else {
+          wrong++;
+        }
       });
 
-      document.getElementById('scoreBadge').innerHTML = `<b>स्कोर: ${correct} / ${totalQuestions}</b> (${Math.round((correct / totalQuestions) * 100)}%)`;
+      const pct = Math.round((correct / totalQuestions) * 100);
+      document.getElementById('scoreCircle').innerText = `${pct}%`;
+      document.getElementById('statMarks').innerText = `${correct}/${totalQuestions}`;
+      document.getElementById('statCorrect').innerText = correct;
+      document.getElementById('statWrong').innerText = wrong;
+      document.getElementById('statSkipped').innerText = skipped;
 
       const curUrl = window.location.href;
       const shareText = encodeURIComponent(
-        `🎯 Gyankshetra Mock Test\n` +
+        `🎯 Gyankshetra Test\n` +
         `📚 विषय: ${testData.topic}\n` +
-        `🏆 स्कोर: ${correct}/${totalQuestions} (${Math.round((correct / totalQuestions) * 100)}%)\n\n` +
+        `🏆 स्कोर: ${correct}/${totalQuestions} (${pct}%)\n\n` +
         `🔗 टेस्ट हल करें: ${curUrl}`
       );
       document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
 
       buildReview();
+    }
+
+    function toggleReviewArea() {
+      const rev = document.getElementById('reviewContainer');
+      rev.style.display = (rev.style.display === 'block') ? 'none' : 'block';
     }
 
     function reattemptQuiz() {
@@ -460,6 +388,7 @@
       initQuiz();
     }
 
+    // Exact marker required by gyankshetra_bot.py: <div class="q-text">${q.text}</div>
     function buildReview() {
       const rev = document.getElementById('reviewContainer');
       rev.innerHTML = testData.questions.map((q, i) => {
@@ -467,7 +396,7 @@
         return `
           <div class="review-item">
             <div class="q-text">${q.text}</div>
-            <div class="options-list">
+            <div class="options-list" style="margin-top:10px;">
               ${q.options.map((opt, idx) => {
                 let optClass = "opt-item";
                 if (idx === q.correctOption) {
@@ -477,7 +406,6 @@
                 }
                 return `
                   <div class="${optClass}">
-                    <span class="opt-badge">${String.fromCharCode(65 + idx)}</span>
                     <span>${String.fromCharCode(65 + idx)}.${opt}</span>
                   </div>
                 `;
@@ -489,21 +417,22 @@
       }).join('');
     }
 
-    /* Swipe Gestures */
+    function toggleDrawer() {
+      document.getElementById('sideDrawer').classList.toggle('open');
+      document.getElementById('drawerOverlay').classList.toggle('open');
+    }
+
+    /* Mobile Swipe */
     let startX = 0;
-    const swipeSurface = document.getElementById('quizView');
-
-    swipeSurface.addEventListener('touchstart', e => {
-      startX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
+    const swipeSurface = document.getElementById('touchContainer');
+    swipeSurface.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
     swipeSurface.addEventListener('touchend', e => {
       let diff = e.changedTouches[0].screenX - startX;
       if (diff < -50) nextQ();
       if (diff > 50) prevQ();
     }, { passive: true });
 
-    initStandaloneQuiz();
+    initQuiz();
   </script>
 </body>
 </html>
