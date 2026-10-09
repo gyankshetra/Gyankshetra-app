@@ -7,7 +7,7 @@ Telegram में लिखें: "BSSC previous year paper"
 
 ज़रूरी environment variables:
   TELEGRAM_BOT_TOKEN   BotFather से
-  ADMIN_IDS            आपकी Telegram user id (कई हों तो कॉमा से अलग)
+  ADMIN_IDS            आपकी Telegram user id (कई हों तो कॉमा से अलग); TELEGRAM_ALLOWED_CHAT_IDS भी चलेगा
   GROQ_API_KEY         Groq की key
   TAVILY_API_KEY       (वैकल्पिक) बेहतर वेब सर्च के लिए; न हो तो बिना key वाली DuckDuckGo खोज चलती है
   GITHUB_TOKEN         repo में contents:write वाला token
@@ -25,10 +25,20 @@ SECTIONS = ("notes", "ncert", "papers")
 UA = {"User-Agent": "Mozilla/5.0 (GyankshetraBot)"}
 
 
-def http(url, data=None, headers=None, method=None, timeout=90):
+def http(url, data=None, headers=None, method=None, timeout=30, total=90, max_bytes=None):
+    """total = पूरे डाउनलोड की अधिकतम सेकंड सीमा (धीरे-धीरे आने वाले सर्वर से अटकने से बचाव)।"""
     req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
+    t0, buf = time.time(), b""
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+        while True:
+            chunk = r.read1(65536)
+            if not chunk:
+                return buf
+            buf += chunk
+            if time.time() - t0 > total:
+                raise TimeoutError(f"{total} सेकंड में डाउनलोड पूरा नहीं हुआ")
+            if max_bytes and len(buf) > max_bytes:
+                raise ValueError("फ़ाइल बहुत बड़ी है")
 
 
 def jpost(url, payload, headers=None):
@@ -100,7 +110,7 @@ def rank(results):
 
 
 def fetch_pdf(url):
-    data = http(url, headers=UA, timeout=120)
+    data = http(url, headers=UA, timeout=20, total=45, max_bytes=MAX_PDF)
     if len(data) > MAX_PDF or not data.startswith(b"%PDF"):
         return None
     return data
@@ -155,9 +165,13 @@ def handle(text):
 
     if section == "papers":
         cands = rank(search(d["query"]))
+        t0, tried = time.time(), 0
         for url, _t, _c in cands:
             if not url.lower().split("?")[0].endswith(".pdf"):
                 continue
+            if tried >= 5 or time.time() - t0 > 150:   # अटकने से बचाव
+                break
+            tried += 1
             try:
                 pdf = fetch_pdf(url)
             except Exception:
@@ -183,27 +197,53 @@ def say(chat, text):
     jpost(TG + "/sendMessage", {"chat_id": chat, "text": text[:4000], "disable_web_page_preview": True})
 
 
+def process(u, admins):
+    m = u.get("message") or {}
+    text, uid = m.get("text"), (m.get("from") or {}).get("id")
+    if not text or uid not in admins:      # सिर्फ़ admin repo में कुछ लिख सकता है
+        return
+    say(m["chat"]["id"], "⏳ खोज रहा हूँ…")
+    try:
+        say(m["chat"]["id"], handle(text))
+    except Exception as e:
+        say(m["chat"]["id"], f"❌ नहीं हो पाया: {e}")
+
+
 def main():
-    admins = {int(x) for x in E["ADMIN_IDS"].split(",") if x.strip()}
+    import sys
+    once = "--once" in sys.argv        # GitHub Actions के लिए: एक बार जाँचकर बंद
+    if once:                            # पूरे काम की कड़ी समय-सीमा (सिर्फ़ Linux/GitHub पर)
+        import signal
+        def _stop(*_):
+            raise TimeoutError("कुल समय-सीमा (4 मिनट) पूरी हो गई")
+        signal.signal(signal.SIGALRM, _stop)
+        signal.alarm(240)
+    need = ["TELEGRAM_BOT_TOKEN", "GROQ_API_KEY", "GITHUB_TOKEN", "GITHUB_REPO"]
+    ids_raw = E.get("ADMIN_IDS") or E.get("TELEGRAM_ALLOWED_CHAT_IDS") or ""
+    missing = [k for k in need if not E.get(k)] + ([] if ids_raw.strip() else ["ADMIN_IDS (या TELEGRAM_ALLOWED_CHAT_IDS)"])
+    if missing:
+        raise SystemExit("ये variables सेट नहीं हैं: " + ", ".join(missing))
+    admins = {int(x) for x in ids_raw.replace(" ", "").split(",") if x}
     offset = 0
-    print("Study bot चालू है…")
+    print("Study bot चालू है…" if not once else "Study bot: बचे हुए संदेश जाँच रहा हूँ…", flush=True)
     while True:
         try:
-            ups = json.loads(http(f"{TG}/getUpdates?timeout=50&offset={offset}", timeout=70))["result"]
-        except Exception:
+            wait = 0 if once else 50
+            ups = json.loads(http(f"{TG}/getUpdates?timeout={wait}&offset={offset}", timeout=wait + 20))["result"]
+        except Exception as e:
+            if once:
+                raise SystemExit(f"Telegram से संदेश नहीं मिले: {e}")
             time.sleep(5)
             continue
+        if ups:
+            offset = ups[-1]["update_id"] + 1
+            if once:   # पहले "देखा हुआ" चिह्नित करो, ताकि अटकने पर वही संदेश बार-बार न चले
+                http(f"{TG}/getUpdates?timeout=0&offset={offset}", timeout=30)
         for u in ups:
-            offset = u["update_id"] + 1
-            m = u.get("message") or {}
-            text, uid = m.get("text"), (m.get("from") or {}).get("id")
-            if not text or uid not in admins:      # सिर्फ़ admin repo में कुछ लिख सकता है
-                continue
-            say(m["chat"]["id"], "⏳ खोज रहा हूँ…")
-            try:
-                say(m["chat"]["id"], handle(text))
-            except Exception as e:
-                say(m["chat"]["id"], f"❌ नहीं हो पाया: {e}")
+            process(u, admins)
+        if once:
+            print(f"{len(ups)} संदेश निपटाए।", flush=True)
+            return
 
 
 if __name__ == "__main__":
