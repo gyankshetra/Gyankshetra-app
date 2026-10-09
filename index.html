@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gyankshetra - Result & Review</title>
+  <title>Gyankshetra - Quiz & Result App</title>
   <style>
     * {
       box-sizing: border-box;
@@ -14,6 +14,9 @@
     body {
       background-color: #f7f9fa;
       color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
       padding-bottom: 30px;
     }
     /* हेडर */
@@ -29,12 +32,23 @@
       font-size: 1.1rem;
       font-weight: bold;
     }
+    .palette-toggle-btn {
+      background: #0d5bb5;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
     
     /* कंटेनर */
     .container {
       max-width: 480px;
       margin: 0 auto;
       padding: 16px;
+      width: 100%;
     }
 
     /* री-अटेम्प्ट बैज */
@@ -89,7 +103,7 @@
       color: #0b2239;
     }
 
-    /* स्टेटिस्टिक्स ग्रिड */
+    /* स्टेटिस्टिक्स ग्रिड (क्लिक करने पर फ़िल्टर होंगे) */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -120,7 +134,7 @@
       color: #666;
     }
 
-    /* ऐक्शन बटन्स */
+    /* बटन्स */
     .btn {
       width: 100%;
       padding: 12px;
@@ -136,44 +150,42 @@
       margin-bottom: 10px;
       text-decoration: none;
     }
-    .btn-review {
-      background-color: #0d5bb5;
-      color: #fff;
-    }
-    .btn-reattempt {
-      background-color: #00a65a;
-      color: #fff;
-    }
-    .btn-telegram {
-      background-color: #0088cc;
-      color: #fff;
-    }
-
-    /* क्वेश्चन रिव्यू सेक्शन */
-    #review-section {
-      display: none;
-      margin-top: 20px;
-    }
-    .review-header {
+    .btn-review { background-color: #0d5bb5; color: #fff; }
+    .btn-reattempt { background-color: #00a65a; color: #fff; }
+    .btn-telegram { background-color: #0088cc; color: #fff; }
+    
+    /* क्विज़ स्क्रीन के बटन्स */
+    .nav-bar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      gap: 10px;
+      margin-top: 16px;
     }
-    .question-card {
+    .btn-prev { background-color: #e4e6eb; color: #333; flex: 1; padding: 12px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+    .btn-next { background-color: #0d5bb5; color: #fff; flex: 1; padding: 12px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+    .btn-submit { background-color: #00a65a; color: #fff; flex: 1; padding: 12px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+
+    /* क्वेश्चन बॉक्स */
+    .question-box {
       background: #fff;
-      border: 1px solid #dfe4ea;
+      border: 1px solid #e1e4e8;
       border-radius: 8px;
       padding: 16px;
-      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .question-title {
+    .q-number {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .q-text {
+      font-size: 1rem;
       font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
       line-height: 1.4;
+      color: #0b2239;
     }
-    .option-list {
+    .options-list {
       list-style: none;
     }
     .option-item {
@@ -183,15 +195,83 @@
       padding: 10px 12px;
       margin-bottom: 8px;
       font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+    .option-item.selected {
+      background: #e8f0fe;
+      border-color: #0d5bb5;
+      color: #0d5bb5;
+      font-weight: 600;
     }
     .option-item.correct {
       background: #e8f8f0;
       border-color: #00a65a;
       color: #00a65a;
       font-weight: 600;
+    }
+
+    /* (+/-) पॉपअप पैलेट मोडल */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #fff;
+      width: 90%;
+      max-width: 360px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: bold;
+      color: #0b2239;
+    }
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin: 15px 0;
+    }
+    .palette-item {
+      padding: 10px;
+      text-align: center;
+      background: #f1f2f6;
+      border: 1px solid #dcdde1;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .palette-item.answered {
+      background: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+
+    /* रिव्यू सेक्शन */
+    #review-section {
+      display: none;
+      margin-top: 20px;
+    }
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
     }
     .status-badge {
       font-size: 0.8rem;
@@ -205,93 +285,204 @@
   <!-- हेडर -->
   <header>
     <div class="title">Gyankshetra</div>
-    <div>JEE/NEET</div>
+    <button class="palette-toggle-btn" id="palette-btn" onclick="togglePalette()" style="display:none;">[+/-] Questions</button>
   </header>
 
-  <div class="container">
-    <!-- Re-attempted लेबल -->
-    <div id="reattempt-badge" class="reattempt-badge" style="display: none;">Re-attempted</div>
-
-    <div class="result-header">
-      <span>🏆</span> Result
-    </div>
-
-    <!-- छात्र का नाम -->
-    <div class="user-name" id="student-name">विद्यार्थी: लोड हो रहा है...</div>
-
-    <!-- स्कोर प्रतिशत सर्कल -->
-    <div class="circle-wrap">
-      <div class="circle-score" id="percentage-score">0%</div>
-    </div>
-
-    <!-- स्टेटिस्टिक्स कार्ड्स -->
-    <div class="stats-grid">
-      <div class="stat-card" onclick="filterQuestions('all')">
-        <div class="value" id="marks-val">0 / 5</div>
-        <div class="label">Marks</div>
+  <div class="container" id="main-container">
+    <!-- क्विज़ टेकिंग स्क्रीन -->
+    <div id="quiz-screen">
+      <div class="question-box" id="quiz-swipe-area">
+        <div class="q-number" id="q-num-label">Question 1 of 3</div>
+        <div class="q-text" id="q-text">लोड हो रहा है...</div>
+        <ul class="options-list" id="options-container"></ul>
       </div>
-      <div class="stat-card" onclick="filterQuestions('correct')">
-        <div class="value" id="correct-val">0</div>
-        <div class="label">Correct</div>
-      </div>
-      <div class="stat-card" onclick="filterQuestions('wrong')">
-        <div class="value" id="wrong-val">0</div>
-        <div class="label">Wrong</div>
-      </div>
-      <div class="stat-card" onclick="filterQuestions('skipped')">
-        <div class="value" id="skipped-val">5</div>
-        <div class="label">Skipped</div>
+
+      <div class="nav-bar">
+        <button class="btn-prev" onclick="prevQuestion()">Previous</button>
+        <button class="btn-next" id="next-btn" onclick="nextQuestion()">Next</button>
+        <button class="btn-submit" id="submit-btn" style="display:none;" onclick="submitTest()">Submit Test</button>
       </div>
     </div>
 
-    <!-- मुख्य ऐक्शन बटन्स -->
-    <button class="btn btn-review" onclick="toggleReview()">📖 Review All Questions</button>
-    <button class="btn btn-reattempt" onclick="triggerReattempt()">🔄 Reattempt</button>
-    <button class="btn btn-telegram" onclick="shareToTelegram()">✈️ Share to Telegram</button>
+    <!-- रिजल्ट स्क्रीन (सबमिट होने के बाद दिखेगी) -->
+    <div id="result-screen" style="display: none;">
+      <div id="reattempt-badge" class="reattempt-badge" style="display: none;">Re-attempted</div>
 
-    <!-- क्वेश्चन एनालिसिस व रिव्यू सेक्शन -->
-    <div id="review-section">
-      <div class="review-header">
-        <h3 id="review-title">प्रश्नों का विवरण</h3>
-        <button onclick="toggleReview()" style="padding: 4px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc;">बंद करें</button>
+      <div class="result-header">
+        <span>🏆</span> Result
       </div>
-      <div id="questions-container"></div>
+
+      <div class="user-name" id="student-name">विद्यार्थी: अमित कुमार</div>
+
+      <div class="circle-wrap">
+        <div class="circle-score" id="percentage-score">0%</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card" onclick="filterQuestions('all')">
+          <div class="value" id="marks-val">0 / 3</div>
+          <div class="label">Marks</div>
+        </div>
+        <div class="stat-card" onclick="filterQuestions('correct')">
+          <div class="value" id="correct-val">0</div>
+          <div class="label">Correct</div>
+        </div>
+        <div class="stat-card" onclick="filterQuestions('wrong')">
+          <div class="value" id="wrong-val">0</div>
+          <div class="label">Wrong</div>
+        </div>
+        <div class="stat-card" onclick="filterQuestions('skipped')">
+          <div class="value" id="skipped-val">3</div>
+          <div class="label">Skipped</div>
+        </div>
+      </div>
+
+      <button class="btn btn-review" onclick="toggleReview()">📖 Review All Questions</button>
+      <button class="btn btn-reattempt" onclick="triggerReattempt()">🔄 Reattempt</button>
+      <button class="btn btn-telegram" onclick="shareToTelegram()">✈️ Share to Telegram</button>
+
+      <div id="review-section">
+        <div class="review-header">
+          <h3 id="review-title">प्रश्नों का विवरण</h3>
+          <button onclick="toggleReview()" style="padding: 4px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc;">बंद करें</button>
+        </div>
+        <div id="questions-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (+/-) क्वेश्चन पैलेट पॉपअप मोडल -->
+  <div class="modal-overlay" id="palette-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Question Palette</span>
+        <span style="cursor:pointer; font-size:1.2rem;" onclick="togglePalette()">×</span>
+      </div>
+      <div class="palette-grid" id="palette-grid"></div>
+      <button class="btn-prev" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; cursor:pointer;" onclick="togglePalette()">Close</button>
     </div>
   </div>
 
   <script>
-    // टेस्ट और स्टूडेंट डेटा
     const testData = {
-      isReattempted: true, // दोबारा प्रयास होने पर true
-      studentName: "अमित कुमार", // यहाँ लॉगिन छात्र का नाम सेट करें
-      totalMarks: 5,
+      isReattempted: true,
+      studentName: "अमित कुमार",
       questions: [
         {
           id: 1,
-          text: "यदि किसी वस्तु का द्रव्यमान पृथ्वी पर 60 kg है, तो चंद्रमा की सतह पर उसका द्रव्यमान और भार क्रमशः क्या होगा? (g = 10 m/s²)",
+          text: "यदि किसी वस्तु का द्रव्यमान पृथ्वी पर 60 kg है, तो चंद्रमा की सतह पर उसका द्रव्यमान और भार क्रमशः क्या होगा?",
           options: ["10 kg और 100 N", "60 kg और 600 N", "60 kg और 100 N", "10 kg और 600 N"],
-          correctOption: 2,
+          correctOption: 1,
+          selected: null,
           status: "skipped"
         },
         {
           id: 2,
-          text: "केप्लर के तृतीय नियम के अनुसार, किसी ग्रह का परिक्रमण काल वर्ग (T²) सूर्य से औसत दूरी (r) के किस घात के समानुपाती होता है?",
-          options: ["दूरी के वर्ग के", "दूरी के घन के", "दूरी के वर्गमूल के", "चतुर्थ घात के"],
-          correctOption: 1,
+          text: "केप्लर के तृतीय नियम के अनुसार T² किसके समानुपाती होता है?",
+          options: ["r के", "r² के", "r³ के", "√r के"],
+          correctOption: 2,
+          selected: null,
           status: "skipped"
         },
         {
           id: 3,
-          text: "आर्किमिडीज के सिद्धांत के अनुसार, किसी द्रव में डूबी वस्तु पर उत्प्लावन बल किस पर निर्भर करता है?",
-          options: ["वस्तु के द्रव्यमान पर", "द्रव के तापमान पर", "विस्थापित द्रव के आयतन और घनत्व पर", "रासायनिक गुणों पर"],
+          text: "आर्किमिडीज का सिद्धांत किससे संबंधित है?",
+          options: ["गति से", "ऊष्मा से", "उत्प्लावन बल से", "प्रकाश से"],
           correctOption: 2,
+          selected: null,
           status: "skipped"
         }
       ]
     };
 
-    // स्क्रीन लोड होते ही डेटा सेट करना
-    function initScreen() {
+    let currentIndex = 0;
+
+    function loadQuestion(index) {
+      const q = testData.questions[index];
+      document.getElementById("q-num-label").innerText = `Question ${index + 1} of ${testData.questions.length}`;
+      document.getElementById("q-text").innerText = q.text;
+
+      const optContainer = document.getElementById("options-container");
+      optContainer.innerHTML = "";
+
+      q.options.forEach((opt, idx) => {
+        const li = document.createElement("li");
+        li.className = "option-item" + (q.selected === idx ? " selected" : "");
+        li.innerText = `${String.fromCharCode(65 + idx)}. ${opt}`;
+        li.onclick = () => selectOption(index, idx);
+        optContainer.appendChild(li);
+      });
+
+      if (index === testData.questions.length - 1) {
+        document.getElementById("next-btn").style.display = "none";
+        document.getElementById("submit-btn").style.display = "block";
+      } else {
+        document.getElementById("next-btn").style.display = "block";
+        document.getElementById("submit-btn").style.display = "none";
+      }
+    }
+
+    function selectOption(qIdx, optIdx) {
+      testData.questions[qIdx].selected = optIdx;
+      loadQuestion(qIdx);
+    }
+
+    function nextQuestion() {
+      if (currentIndex < testData.questions.length - 1) {
+        currentIndex++;
+        loadQuestion(currentIndex);
+      }
+    }
+
+    function prevQuestion() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        loadQuestion(currentIndex);
+      }
+    }
+
+    function togglePalette() {
+      const modal = document.getElementById("palette-modal");
+      modal.style.display = modal.style.display === "flex" ? "none" : "flex";
+      buildPalette();
+    }
+
+    function buildPalette() {
+      const grid = document.getElementById("palette-grid");
+      grid.innerHTML = "";
+      testData.questions.forEach((q, idx) => {
+        const item = document.createElement("div");
+        item.className = "palette-item" + (q.selected !== null ? " answered" : "");
+        item.innerText = idx + 1;
+        item.onclick = () => {
+          currentIndex = idx;
+          loadQuestion(currentIndex);
+          togglePalette();
+        };
+        grid.appendChild(item);
+      });
+    }
+
+    function submitTest() {
+      if (confirm("क्या आप अपना टेस्ट सबमिट करना चाहते हैं?")) {
+        testData.questions.forEach(q => {
+          if (q.selected === null) {
+            q.status = "skipped";
+          } else if (q.selected === q.correctOption) {
+            q.status = "correct";
+          } else {
+            q.status = "wrong";
+          }
+        });
+
+        document.getElementById("quiz-screen").style.display = "none";
+        document.getElementById("palette-btn").style.display = "none";
+        document.getElementById("result-screen").style.display = "block";
+        initResultScreen();
+      }
+    }
+
+    function initResultScreen() {
       if (testData.isReattempted) {
         document.getElementById("reattempt-badge").style.display = "inline-block";
       }
@@ -301,17 +492,17 @@
       const correctCount = testData.questions.filter(q => q.status === "correct").length;
       const wrongCount = testData.questions.filter(q => q.status === "wrong").length;
       const skippedCount = testData.questions.filter(q => q.status === "skipped").length;
+      const total = testData.questions.length;
 
-      document.getElementById("marks-val").innerText = `${correctCount} / ${testData.totalMarks}`;
+      document.getElementById("marks-val").innerText = `${correctCount} / ${total}`;
       document.getElementById("correct-val").innerText = correctCount;
       document.getElementById("wrong-val").innerText = wrongCount;
       document.getElementById("skipped-val").innerText = skippedCount;
 
-      const percentage = Math.round((correctCount / testData.totalMarks) * 100);
+      const percentage = Math.round((correctCount / total) * 100);
       document.getElementById("percentage-score").innerText = percentage + "%";
     }
 
-    // कैटेगरी के अनुसार फ़िल्टर करना
     function filterQuestions(filterType) {
       const container = document.getElementById("questions-container");
       const reviewSection = document.getElementById("review-section");
@@ -334,22 +525,24 @@
 
       filtered.forEach((q) => {
         const card = document.createElement("div");
-        card.className = "question-card";
+        card.className = "question-box";
+        card.style.marginBottom = "15px";
 
         let optionsHtml = "";
         q.options.forEach((opt, idx) => {
           const isCorrect = idx === q.correctOption;
           optionsHtml += `
             <li class="option-item ${isCorrect ? 'correct' : ''}">
-              <span>${idx + 1}. ${opt}</span>
+              <span>${String.fromCharCode(65 + idx)}. ${opt}</span>
               ${isCorrect ? '<span>✔</span>' : ''}
             </li>
           `;
         });
 
         card.innerHTML = `
-          <div class="question-title">Question ${q.id}: ${q.text}</div>
-          <ul class="option-list">${optionsHtml}</ul>
+          <div class="q-number">Question ${q.id}</div>
+          <div class="q-text">${q.text}</div>
+          <ul class="options-list">${optionsHtml}</ul>
           <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
         `;
         container.appendChild(card);
@@ -368,10 +561,14 @@
     }
 
     function triggerReattempt() {
-      alert("टेस्ट फिर से शुरू किया जा रहा है...");
+      testData.questions.forEach(q => q.selected = null);
+      currentIndex = 0;
+      document.getElementById("result-screen").style.display = "none";
+      document.getElementById("quiz-screen").style.display = "block";
+      document.getElementById("palette-btn").style.display = "block";
+      loadQuestion(0);
     }
 
-    // टेलीग्राम चैनल लिंक इंटिग्रेशन
     function shareToTelegram() {
       const channelLink = "https://t.me/gyankshetra";
       const score = document.getElementById("percentage-score").innerText;
@@ -385,12 +582,35 @@
         `चैनल से जुड़ें:`
       );
 
-      // Telegram शेयर API यूआरएल (जो सीधे आपके चैनल लिंक के साथ शेयर करेगा)
       const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(channelLink)}&text=${shareText}`;
       window.open(telegramUrl, "_blank");
     }
 
-    initScreen();
+    // टच स्वाइप (Swipe Left/Right) लॉजिक
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    const swipeArea = document.getElementById("quiz-swipe-area");
+    swipeArea.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    swipeArea.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    });
+
+    function handleSwipe() {
+      if (touchEndX < touchStartX - 50) {
+        if (currentIndex < testData.questions.length - 1) nextQuestion();
+      }
+      if (touchEndX > touchStartX + 50) {
+        if (currentIndex > 0) prevQuestion();
+      }
+    }
+
+    document.getElementById("palette-btn").style.display = "block";
+    loadQuestion(0);
   </script>
 </body>
 </html>
