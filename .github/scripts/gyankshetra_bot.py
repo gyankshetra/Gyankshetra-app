@@ -27,8 +27,10 @@ ALLOWED = {
     if x.strip()
 }
 
-# Model env se badal sakte hain (GROQ_MODEL), default 70B (Hindi facts me behtar)
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+# Groq ne llama-3.3-70b-versatile aur llama-3.1-8b-instant 16 Aug 2026 ko band kar diye.
+# Default ab openai/gpt-oss-120b hai. Badalna ho to GROQ_MODEL env set karein
+# (jaise "qwen/qwen3.6-27b" ya "openai/gpt-oss-20b").
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 BASE_URL = "https://gyankshetra.github.io/Gyankshetra-app/"
 TG = "https://api.telegram.org/bot" + BOT_TOKEN
@@ -308,6 +310,9 @@ def ask_groq(prompt, is_json=False):
         "temperature": 0.3,
         "max_tokens": MAX_TOKENS,
     }
+    if "gpt-oss" in GROQ_MODEL:
+        # reasoning model: soch me tokens kam lage, jawab ke liye bache
+        kwargs["reasoning_effort"] = "low"
     if is_json:
         kwargs["response_format"] = {"type": "json_object"}
 
