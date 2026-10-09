@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gyankshetra Telegram bot (Gemini)
+"""Gyankshetra Telegram bot (Groq AI)
 Automatic Quiz Generator, Notes Generator & Scheduled Channel Publisher
 """
 import os
@@ -14,7 +14,7 @@ from urllib.parse import quote
 import requests
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-GEMINI_KEY = os.environ["GEMINI_API_KEY"]
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
 # Telegram Channel ID ya Username
 CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@Gyankshetra")
@@ -234,15 +234,15 @@ def extract_metadata(topic_text):
     return {"class": grade, "subject": found_sub, "topic": clean_topic}
 
 
-# -------------------------------------------------------------------- Gemini
+# -------------------------------------------------------------------- Groq AI
 _client = None
 
 
 def get_client():
     global _client
     if _client is None:
-        from google import genai
-        _client = genai.Client(api_key=GEMINI_KEY)
+        from groq import Groq
+        _client = Groq(api_key=GROQ_API_KEY)
     return _client
 
 
@@ -263,7 +263,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 7. प्रश्न एक-दूसरे से अलग हों।
 8. गलत या मनगढ़ंत तथ्य न बनाओ।
 9. STET / BPSC TRE स्तर का ध्यान रखो।
-10. केवल JSON दो, Markdown code fence नहीं।
+10. केवल वैध JSON दो, अतिरिक्त टेक्स्ट या Markdown code fence नहीं।
 
 सिर्फ इस structure में JSON दो:
 {"questions":[{"question":"प्रश्न","options":["A","B","C","D"],"answer":0,"explanation":"व्याख्या","facts":["तथ्य 1","तथ्य 2","तथ्य 3","तथ्य 4","तथ्य 5","तथ्य 6","तथ्य 7","तथ्य 8"]}]}
@@ -280,35 +280,23 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
 """
 
-# Gemini API active model fixed to Flash
-FALLBACK_MODELS = [
-    "gemini-1.5-flash"
-]
 
-
-def ask_gemini(prompt, is_json=False):
-    from google.genai import types
-    config = types.GenerateContentConfig(temperature=0.3)
+def ask_groq(prompt, is_json=False):
+    client = get_client()
+    kwargs = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3
+    }
     if is_json:
-        config.response_mime_type = "application/json"
+        kwargs["response_format"] = {"type": "json_object"}
 
-    last_err = ""
-    for model_name in FALLBACK_MODELS:
-        try:
-            resp = get_client().models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=config,
-            )
-            if resp and resp.text:
-                return resp.text
-        except Exception as e:
-            last_err = str(e)
-            print(f"Model {model_name} failed: {e}")
-            time.sleep(1)
-            continue
-
-    raise RuntimeError(f"Gemini API Error: {last_err[:250]}")
+    try:
+        response = client.completions.create(**kwargs) if hasattr(client, 'completions') else client.chat.completions.create(**kwargs)
+        # Handle chat completions response structure
+        return response.choices[0].message.content
+    except Exception as e:
+        raise RuntimeError(f"Groq API Error: {str(e)[:250]}")
 
 
 def clean_questions(data):
@@ -343,12 +331,12 @@ def clean_questions(data):
     return out
 
 
-def gemini_batch(topic, count, mode, previous):
+def groq_batch(topic, count, mode, previous):
     prompt = PROMPT.replace("TOPIC", topic).replace("COUNT", str(count)).replace("MODE", mode)
     if previous:
         prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-30:])
     for _ in range(3):
-        raw = ask_gemini(prompt, is_json=True).strip()
+        raw = ask_groq(prompt, is_json=True).strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
         try:
@@ -356,8 +344,8 @@ def gemini_batch(topic, count, mode, previous):
             if qs:
                 return qs
         except Exception as e:
-            print("Bad Gemini JSON:", e)
-    raise RuntimeError("Gemini का JSON सही नहीं आया")
+            print("Bad Groq JSON:", e)
+    raise RuntimeError("Groq का JSON सही नहीं आया")
 
 
 def generate_all(topic, count, mode):
@@ -368,7 +356,7 @@ def generate_all(topic, count, mode):
         rounds += 1
         need = min(BATCH, count - len(result))
         try:
-            batch_qs = gemini_batch(topic, need, mode, seen)
+            batch_qs = groq_batch(topic, need, mode, seen)
             for q in batch_qs:
                 key = re.sub(r"\s+", " ", q[0]).strip().lower()
                 if key in seen or len(result) >= count:
@@ -384,7 +372,7 @@ def generate_all(topic, count, mode):
 
 
 def generate_notes_html(topic):
-    raw = ask_gemini(NOTES_PROMPT.replace("TOPIC", topic)).strip()
+    raw = ask_groq(NOTES_PROMPT.replace("TOPIC", topic)).strip()
     raw = re.sub(r"^```(?:html)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     safe_topic = html.escape(topic)
@@ -684,7 +672,7 @@ def process_update(update):
 
     # --- Notes Flow ---
     if cmd["command"] == "/notes":
-        send_message(chat_id, f"🤖 Gemini AI <b>{html.escape(topic)}</b> के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...", parse_mode="HTML")
+        send_message(chat_id, f"🤖 Groq AI <b>{html.escape(topic)}</b> के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...", parse_mode="HTML")
         try:
             page = generate_notes_html(topic)
             item_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -714,7 +702,7 @@ def process_update(update):
     # --- Test/Quiz Flow ---
     send_message(
         chat_id,
-        f"🤖 Gemini AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {html.escape(topic)}\n📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा...",
+        f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {html.escape(topic)}\n📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा...",
         parse_mode="HTML"
     )
     try:
@@ -759,7 +747,7 @@ def process_update(update):
 
 
 def main():
-    print("Gyankshetra Telegram Bot started")
+    print("Gyankshetra Telegram Bot started with Groq")
 
     try:
         run_due_posts()
