@@ -7,7 +7,9 @@ import re
 import json
 import time
 import html
+import random
 import subprocess
+from html.parser import HTMLParser
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
@@ -25,6 +27,9 @@ ALLOWED = {
     if x.strip()
 }
 
+# Model env se badal sakte hain (GROQ_MODEL), default 70B (Hindi facts me behtar)
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
 BASE_URL = "https://gyankshetra.github.io/Gyankshetra-app/"
 TG = "https://api.telegram.org/bot" + BOT_TOKEN
 OFFSET_FILE = "content/telegram_offset.txt"
@@ -32,7 +37,9 @@ REGISTRY_FILE = "content/generated_tests.json"
 STUDY_MATERIAL_FILE = "content/study_material.json"
 SCHEDULE_FILE = "content/scheduled_posts.json"
 
-BATCH = 25
+BATCH = 8            # ek call me kitne sawal (chhota batch = JSON kam katega)
+MAX_TOKENS = 6000    # Groq response limit
+TG_LIMIT = 4000      # Telegram message limit 4096 hai
 
 
 # ------------------------------------------------------------------ Telegram
@@ -43,6 +50,9 @@ def telegram(method, data=None):
 
 
 def send_message(chat_id, text, parse_mode="HTML"):
+    """Message bhejta hai. Fail hone par plain text try karta hai.
+    Success par response dict, fail par None return karta hai."""
+    text = text[:TG_LIMIT]
     try:
         payload = {
             "chat_id": chat_id,
@@ -54,9 +64,10 @@ def send_message(chat_id, text, parse_mode="HTML"):
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
         try:
-            clean_text = re.sub(r'<[^>]+>', '', text)
+            clean_text = html.unescape(re.sub(r'<[^>]+>', '', text))
             return telegram("sendMessage", {"chat_id": chat_id, "text": clean_text})
-        except Exception:
+        except Exception as e2:
+            print("plain sendMessage failed too:", e2)
             return None
 
 
@@ -78,7 +89,7 @@ def _save_queue(queue):
 
 def schedule_channel_post(chat_id, text, target_timestamp):
     queue = _load_queue()
-    queue.append({"chat_id": chat_id, "text": text, "ts": target_timestamp})
+    queue.append({"chat_id": chat_id, "text": text, "ts": target_timestamp, "tries": 0})
     _save_queue(queue)
 
 
@@ -89,10 +100,17 @@ def run_due_posts():
     now = datetime.now(timezone.utc).timestamp()
     pending = []
     for p in queue:
-        if p.get("ts", 0) <= now:
-            send_message(p["chat_id"], p["text"], parse_mode="HTML")
-        else:
+        if p.get("ts", 0) > now:
             pending.append(p)
+            continue
+        if send_message(p["chat_id"], p["text"], parse_mode="HTML"):
+            continue
+        # send fail hua: queue me rakho, 5 koshish ke baad hi hatao
+        p["tries"] = p.get("tries", 0) + 1
+        if p["tries"] < 5:
+            pending.append(p)
+        else:
+            print("Scheduled post dropped after 5 failed tries:", p.get("text", "")[:60])
     _save_queue(pending)
 
 
@@ -249,9 +267,9 @@ def get_client():
 PROMPT = """
 Gyankshetra परीक्षा ऐप के लिए MCQ तैयार करो।
 
-विषय: TOPIC
-प्रश्न संख्या: COUNT
-प्रकार: MODE
+विषय: __TOPIC__
+प्रश्न संख्या: __COUNT__
+प्रकार: __MODE__
 
 नियम:
 1. सभी प्रश्न उच्च-स्तरीय और परीक्षा उपयोगी हों।
@@ -261,7 +279,7 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 5. प्रत्येक प्रश्न की स्पष्ट व्याख्या हो।
 6. प्रत्येक प्रश्न के साथ 8 महत्वपूर्ण तथ्य हों।
 7. प्रश्न एक-दूसरे से अलग हों।
-8. गलत या मनगढ़ंत तथ्य न बनाओ।
+8. गलत या मनगढ़ंत तथ्य न बनाओ। जिस तथ्य पर पक्का भरोसा न हो, उस पर प्रश्न मत बनाओ।
 9. STET / BPSC TRE स्तर का ध्यान रखो।
 10. केवल वैध JSON दो, अतिरिक्त टेक्स्ट या Markdown code fence नहीं।
 
@@ -272,30 +290,40 @@ Gyankshetra परीक्षा ऐप के लिए MCQ तैयार �
 NOTES_PROMPT = """
 Gyankshetra Study Material के लिए उच्च-स्तरीय परीक्षा उपयोगी विस्तृत नोट्स हिन्दी में तैयार करो।
 
-विषय: TOPIC
+विषय: __TOPIC__
 
 नियम:
 1. मुख्य परिभाषाएँ, महत्वपूर्ण सूत्र (Formulas), और बिंदु स्पष्ट रूप से हों।
 2. STET / BPSC TRE / Board Exam स्तर के महत्वपूर्ण तथ्य और अवधारणाएं शामिल हों।
-3. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)।
+3. गलत या मनगढ़ंत तथ्य न दो।
+4. केवल <div>...</div> टैग्स के अंदर का शुद्ध HTML कोड दें (बिना <html>, <body> या Markdown code fence के)। केवल h2, h3, p, ul, ol, li, b, table, tr, th, td टैग इस्तेमाल करें; style, script या attributes नहीं।
 """
 
 
 def ask_groq(prompt, is_json=False):
     client = get_client()
     kwargs = {
-        "model": "llama-3.1-8b-instant",
+        "model": GROQ_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3
+        "temperature": 0.3,
+        "max_tokens": MAX_TOKENS,
     }
     if is_json:
         kwargs["response_format"] = {"type": "json_object"}
 
     try:
         response = client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
     except Exception as e:
         raise RuntimeError(f"Groq API Error: {str(e)[:250]}")
+
+
+def _backoff(err, attempt):
+    """Rate limit (429) par lamba wait, baaki errors par chhota."""
+    msg = str(err).lower()
+    if "429" in msg or "rate" in msg:
+        return 20 * (attempt + 1)
+    return 2 * (attempt + 1)
 
 
 def clean_questions(data):
@@ -321,6 +349,12 @@ def clean_questions(data):
             continue
         if not 0 <= answer <= 3:
             continue
+
+        # LLM sahi jawab aksar option 0/1 me rakhta hai, isliye shuffle
+        correct = options[answer]
+        random.shuffle(options)
+        answer = options.index(correct)
+
         facts = q.get("facts")
         facts = [str(x).strip() for x in facts if str(x).strip()] if isinstance(facts, list) else []
         explanation = str(q.get("explanation", "")).strip()
@@ -331,20 +365,29 @@ def clean_questions(data):
 
 
 def groq_batch(topic, count, mode, previous):
-    prompt = PROMPT.replace("TOPIC", topic).replace("COUNT", str(count)).replace("MODE", mode)
+    prompt = (
+        PROMPT.replace("__COUNT__", str(count))
+        .replace("__MODE__", mode)
+        .replace("__TOPIC__", topic)  # topic sabse aakhir me, taaki andar ke shabd na badlein
+    )
     if previous:
         prompt += "\nइन प्रश्नों को दोबारा न बनाएं:\n" + "\n".join(previous[-30:])
-    for _ in range(3):
-        raw = ask_groq(prompt, is_json=True).strip()
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
+
+    last_err = None
+    for attempt in range(3):
         try:
+            raw = ask_groq(prompt, is_json=True).strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
             qs = clean_questions(json.loads(raw))
             if qs:
                 return qs
+            last_err = "कोई वैध प्रश्न नहीं मिला"
         except Exception as e:
-            print("Bad Groq JSON:", e)
-    raise RuntimeError("Groq का JSON सही नहीं आया")
+            last_err = e
+            print(f"Groq retry {attempt + 1}/3:", e)
+        if attempt < 2:
+            time.sleep(_backoff(last_err, attempt))
+    raise RuntimeError(f"Groq का JSON सही नहीं आया: {str(last_err)[:200]}")
 
 
 def generate_all(topic, count, mode):
@@ -364,16 +407,83 @@ def generate_all(topic, count, mode):
                 result.append(q)
         except Exception as e:
             print(f"Round {rounds} failed: {e}")
-            if result:
-                continue
-            raise e
+            if not result:
+                raise
+        time.sleep(1)  # Groq tokens-per-minute limit se bachne ke liye
     return result
 
 
+# ---------------------------------------------------------- HTML sanitizer
+NOTES_TAGS = {
+    "div", "p", "h1", "h2", "h3", "h4", "ul", "ol", "li", "b", "strong", "i", "em", "u",
+    "table", "thead", "tbody", "tr", "td", "th", "br", "hr", "span", "sup", "sub",
+}
+VOID_TAGS = {"br", "hr"}
+DROP_CONTENT = {"script", "style", "iframe", "object", "embed", "noscript", "template"}
+
+
+class _Sanitizer(HTMLParser):
+    """Allowlist sanitizer: sirf upar ke tags rakhta hai, saare attributes
+    (onclick, href, style...) hata deta hai, script/style ka content bhi."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out = []
+        self.stack = []
+        self.skip = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in DROP_CONTENT:
+            self.skip += 1
+            return
+        if self.skip or tag not in NOTES_TAGS:
+            return
+        if tag in VOID_TAGS:
+            self.out.append(f"<{tag}>")
+            return
+        self.stack.append(tag)
+        self.out.append(f"<{tag}>")
+
+    def handle_startendtag(self, tag, attrs):
+        if not self.skip and tag in VOID_TAGS:
+            self.out.append(f"<{tag}>")
+
+    def handle_endtag(self, tag):
+        if tag in DROP_CONTENT:
+            self.skip = max(0, self.skip - 1)
+            return
+        if self.skip or tag not in NOTES_TAGS or tag in VOID_TAGS:
+            return
+        if tag in self.stack:
+            while self.stack:
+                t = self.stack.pop()
+                self.out.append(f"</{t}>")
+                if t == tag:
+                    break
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.out.append(html.escape(data, quote=False))
+
+    def result(self):
+        while self.stack:
+            self.out.append(f"</{self.stack.pop()}>")
+        return "".join(self.out)
+
+
+def sanitize_html(raw):
+    s = _Sanitizer()
+    s.feed(raw)
+    s.close()
+    return s.result()
+
+
 def generate_notes_html(topic):
-    raw = ask_groq(NOTES_PROMPT.replace("TOPIC", topic)).strip()
-    raw = re.sub(r"^```(?:html)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
+    raw = ask_groq(NOTES_PROMPT.replace("__TOPIC__", topic)).strip()
+    raw = re.sub(r"^```(?:html)?\s*|\s*```$", "", raw)
+    raw = sanitize_html(raw)
+    if len(re.sub(r"<[^>]+>", "", raw).strip()) < 50:
+        raise RuntimeError("Notes खाली या बहुत छोटे आए")
     safe_topic = html.escape(topic)
 
     return f"""<!DOCTYPE html>
@@ -393,6 +503,9 @@ def generate_notes_html(topic):
             color: #222;
         }}
         h1, h2, h3 {{ color: #1a73e8; }}
+        table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
+        th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+        th {{ background: #f1f5fd; }}
         .action-bar {{
             display: flex;
             justify-content: space-between;
@@ -599,6 +712,8 @@ def update_registry(topic, count, command, url, item_id):
     try:
         with open(target_file, "r", encoding="utf-8") as f:
             registry = json.load(f)
+        if not isinstance(registry, list):
+            registry = []
     except Exception:
         registry = []
 
@@ -658,6 +773,7 @@ def process_update(update):
     if word == "/id":
         send_message(chat_id, f"आपका chat id: {chat_id}")
         return
+
     if ALLOWED and str(chat_id) not in ALLOWED:
         send_message(chat_id, "यह bot निजी है।")
         return
@@ -665,13 +781,15 @@ def process_update(update):
     cmd = parse_command(text)
     if not cmd:
         return
+
     topic, count = cmd["topic"], cmd["count"]
     schedule_ts = cmd["schedule_ts"]
     info = command_info(cmd["command"])
+    safe_topic = html.escape(topic)
 
     # --- Notes Flow ---
     if cmd["command"] == "/notes":
-        send_message(chat_id, f"🤖 Groq AI <b>{html.escape(topic)}</b> के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...", parse_mode="HTML")
+        send_message(chat_id, f"🤖 Groq AI <b>{safe_topic}</b> के लिए Study Material तैयार कर रहा है...\n\nथोड़ा समय लगेगा...")
         try:
             page = generate_notes_html(topic)
             item_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -683,70 +801,89 @@ def process_update(update):
 
             file_url = BASE_URL + folder + "/" + quote(filename)
             update_registry(topic, 0, cmd["command"], file_url, item_id)
-            git_publish(f"Generate notes: {topic}")
+            if not git_publish(f"Generate notes: {topic}"):
+                raise RuntimeError("GitHub पर publish नहीं हो पाया, link काम नहीं करेगा")
 
             formatted_message = (
                 "✅ <b>Study Material तैयार है!</b>\n\n"
-                f"🎯 <b>विषय:</b> {html.escape(topic)}\n"
+                f"🎯 <b>विषय:</b> {safe_topic}\n"
                 f"📌 <b>प्रकार:</b> Study Material\n\n"
-                f'<a href="{file_url}">🔗 READ NOTES</a>'
+                f'<a href="{html.escape(file_url, quote=True)}">🔗 READ NOTES</a>'
             )
-            send_message(chat_id, formatted_message, parse_mode="HTML")
+            send_message(chat_id, formatted_message)
             if CHANNEL_ID:
-                send_message(CHANNEL_ID, formatted_message, parse_mode="HTML")
+                send_message(CHANNEL_ID, formatted_message)
         except Exception as e:
-            send_message(chat_id, f"❌ Notes तैयार नहीं हो पाए: {html.escape(str(e))}", parse_mode="HTML")
+            send_message(chat_id, f"❌ Notes तैयार नहीं हो पाए: {html.escape(str(e)[:1500])}")
         return
 
     # --- Test/Quiz Flow ---
     send_message(
         chat_id,
-        f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {html.escape(topic)}\n📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा...",
-        parse_mode="HTML"
+        f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {safe_topic}\n"
+        f"📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा..."
     )
     try:
         questions = generate_all(topic, count, info["label"])
-        if len(questions) < count:
-            raise RuntimeError(f"माँगे गए {count} में केवल {len(questions)} प्रश्न बन पाए।")
+        if not questions:
+            raise RuntimeError("कोई प्रश्न नहीं बन पाया।")
+
+        # kam sawal bane to page me asli count likho (timer bhi usi se banta hai)
+        requested = count
+        count = len(questions)
+        shortfall = (
+            f"\n⚠️ माँगे गए {requested} में से {count} प्रश्न ही बन पाए।"
+            if count < requested else ""
+        )
 
         test_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         filename = f"{safe_slug(topic)}-{count}q-{test_id}.html"
         folder = info["folder"]
         os.makedirs(folder, exist_ok=True)
-        page = make_test_page(topic, count, questions, test_id)
 
+        page = make_test_page(topic, count, questions, test_id)
         with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
             f.write(page)
 
         test_url = BASE_URL + folder + "/" + quote(filename)
         update_registry(topic, count, cmd["command"], test_url, test_id)
-        git_publish(f"Generate test: {topic} ({count}Q)")
+        if not git_publish(f"Generate test: {topic} ({count}Q)"):
+            raise RuntimeError("GitHub पर publish नहीं हो पाया, link काम नहीं करेगा")
 
         formatted_message = (
             "✅ <b>Test तैयार है!</b>\n\n"
-            f"🎯 <b>विषय:</b> {html.escape(topic)}\n"
+            f"🎯 <b>विषय:</b> {safe_topic}\n"
             f"📌 <b>प्रकार:</b> {info['label']}\n"
             f"📝 <b>प्रश्न:</b> {count}\n\n"
-            f'<a href="{test_url}">🔗 {info["btn_text"]}</a>'
+            f'<a href="{html.escape(test_url, quote=True)}">🔗 {info["btn_text"]}</a>'
         )
 
         current_ts = datetime.now(timezone.utc).timestamp()
-
         if schedule_ts and schedule_ts > current_ts:
-            send_message(chat_id, "📅 टेस्ट तैयार है और तय समय पर चैनल में पब्लिश हो जाएगा!\n\n" + formatted_message, parse_mode="HTML")
+            send_message(
+                chat_id,
+                "📅 टेस्ट तैयार है और तय समय पर चैनल में पब्लिश हो जाएगा!" + shortfall
+                + "\n\n" + formatted_message
+            )
             if CHANNEL_ID:
                 schedule_channel_post(CHANNEL_ID, formatted_message, schedule_ts)
         else:
-            send_message(chat_id, formatted_message, parse_mode="HTML")
+            send_message(
+                chat_id,
+                formatted_message + shortfall
+                + "\n\n(GitHub Pages पर लिंक चालू होने में 1-2 मिनट लग सकते हैं)"
+            )
             if CHANNEL_ID:
-                send_message(CHANNEL_ID, formatted_message, parse_mode="HTML")
+                send_message(CHANNEL_ID, formatted_message)
 
     except Exception as e:
-        send_message(chat_id, f"❌ Test generate नहीं हो पाया\n\nError:\n{html.escape(str(e)[:2000])}", parse_mode="HTML")
+        send_message(chat_id, f"❌ Test generate नहीं हो पाया\n\nError:\n{html.escape(str(e)[:1500])}")
 
 
 def main():
-    print("Gyankshetra Telegram Bot started with Groq")
+    print("Gyankshetra Telegram Bot started with Groq, model:", GROQ_MODEL)
+    if not ALLOWED:
+        print("WARNING: TELEGRAM_ALLOWED_CHAT_IDS khali hai, koi bhi bot use kar sakta hai")
 
     try:
         run_due_posts()
