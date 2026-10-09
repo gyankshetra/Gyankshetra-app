@@ -88,7 +88,7 @@
     .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #f1f3f4; padding-bottom: 10px; }
     .modal-head h3 { font-size: 17px; font-weight: 600; }
     
-    /* 5-Columns Grid dynamically populated */
+    /* 5-Columns Grid */
     .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
     .palette-node { aspect-ratio: 1; border-radius: 8px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14.5px; cursor: pointer; position: relative; color: var(--text); }
     .palette-node.active-node { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.3); }
@@ -109,12 +109,6 @@
     .btn-reattempt:hover { background: #e8f0fe; }
 
     .status-badge { background: #f1f3f4; padding: 10px 14px; border-radius: 6px; margin: 12px 0 8px 0; font-size: 14px; line-height: 1.5; }
-    
-    /* Facts Box */
-    .facts-box { background: #e8f0fe; border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 13.5px; color: var(--text); line-height: 1.6; }
-    .facts-box ul { margin-left: 18px; margin-top: 6px; }
-    .facts-box li { margin-bottom: 4px; }
-
     .review-wrap { margin-top: 24px; border-top: 2px solid #e8eaed; padding-top: 20px; }
     .review-item { margin-bottom: 24px; border-bottom: 1px solid #dadce0; padding-bottom: 18px; }
   </style>
@@ -226,7 +220,7 @@
           "correctOption": 0,
           "selected": null,
           "status": "skipped",
-          "facts": ["दयाराम साहनी ने 1921 में हड़प्पा की खोज की थी।", "हड़प्पा रावी नदी के तट पर स्थित है।"]
+          "facts": ["दयाराम साहनी ने 1921 में हड़प्पा की खोज की थी।"]
         }
       ]
     };
@@ -388,7 +382,6 @@
       if (e.target.id === 'paletteModal') togglePalette();
     }
 
-    // Dynamic 5-column palette rendered based on total questions
     function renderPalette() {
       const grid = document.getElementById('paletteNodes');
       grid.innerHTML = testData.questions.map((q, i) => `
@@ -471,22 +464,9 @@
       const rev = document.getElementById('reviewContainer');
       rev.innerHTML = testData.questions.map((q, i) => {
         const isCorrect = q.selected === q.correctOption;
-        
-        let factsHtml = '';
-        if (q.facts && q.facts.length > 0) {
-          factsHtml = `
-            <div class="facts-box">
-              <b>📌 व्याख्या एवं महत्वपूर्ण तथ्य:</b>
-              <ul>
-                ${q.facts.map(f => `<li>${f}</li>`).join('')}
-              </ul>
-            </div>
-          `;
-        }
-
         return `
           <div class="review-item">
-            <div class="q-text"><b>प्रश्न ${i + 1}:</b> ${q.text}</div>
+            <div class="q-text">${q.text}</div>
             <div class="options-list">
               ${q.options.map((opt, idx) => {
                 let optClass = "opt-item";
@@ -503,10 +483,7 @@
                 `;
               }).join('')}
             </div>
-            <div class="status-badge">
-              स्थिति: <b>${q.status.toUpperCase()}</b>
-            </div>
-            ${factsHtml}
+            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
           </div>
         `;
       }).join('');
