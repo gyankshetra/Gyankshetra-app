@@ -603,92 +603,74 @@ def _find_matching(text, start, opening, closing):
     return -1
 
 
-def replace_questions(source, placeholder):
-    m = re.search(r"\bconst\s+questions\s*=", source)
-    if not m:
-        raise RuntimeError("index.html में 'const questions=' नहीं मिला")
-    start = source.find("[", m.end())
-    end = _find_matching(source, start, "[", "]") if start >= 0 else -1
-    if end < 0:
-        raise RuntimeError("index.html में questions array का अंत नहीं मिला")
-    return source[: m.start()] + "const questions=" + placeholder + source[end + 1:]
-
-
-def replace_function(source, name, replacement):
-    m = re.search(r"\bfunction\s+" + re.escape(name) + r"\s*\([^)]*\)\s*\{", source)
-    if not m:
-        raise RuntimeError("index.html में function " + name + "() नहीं मिला")
-    end = _find_matching(source, m.end() - 1, "{", "}")
-    if end < 0:
-        raise RuntimeError("index.html में function " + name + "() का अंत नहीं मिला")
-    return source[: m.start()] + replacement + source[end + 1:]
-
-
-START_QUIZ = (
-    "function startQuiz(){qi=0;ans=Array(TOTAL).fill(null);time=0;reviewIndex=0;"
-    "running=true;clearInterval(timerHandle);go('quiz');render();saveProgress();"
-    "timerHandle=setInterval(tick,1000)}"
-)
-TICK = (
-    "function tick(){if(time<TIME){time++;renderTimer();"
-    "if(time>=TIME)finish();else if(time%5===0)saveProgress()}else finish()}"
-)
-
-
 def js_safe(obj):
     s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
     return s.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
+def _patch(source, old, new):
+    """Template me old text na mile to saaf error (template badla hoga)."""
+    if old not in source:
+        raise RuntimeError("index.html में यह हिस्सा नहीं मिला: " + old[:60])
+    return source.replace(old, new, 1)
+
+
+ESC_HELPER = (
+    "function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')"
+    ".replace(/>/g,'&gt;').replace(/\"/g,'&quot;')}\n    let currentIndex = 0;"
+)
+FACTS_HTML = (
+    "<div class=\"status-badge\">स्थिति: <b>${q.status.toUpperCase()}</b></div>\n"
+    "          ${q.facts && q.facts.length ? '<div class=\"status-badge\"><b>📌 व्याख्या / तथ्य:</b>"
+    "<ul style=\"margin:6px 0 0 18px\">' + q.facts.map(f => '<li>' + esc(f) + '</li>').join('') "
+    "+ '</ul></div>' : ''}"
+)
+
+
 def make_test_page(topic, count, questions, test_id):
+    """index.html (const testData = {...} wala template) se naya test page banata hai."""
     with open("index.html", "r", encoding="utf-8") as f:
         s = f.read()
 
-    s = re.sub(
-        r"<!-- GYANKSHETRA_GENERATED_CONTENT_START -->.*?<!-- GYANKSHETRA_GENERATED_CONTENT_END -->",
-        "", s, flags=re.S)
-    s = re.sub(
-        r"<!-- GYANKSHETRA_AUTO_GENERATED_TESTS -->\s*<script>.*?</script>",
-        "", s, flags=re.S)
+    m = re.search(r"\bconst\s+testData\s*=\s*\{", s)
+    if not m:
+        raise RuntimeError("index.html में 'const testData = {' नहीं मिला")
+    end = _find_matching(s, m.end() - 1, "{", "}")
+    if end < 0:
+        raise RuntimeError("index.html में testData का अंत नहीं मिला")
 
-    s, n = re.subn(
-        r"const\s+TOTAL\s*=\s*\d+\s*,\s*TIME\s*=\s*[^,;]+",
-        f"const TOTAL={count},TIME={count * 60}", s, count=1)
-    if not n:
-        raise RuntimeError("index.html में 'const TOTAL=..,TIME=..' नहीं मिला")
-    s = replace_questions(s, "__GK_QUESTIONS__")
-    s = replace_function(s, "startQuiz", START_QUIZ)
-    s = replace_function(s, "tick", TICK)
+    data = {
+        "isReattempted": False,
+        "studentName": "छात्र",
+        "topic": topic,
+        "questions": [
+            {
+                "id": i + 1,
+                "text": q[0],
+                "options": q[1],
+                "correctOption": q[2],
+                "selected": None,
+                "status": "skipped",
+                "facts": q[3],
+            }
+            for i, q in enumerate(questions)
+        ],
+    }
+    s = s[: m.start()] + "const testData = " + js_safe(data) + s[end + 1:]
 
-    for old, new in (
-        ("'gyankshetraSaved'", f"'gyankshetraSaved_{test_id}'"),
-        ("'gyankshetraProgress_'", f"'gyankshetraProgress_{test_id}_'"),
-    ):
-        s = s.replace(old, new)
+    # LLM ka text innerHTML me jaata hai, isliye review me escape lagao
+    s = _patch(s, "let currentIndex = 0;", ESC_HELPER)
+    s = _patch(s, '<div class="q-text">${q.text}</div>', '<div class="q-text">${esc(q.text)}</div>')
+    s = _patch(s, "${String.fromCharCode(65 + idx)}. ${opt}</span>",
+               "${String.fromCharCode(65 + idx)}. ${esc(opt)}</span>")
+    s = _patch(s, '<div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>', FACTS_HTML)
 
-    s = s.replace("test:'विलयन'", "test:__GK_TOPIC_JS__")
-    s = s.replace("विलयन", "__GK_TOPIC_HTML__")
+    s = s.replace("विद्यार्थी: अमित कुमार", "विद्यार्थी: छात्र")
 
-    for old, new in (
-        ("20Q", f"{count}Q"),
-        ("20 Questions", f"{count} Questions"),
-        ("20 Marks", f"{count} Marks"),
-        ("20 Minutes", f"{count} Minutes"),
-        ("20 प्रश्न", f"{count} प्रश्न"),
-        ("20 अंक", f"{count} अंक"),
-        ("20 मिनट", f"{count} मिनट"),
-        ("' / 20'", "' / '+TOTAL"),
-        ("marks}/20`", "marks}/${TOTAL}`"),
-        ("0 / 20</strong>", f"0 / {count}</strong>"),
-        ("0 / 20</b>", f"0 / {count}</b>"),
-        ('id="timer">20:00', 'id="timer">00:00'),
-        (">1/20<", f">1/{count}<"),
-    ):
-        s = s.replace(old, new)
-
-    s = s.replace("__GK_TOPIC_JS__", js_safe(topic))
-    s = s.replace("__GK_TOPIC_HTML__", html.escape(topic))
-    s = s.replace("__GK_QUESTIONS__", js_safe(questions))
+    safe = html.escape(topic)
+    s = re.sub(r"<title>.*?</title>", f"<title>{safe} | Gyankshetra</title>", s, count=1, flags=re.S)
+    s = s.replace('<div class="title">Gyankshetra</div>',
+                  f'<div class="title">Gyankshetra · {safe}</div>', 1)
     return s
 
 
