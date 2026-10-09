@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>हिन्दी संज्ञा | Gyankshetra</title>
+  <style>
+    :root {
+      --primary-dark: #0f172a;
+      --navy: #0d1b2a;
+      --blue: #0284c7;
+      --blue-accent: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 70px; }
+
+    /* Top Navy Header */
+    header { background: var(--navy); color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .menu-trigger { font-size: 22px; cursor: pointer; color: #fff; line-height: 1; }
+    .header-title-box h1 { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: #fff; }
+    .header-title-box span { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.3px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .profile-icon { width: 30px; height: 30px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+    /* Sidebar Drawer */
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
+    .drawer.open { left: 0; }
+    .drawer-head { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+    .drawer-head h2 { font-size: 1.2rem; color: #0284c7; font-weight: 700; }
+    .drawer-head p { font-size: 11px; color: var(--text-muted); }
+    .drawer-nav { list-style: none; padding: 12px 0; flex: 1; overflow-y: auto; }
+    .drawer-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14.5px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; }
+    .drawer-nav li a:hover { background: #f1f5f9; }
+
+    /* Main Container */
+    main { flex: 1; padding: 16px; max-width: 540px; margin: 0 auto; width: 100%; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+
+    /* Test Header */
+    .q-meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .q-count { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .star-icon { color: #f59e0b; font-size: 19px; cursor: pointer; }
+    .timer-pill { color: #d97706; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+
+    /* Question Row */
+    .question-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+    .q-menu-btn { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-main); width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 3px; }
+    .q-text { font-size: 16.5px; font-weight: 700; line-height: 1.55; color: #0f172a; flex: 1; }
+
+    /* Options */
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .opt-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-size: 15px; font-weight: 500; background: #ffffff; transition: 0.15s; display: flex; align-items: center; gap: 10px; }
+    .opt-item.selected { border-color: #0284c7; background: #f0f9ff; font-weight: 600; }
+    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+
+    /* Nav Buttons */
+    .nav-bar { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
+    .btn-nav-prev { flex: 1; background: #ffffff; border: 1.5px solid var(--border); padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #0f172a; cursor: pointer; }
+    .btn-nav-next { flex: 1; background: #0284c7; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; }
+    .btn-nav-submit { flex: 1; background: #10b981; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; display: none; }
+
+    /* 5-Column Question Palette Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; justify-content: center; align-items: center; padding: 16px; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 16.5px; font-weight: 700; }
+    .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .palette-node { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; }
+    .palette-node.active-node { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.3); }
+    .palette-node.answered { background: #10b981; color: #fff; border-color: #10b981; }
+    .palette-node .dot-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: none; }
+    .palette-node.reattempted .dot-badge { display: block; }
+    .modal-submit-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .modal-submit-btn { width: 100%; background: #10b981; color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+
+    /* Result Screen Original UI */
+    .result-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; margin-bottom: 18px; }
+    .score-circle-wrap { display: flex; justify-content: center; margin: 20px 0; }
+    .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #0f172a; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 24px 0; text-align: center; }
+    .stat-pill { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .stat-pill b { font-size: 16px; color: #0f172a; display: block; margin-bottom: 2px; }
+    .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .btn-review-blue { width: 100%; background: #0284c7; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-reattempt-green { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-share-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; }
+
+    /* Review Area */
+    .review-wrap { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; display: none; }
+    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #f1f5f9; }
+    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13.5px; }
+    .facts-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+    .facts-box ul { margin-left: 18px; margin-top: 4px; }
+
+    /* Bottom Sticky Tab Bar */
+    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
+    .b-tab { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); font-size: 10.5px; font-weight: 600; gap: 3px; cursor: pointer; }
+    .b-tab.active { color: #0284c7; }
+    .b-tab-icon { font-size: 17px; }
+  </style>
+</head>
+<body>
+
+  <!-- Navy Header -->
+  <header>
+    <div class="header-left">
+      <span class="menu-trigger" onclick="toggleDrawer()">☰</span>
+      <div class="header-title-box">
+        <h1>Gyankshetra</h1>
+        <span>Learning • Practice • Success</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="lang-badge">अ/E</span>
+      <div class="profile-icon">👤</div>
+    </div>
+  </header>
+
+  <!-- Sidebar Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="sideDrawer">
+    <div class="drawer-head">
+      <h2>Gyankshetra</h2>
+      <p>Learning • Practice • Success</p>
+    </div>
+    <ul class="drawer-nav">
+      <li><a href="/">🏠 Home</a></li>
+      <li><a href="/tests/">📝 Test Series</a></li>
+      <li><a href="/quiz/">☑️ Quiz/Test</a></li>
+      <li><a href="/practice/">🎯 PYQ Practice</a></li>
+      <li><a href="#saved">⭐ Saved</a></li>
+      <li><a href="/notes/">⬇️ Study Material</a></li>
+      <li><a href="#settings">⚙️ Settings</a></li>
+    </ul>
+  </div>
+
+  <main id="touchContainer">
+    <!-- Quiz Screen -->
+    <div id="quizScreen" class="card">
+      <div class="q-meta-bar">
+        <span class="q-count">Question <span id="currQ">1</span>/<span id="totQ">5</span></span>
+        <span class="star-icon">⭐</span>
+        <span class="timer-pill">⏱ <span id="timerBox">00:00</span></span>
+      </div>
+
+      <!-- ☰ button attached to left of question -->
+      <div class="question-row">
+        <button class="q-menu-btn" onclick="togglePalette()" title="Questions Palette">☰</button>
+        <div class="q-text" id="questionText"></div>
+      </div>
+
+      <div class="options-list" id="optionsContainer"></div>
+
+      <div class="nav-bar">
+        <button class="btn-nav-prev" onclick="prevQ()">← Previous</button>
+        <button class="btn-nav-next" id="nextBtn" onclick="nextQ()">Next →</button>
+        <button class="btn-nav-submit" id="submitBtn" onclick="finishTest()">सबमिट करें</button>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen" class="card" style="display:none;">
+      <div class="result-title">🏆 Result</div>
+      
+      <div class="score-circle-wrap">
+        <div class="score-circle" id="scoreCircle">0%</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-pill"><b id="statMarks">0/5</b><span>Marks</span></div>
+        <div class="stat-pill"><b id="statCorrect">0</b><span>Correct</span></div>
+        <div class="stat-pill"><b id="statWrong">0</b><span>Wrong</span></div>
+        <div class="stat-pill"><b id="statSkipped">0</b><span>Skipped</span></div>
+      </div>
+
+      <button class="btn-review-blue" onclick="toggleReviewArea()">📖 Review</button>
+      <button class="btn-reattempt-green" onclick="reattemptQuiz()">🔁 Reattempt</button>
+      <a id="telegramShareLink" href="#" target="_blank" class="btn-share-tg">✈ Share on Telegram</a>
+
+      <div id="reviewContainer" class="review-wrap"></div>
+    </div>
+  </main>
+
+  <!-- 5-Column Question Palette Modal -->
+  <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event)">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Question Palette</h3>
+        <button class="btn-nav-prev" onclick="togglePalette()" style="padding:4px 10px; width:auto; border-radius:6px;">✕</button>
+      </div>
+      <div class="palette-grid" id="paletteNodes"></div>
+      <div class="modal-submit-wrap">
+        <button class="modal-submit-btn" onclick="submitFromModal()">सबमिट करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-bar">
+    <a href="/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
+    <a href="/tests/" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
+    <a href="/quiz/" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
+    <a href="#saved" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
+    <a href="/notes/" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
+  </nav>
+
+  <script>
+    // Injected by Bot
+    const testData = {"isReattempted":false,"studentName":"छात्र","topic":"हिन्दी संज्ञा","questions":[{"id":1,"text":"‘संतोष’ शब्द का वर्ग क्या है?","options":["क्रिया विशेषण","संज्ञा","क्रिया","विशेषण"],"correctOption":1,"selected":null,"status":"skipped","facts":["‘संतोष’ शब्द किसी वस्तु, व्यक्ति या भाव को दर्शाता है, इसलिए यह संज्ञा है।","संतोष शब्द भावनात्मक अवस्था को दर्शाता है","हिन्दी में संज्ञा वह शब्द है जो किसी व्यक्ति, स्थान, वस्तु या भाव को दर्शाता है","संज्ञा को सामान्यतः पुल्लिंग, स्त्रीलिंग, नपुंसकलिंग में विभाजित किया जाता है","‘संतोष’ शब्द का लिंग नपुंसकलिंग माना जाता है","संज्ञा के दो मुख्य प्रकार होते हैं: सामान्य और विशेष संज्ञा","‘संतोष’ शब्द का प्रयोग अक्सर ‘संतोष प्राप्त करना’ के रूप में होता है","संज्ञा शब्द परिपूर्णता, अभाव, मात्रा आदि के अर्थ भी व्यक्त कर सकते हैं","संज्ञा शब्द को वाक्य में कर्ता, कर्म, कारक आदि के रूप में प्रयोग किया जाता है"]},{"id":2,"text":"‘वृक्ष’ शब्द का लिंग क्या है?","options":["सभी लिंगों में प्रयोग हो सकता है","पुल्लिंग","नपुंसकलिंग","स्त्रीलिंग"],"correctOption":1,"selected":null,"status":"skipped","facts":["‘वृक्ष’ शब्द का लिंग पुल्लिंग है; इसे ‘वृक्ष का फल’ आदि रूप में प्रयोग किया जाता है।","हिन्दी में लिंग दो प्रकार के होते हैं: पुल्लिंग और स्त्रीलिंग","‘वृक्ष’ शब्द का मूल संस्कृत ‘वृक्षः’ है, जिसका लिंग पुल्लिंग है","पुल्लिंग शब्दों के साथ ‘का’, ‘के’, ‘को’ जैसे कारक प्रयोग होते हैं","‘वृक्ष’ शब्द का बहुवचन ‘वृक्ष’ ही रहता है, परन्तु लिंग बदलता नहीं","‘वृक्ष’ शब्द का प्रयोग पर्यावरण, वनस्पति आदि विषयों में अक्सर होता है","वृक्ष का फल, पत्ता, जड़ आदि सभी पुल्लिंग कारकों के साथ जुड़ते हैं","हिन्दी में लिंग निर्धारण के लिये शब्द के अंत, ध्वनि और मूल पर ध्यान दिया जाता है","‘वृक्ष’ शब्द का प्रयोग काव्य में भी प्रकृति के प्रतीक के रूप में किया जाता है"]},{"id":3,"text":"‘संगीत’ शब्द किस प्रकार की संज्ञा है?","options":["विशेष संज्ञा","अव्यय संज्ञा","समुच्चय संज्ञा","सामान्य संज्ञा"],"correctOption":3,"selected":null,"status":"skipped","facts":["‘संगीत’ एक सामान्य संज्ञा है क्योंकि यह किसी विशेष वस्तु या व्यक्ति को नहीं, बल्कि कला के एक प्रकार को दर्शाता है।","सामान्य संज्ञा वह होती है जो वर्ग, समूह या प्रकार को दर्शाती है","‘संगीत’ शब्द किसी विशिष्ट वस्तु या व्यक्ति को नहीं बल्कि ध्वनि कला को दर्शाता है","विशेष संज्ञा विशिष्ट नामों के लिए प्रयोग होती है, जैसे ‘रवींद्र’ या ‘ताज महल’","समुच्चय संज्ञा समूह या समूह के सदस्य को दर्शाती है, जैसे ‘दल’ या ‘जुटान’","अव्यय संज्ञा वह शब्द है जो वाक्य में व्याकरणिक संबंध स्थापित करता है, जैसे ‘के’, ‘का’","‘संगीत’ शब्द का प्रयोग अक्सर ‘संगीतकार’, ‘संगीत शास्त्र’ आदि में सहायक शब्द के रूप में होता है","हिन्दी में कई कला रूपों के नाम सामान्य संज्ञा होते हैं, जैसे ‘नृत्य’, ‘चित्रकला’","‘संगीत’ शब्द का लिंग नपुंसकलिंग माना जाता है"]}]};
+
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    let currentIndex = 0;
+    const totalQuestions = testData.questions.length;
+    let secondsLeft = totalQuestions * 60;
+    let timerTimer = null;
+
+    function initQuiz() {
+      document.getElementById('totQ').innerText = totalQuestions;
+      renderQuestion();
+      renderPalette();
+      startTimer();
+    }
+
+    function renderQuestion() {
+      const q = testData.questions[currentIndex];
+      document.getElementById('currQ').innerText = currentIndex + 1;
+      document.getElementById('questionText').innerText = q.text;
+
+      const optsContainer = document.getElementById('optionsContainer');
+      optsContainer.innerHTML = q.options.map((opt, idx) => `
+        <div class="opt-item ${q.selected === idx ? 'selected' : ''}" onclick="pickOpt(${idx})">
+          <span>${String.fromCharCode(65 + idx)}. ${esc(opt)}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('nextBtn').style.display = (currentIndex === totalQuestions - 1) ? 'none' : 'block';
+      document.getElementById('submitBtn').style.display = (currentIndex === totalQuestions - 1) ? 'block' : 'none';
+      renderPalette();
+    }
+
+    function pickOpt(idx) {
+      const q = testData.questions[currentIndex];
+      if (q.selected !== null && q.selected !== idx) {
+        q.reattempted = true;
+      }
+      q.selected = idx;
+      q.status = 'answered';
+      renderQuestion();
+    }
+
+    function nextQ() {
+      if (currentIndex < totalQuestions - 1) { currentIndex++; renderQuestion(); }
+    }
+
+    function prevQ() {
+      if (currentIndex > 0) { currentIndex--; renderQuestion(); }
+    }
+
+    function togglePalette() {
+      document.getElementById('paletteModal').classList.toggle('open');
+    }
+
+    function closeOnOverlay(e) {
+      if (e.target.id === 'paletteModal') togglePalette();
+    }
+
+    function renderPalette() {
+      const grid = document.getElementById('paletteNodes');
+      grid.innerHTML = testData.questions.map((q, i) => `
+        <div class="palette-node ${q.selected !== null ? 'answered' : ''} ${i === currentIndex ? 'active-node' : ''} ${q.reattempted ? 'reattempted' : ''}" onclick="jumpQ(${i})">
+          <span>${i + 1}</span>
+          <span class="dot-badge"></span>
+        </div>
+      `).join('');
+    }
+
+    function jumpQ(i) {
+      currentIndex = i;
+      renderQuestion();
+      togglePalette();
+    }
+
+    function submitFromModal() {
+      togglePalette();
+      finishTest();
+    }
+
+    function startTimer() {
+      showTime();
+      clearInterval(timerTimer);
+      timerTimer = setInterval(() => {
+        if (secondsLeft > 0) {
+          secondsLeft--;
+          showTime();
+        } else {
+          finishTest();
+        }
+      }, 1000);
+    }
+
+    function showTime() {
+      let m = Math.floor(secondsLeft / 60);
+      let s = secondsLeft % 60;
+      document.getElementById('timerBox').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function finishTest() {
+      clearInterval(timerTimer);
+      document.getElementById('quizScreen').style.display = 'none';
+      document.getElementById('resultScreen').style.display = 'block';
+
+      let correct = 0;
+      let wrong = 0;
+      let skipped = 0;
+
+      testData.questions.forEach(q => {
+        if (q.selected === null) {
+          skipped++;
+        } else if (q.selected === q.correctOption) {
+          correct++;
+        } else {
+          wrong++;
+        }
+      });
+
+      const pct = Math.round((correct / totalQuestions) * 100);
+      document.getElementById('scoreCircle').innerText = `${pct}%`;
+      document.getElementById('statMarks').innerText = `${correct}/${totalQuestions}`;
+      document.getElementById('statCorrect').innerText = correct;
+      document.getElementById('statWrong').innerText = wrong;
+      document.getElementById('statSkipped').innerText = skipped;
+
+      const curUrl = window.location.href;
+      const shareText = encodeURIComponent(
+        `🎯 Gyankshetra Test\n` +
+        `📚 विषय: ${testData.topic}\n` +
+        `🏆 स्कोर: ${correct}/${totalQuestions} (${pct}%)\n\n` +
+        `🔗 टेस्ट हल करें: ${curUrl}`
+      );
+      document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
+
+      buildReview();
+    }
+
+    function toggleReviewArea() {
+      const rev = document.getElementById('reviewContainer');
+      rev.style.display = (rev.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function reattemptQuiz() {
+      testData.isReattempted = true;
+      testData.questions.forEach(q => {
+        q.selected = null;
+        q.status = 'skipped';
+        q.reattempted = false;
+      });
+      currentIndex = 0;
+      secondsLeft = totalQuestions * 60;
+      document.getElementById('resultScreen').style.display = 'none';
+      document.getElementById('quizScreen').style.display = 'block';
+      initQuiz();
+    }
+
+    // Exact marker required by gyankshetra_bot.py: <div class="q-text">${esc(q.text)}</div>
+    function buildReview() {
+      const rev = document.getElementById('reviewContainer');
+      rev.innerHTML = testData.questions.map((q, i) => {
+        const isCorrect = q.selected === q.correctOption;
+        return `
+          <div class="review-item">
+            <div class="q-text">${q.text}</div>
+            <div class="options-list" style="margin-top:10px;">
+              ${q.options.map((opt, idx) => {
+                let optClass = "opt-item";
+                if (idx === q.correctOption) {
+                  optClass += " correct";
+                } else if (idx === q.selected && !isCorrect) {
+                  optClass += " incorrect";
+                }
+                return `
+                  <div class="${optClass}">
+                    <span>${String.fromCharCode(65 + idx)}.${opt}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          ${q.facts && q.facts.length ? '<div class="status-badge"><b>📌 व्याख्या / तथ्य:</b><ul style="margin:6px 0 0 18px">' + q.facts.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleDrawer() {
+      document.getElementById('sideDrawer').classList.toggle('open');
+      document.getElementById('drawerOverlay').classList.toggle('open');
+    }
+
+    /* Mobile Swipe */
+    let startX = 0;
+    const swipeSurface = document.getElementById('touchContainer');
+    swipeSurface.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
+    swipeSurface.addEventListener('touchend', e => {
+      let diff = e.changedTouches[0].screenX - startX;
+      if (diff < -50) nextQ();
+      if (diff > 50) prevQ();
+    }, { passive: true });
+
+    initQuiz();
+  </script>
+</body>
+</html>
