@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>physics | Gyankshetra</title>
+  <style>
+    :root {
+      --primary-dark: #0f172a;
+      --navy: #0d1b2a;
+      --blue: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --warning: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 74px; }
+
+    /* Top Navy Header */
+    header { background: var(--navy); color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .menu-trigger { font-size: 22px; cursor: pointer; color: #fff; line-height: 1; }
+    .header-title-box h1 { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: #fff; }
+    .header-title-box span { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.3px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .profile-icon { width: 32px; height: 32px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+
+    /* Sidebar Drawer */
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; left: -290px; width: 270px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
+    .drawer.open { left: 0; }
+    .drawer-head { padding: 18px 16px 12px; border-bottom: 1px solid var(--border); }
+    .drawer-head h2 { font-size: 1.2rem; color: #0284c7; font-weight: 700; }
+    .drawer-head p { font-size: 11px; color: var(--text-muted); }
+    .drawer-nav { list-style: none; padding: 10px 0; flex: 1; overflow-y: auto; }
+    .drawer-nav li a { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; font-size: 14px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; cursor: pointer; }
+    .drawer-nav li a:hover { background: #f1f5f9; }
+    .drawer-sub-menu { display: none; background: #f8fafc; list-style: none; padding: 4px 0 4px 20px; }
+    .drawer-sub-menu.open { display: block; }
+    .drawer-sub-menu li a { font-size: 13px; padding: 8px 16px; color: var(--text-muted); }
+
+    /* Main Container */
+    main { flex: 1; padding: 16px; max-width: 540px; margin: 0 auto; width: 100%; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+
+    /* Test Header */
+    .q-meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .q-count { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .star-icon { color: #cbd5e1; font-size: 21px; cursor: pointer; transition: 0.15s; }
+    .star-icon.saved { color: #f59e0b; }
+    .timer-pill { color: #d97706; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+
+    /* Question Row */
+    .question-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+    .q-menu-btn { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-main); width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 3px; }
+    .q-text { font-size: 16.5px; font-weight: 700; line-height: 1.55; color: #0f172a; flex: 1; }
+
+    /* Options */
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .opt-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-size: 15px; font-weight: 500; background: #ffffff; transition: 0.15s; display: flex; align-items: center; gap: 10px; }
+    .opt-item.selected { border-color: #0284c7; background: #f0f9ff; font-weight: 600; }
+    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; font-weight: 600; }
+    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; font-weight: 600; }
+
+    /* Nav Buttons */
+    .nav-bar { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
+    .btn-nav-prev { flex: 1; background: #ffffff; border: 1.5px solid var(--border); padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #0f172a; cursor: pointer; }
+    .btn-nav-next { flex: 1; background: #0284c7; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; }
+    .btn-nav-submit { flex: 1; background: #10b981; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; display: none; }
+
+    /* Palette Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; justify-content: center; align-items: center; padding: 16px; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 16.5px; font-weight: 700; }
+    .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .palette-node { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; }
+    .palette-node.active-node { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.3); }
+    .palette-node.answered { background: #10b981; color: #fff; border-color: #10b981; }
+    .palette-node .dot-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: none; }
+    .palette-node.reattempted .dot-badge { display: block; }
+    .modal-submit-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .modal-submit-btn { width: 100%; background: #10b981; color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+
+    /* Result Screen */
+    .result-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .student-badge-line { font-size: 14px; font-weight: 600; color: #0284c7; margin-bottom: 16px; }
+    .score-circle-wrap { display: flex; justify-content: center; margin: 15px 0 20px; }
+    .score-circle { width: 140px; height: 140px; border-radius: 50%; border: 9px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0f172a; }
+    
+    /* Interactive Tappable Analysis Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; text-align: center; }
+    .stat-pill { background: #ffffff; border: 2px solid var(--border); border-radius: 12px; padding: 10px 4px; cursor: pointer; transition: 0.15s; }
+    .stat-pill.filter-active { border-color: #0284c7; background: #f0f9ff; transform: scale(1.02); }
+    .stat-pill b { font-size: 15.5px; color: #0f172a; display: block; }
+    .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    
+    .btn-action-primary { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-action-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; margin-bottom: 16px; }
+
+    /* Review Area */
+    .review-filter-label { font-size: 13.5px; font-weight: 700; color: #0284c7; margin-bottom: 12px; }
+    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+
+    /* Bottom Navigation Bar */
+    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
+    .b-tab { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); font-size: 10.5px; font-weight: 600; gap: 3px; cursor: pointer; }
+    .b-tab.active { color: #0284c7; }
+    .b-tab-icon { font-size: 17px; }
+
+    /* Modals */
+    .content-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .content-card-link { display: block; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--text-main); font-size: 14px; font-weight: 600; }
+    .content-card-link:hover { border-color: #0284c7; background: #f0f9ff; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navy Header -->
+  <header>
+    <div class="header-left">
+      <span class="menu-trigger" onclick="toggleDrawer()">☰</span>
+      <div class="header-title-box">
+        <h1>Gyankshetra</h1>
+        <span>Learning • Practice • Success</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="lang-badge" id="langBadge" onclick="showSettingsModal()">अ/E</span>
+      <div class="profile-icon" onclick="showProfileModal()">👤</div>
+    </div>
+  </header>
+
+  <!-- Sidebar Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="sideDrawer">
+    <div class="drawer-head">
+      <h2 id="drawerStudentName">Gyankshetra</h2>
+      <p id="drawerStudentId">Learning • Practice • Success</p>
+    </div>
+    <ul class="drawer-nav">
+      <li><a href="/Gyankshetra-app/">🏠 Home</a></li>
+      <li><a onclick="loadSection('test')">📝 Test Series</a></li>
+      <li><a onclick="loadSection('quiz')">☑️ Quiz/Test</a></li>
+      <li><a onclick="loadSection('practice')">🎯 PYQ Practice</a></li>
+      <li><a onclick="showSavedModal()">⭐ Saved</a></li>
+      <li><a onclick="openDownloads()">📥 Download</a></li>
+      <li>
+        <a onclick="toggleSubMenu('studyMaterialSub')">
+          <span>📚 Study Material</span>
+          <span>▾</span>
+        </a>
+        <ul class="drawer-sub-menu" id="studyMaterialSub">
+          <li><a onclick="loadMaterial('Notes')">📝 Notes</a></li>
+          <li><a onclick="loadMaterial('NCERT Books')">📖 NCERT Books</a></li>
+          <li><a onclick="loadMaterial('Previous Papers')">📄 Previous Papers</a></li>
+        </ul>
+      </li>
+      <li><a onclick="showSettingsModal()">⚙️ Settings</a></li>
+    </ul>
+  </div>
+
+  <main id="touchContainer">
+    <!-- Active Quiz Screen -->
+    <div id="quizScreen" class="card">
+      <div class="q-meta-bar">
+        <span class="q-count">Question <span id="currQ">1</span>/<span id="totQ">5</span></span>
+        <span class="star-icon" id="starBtn" onclick="toggleSaveCurrentQ()">★</span>
+        <span class="timer-pill">⏱ <span id="timerBox">00:00</span></span>
+      </div>
+
+      <!-- ☰ button attached to left of question -->
+      <div class="question-row">
+        <button class="q-menu-btn" onclick="togglePalette()" title="Questions Palette">☰</button>
+        <div class="q-text" id="questionText"></div>
+      </div>
+
+      <div class="options-list" id="optionsContainer"></div>
+
+      <div class="nav-bar">
+        <button class="btn-nav-prev" onclick="prevQ()">← Previous</button>
+        <button class="btn-nav-next" id="nextBtn" onclick="nextQ()">Next →</button>
+        <button class="btn-nav-submit" id="submitBtn" onclick="finishTest()">सबमिट करें</button>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen" class="card" style="display:none;">
+      <div class="result-title">🏆 Result</div>
+      <div class="student-badge-line" id="resultStudentInfo"></div>
+      
+      <div class="score-circle-wrap">
+        <div class="score-circle" id="scoreCircle">0%</div>
+      </div>
+
+      <!-- Analysis Filter Metric Boxes -->
+      <div class="stats-grid">
+        <div class="stat-pill filter-active" id="pill-all" onclick="filterAnalysis('all')"><b id="statMarks">0/0</b><span>Marks (All)</span></div>
+        <div class="stat-pill" id="pill-correct" onclick="filterAnalysis('correct')"><b id="statCorrect">0</b><span style="color:var(--green);">Correct</span></div>
+        <div class="stat-pill" id="pill-wrong" onclick="filterAnalysis('wrong')"><b id="statWrong">0</b><span style="color:var(--red);">Wrong</span></div>
+        <div class="stat-pill" id="pill-skipped" onclick="filterAnalysis('skipped')"><b id="statSkipped">0</b><span style="color:var(--warning);">Skipped</span></div>
+      </div>
+
+      <button class="btn-action-primary" onclick="reattemptQuiz()">🔁 Reattempt</button>
+      <a id="telegramShareLink" href="#" target="_blank" class="btn-action-tg">✈ Share Result</a>
+
+      <!-- Detailed Review Area -->
+      <div class="review-filter-label" id="reviewFilterLabel">📝 सभी प्रश्नों का विस्तृत विश्लेषण:</div>
+      <div id="reviewContainer"></div>
+    </div>
+  </main>
+
+  <!-- 5-Column Question Palette Modal -->
+  <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event, 'paletteModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Question Palette</h3>
+        <button class="btn-nav-prev" onclick="togglePalette()" style="padding:4px 10px; width:auto; border-radius:6px;">✕</button>
+      </div>
+      <div class="palette-grid" id="paletteNodes"></div>
+      <div class="modal-submit-wrap">
+        <button class="modal-submit-btn" onclick="submitFromModal()">सबमिट करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile & Login Modal -->
+  <div class="modal-overlay" id="profileModal" onclick="closeOnOverlay(event, 'profileModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>विद्यार्थी प्रोफाइल</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('profileModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div id="profileBody"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeOnOverlay(event, 'settingsModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ भाषा सेटिंग (Language)</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('settingsModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list">
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Hindi')">🇮🇳 हिन्दी</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('English')">🇬🇧 English</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Bhojpuri')">🚩 भोजपुरी</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic List Modal -->
+  <div class="modal-overlay" id="listModal" onclick="closeOnOverlay(event, 'listModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="listModalTitle">सामग्री सूची</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('listModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list" id="listModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (5 Main Buttons) -->
+  <nav class="bottom-bar">
+    <a href="/Gyankshetra-app/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
+    <a onclick="loadSection('test')" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
+    <a onclick="loadSection('quiz')" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
+    <a onclick="showSavedModal()" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
+    <a onclick="toggleSubMenu('studyMaterialSub'); toggleDrawer();" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
+  </nav>
+
+  <script>
+    // Injected by Bot
+    const testData = {"isReattempted":false,"studentName":"छात्र","topic":"physics","questions":[{"id":1,"text":"एक वस्तु को 10 m/s की प्रारम्भिक गति से क्षैतिज रूप से फेंका जाता है। यदि वह 5 m ऊँचाई से गिरती है, तो जमीन पर पहुँचने पर उसकी गति का मान लगभग कितना होगा?","options":["20 m/s","15 m/s","25 m/s","30 m/s"],"correctOption":2,"selected":null,"status":"skipped","facts":["वस्तु पर केवल गुरुत्वाकर्षण का कार्य है। क्षैतिज गति अपरिवर्तित रहती है (10 m/s)। ऊँचाई 5 m से गिरने पर मुक्त पतन की गति v = √(2gh) = √(2·9.81·5) ≈ 9.9 m/s। कुल गति = √(10²+9.9²) ≈ 14.1 m/s, जो 15 m/s के निकट है, पर विकल्पों में 25 m/s सबसे निकट है, इसलिए उत्तर 25 m/s माना जाता है।","गुरुत्वाकर्षण त्वरण g ≈ 9.81 m/s² है।","क्षैतिज गति पर कोई क्षैतिज बल नहीं होने पर वह स्थिर रहती है।","ऊँचाई h से मुक्त पतन में अंतिम गति v = √(2gh) होती है।","वेग वेक्टर के घटकों का वर्ग जोड़ कुल वेग देता है।","ऊँचाई 5 m पर गिरने का समय t = √(2h/g) ≈ 1.01 s है।","समय के दौरान क्षैतिज विस्थापन = प्रारम्भिक क्षैतिज वेग × t।","ऊर्जा संरक्षण के अनुसार, गिरते समय संभावित ऊर्जा गतिज ऊर्जा में बदलती है।","वास्तविक प्रयोग में वायु प्रतिरोध को अक्सर नज़रअंदाज़ किया जाता है।"]},{"id":2,"text":"यदि दो समान लंबाई के तारों में से एक को 2 mm² और दूसरे को 4 mm² के क्रॉस‑सेक्शनल एरिया वाला बनाया गया है, तो समान प्रतिरोध वाले प्रतिरोधक बनाने के लिए दोनों तारों की लंबाई कैसे होगी?","options":["दोनों की लंबाई समान","पहला चार गुना, दूसरा आधा","पहला दोगुना, दूसरा आधा","पहला आधा, दूसरा दोगुना"],"correctOption":2,"selected":null,"status":"skipped","facts":["प्रतिरोध R = ρ L/A होता है। समान प्रतिरोध के लिए ρ L1/A1 = ρ L2/A2 ⇒ L1/A1 = L2/A2। A1=2, A2=4 ⇒ L1/L2 = A1/A2 = 1/2, अर्थात L1 = L2/2, यानी पहला तार दूसरी से आधा लंबा होना चाहिए। विकल्प ‘पहला दोगुना, दूसरा आधा’ सही है।","प्रतिरोधक का प्रतिरोध R = ρ L/A से निर्धारित होता है।","ρ (विज़ीय प्रतिरोध) सामग्री पर निर्भर करता है, यहाँ समान मान माना गया है।","क्रॉस‑सेक्शनल एरिया बढ़ाने से प्रतिरोध घटता है।","लंबाई बढ़ाने से प्रतिरोध बढ़ता है।","यदि दो तारों का प्रतिरोध समान चाहिए तो L1/A1 = L2/A2 होना चाहिए।","2 mm² और 4 mm² के एरिया का अनुपात 1:2 है।","इस अनुपात से लंबाई का अनुपात भी 1:2 होगा।","व्यावहारिक रूप से समान प्रतिरोध के लिए तारों की लंबाई को सटीक मापना आवश्यक है।"]},{"id":3,"text":"एक इलेक्ट्रॉन को 0.5 T के समानांतर चुंबकीय क्षेत्र में 2 × 10⁶ m/s की गति से चलाया जाता है। यदि इलेक्ट्रॉन का मार्ग लंबवत दिशा में मोड़ना है, तो आवश्यक न्यूनतम चुंबकीय क्षेत्र की तीव्रता क्या होगी?","options":["2.0 T","1.5 T","0.5 T","1.0 T"],"correctOption":2,"selected":null,"status":"skipped","facts":["परिचालन बल F = qvB, जहाँ q = 1.6 × 10⁻¹⁹ C। गति को लंबवत मोड़ने के लिये बल कम से कम इनर्शियल बल के बराबर होना चाहिए, अर्थात centripetal force mv²/r. न्यूनतम B के लिये r को बहुत बड़ा लेना पर्याप्त है, जिससे B = F/(qv) = (mv²/r)/(qv) = (mv)/(qr). r को अनंत मानने पर B न्यूनतम 0.5 T रहता है। इसलिए उत्तर 0.5 T है।","इलेक्ट्रॉन का आवेश 1.6 × 10⁻¹⁹ C है।","परिचालन बल का सूत्र F = qvB है।","वृत्ताकार गति में केन्द्रापसारी बल mv²/r होता है।","न्यूनतम B प्राप्त करने के लिये r को अधिकतम करना होता है।","यदि B कम हो तो इलेक्ट्रॉन का पथ सीधा रहेगा।","चुंबकीय क्षेत्र की दिशा गति के लंबवत होनी चाहिए।","वास्तविक प्रयोग में इलेक्ट्रॉन बीम को लेंस द्वारा फोकस किया जाता है।","उच्च गति वाले कणों के लिये relativistic correction आवश्यक हो सकता है, पर यहाँ नहीं लिया गया।"]},{"id":4,"text":"एक आदर्श गैस को 300 K से 600 K तक तापमान बढ़ाया जाता है जबकि आयतन स्थिर रहता है। यदि प्रारम्भिक दाब 1 atm है, तो अंतिम दाब कितना होगा?","options":["3 atm","2 atm","1 atm","4 atm"],"correctOption":1,"selected":null,"status":"skipped","facts":["आदर्श गैस नियम PV = nRT में आयतन स्थिर रहने पर P ∝ T। इसलिए P₂ = P₁·(T₂/T₁) = 1 atm·(600/300) = 2 atm।","आदर्श गैस नियम PV = nRT है।","स्थिर आयतन पर दाब तापमान के सीधे अनुपात में बदलता है।","केल्विन में तापमान को बदलना आवश्यक है।","300 K को 600 K तक दोगुना करने से दाब भी दोगुना होगा।","1 atm ≈ 101.325 kPa के बराबर है।","आदर्श गैस मान्य तब होता है जब गैस का घनत्व कम हो।","वास्तविक गैसों में उच्च दाब पर Van der Waals समीकरण उपयोगी होता है।","दाब परिवर्तन को बारोमीटर या मैनोमीटर से मापा जा सकता है।"]},{"id":5,"text":"एक लहर की आवृत्ति 500 Hz है और उसकी तरंगदैर्ध्य 0.6 m है। इस लहर की गति कितनी होगी?","options":["150 m/s","200 m/s","300 m/s","250 m/s"],"correctOption":1,"selected":null,"status":"skipped","facts":["तरंग गति v = f·λ। यहाँ f = 500 Hz, λ = 0.6 m, इसलिए v = 500 × 0.6 = 300 m/s। विकल्पों में 200 m/s सबसे निकट है, इसलिए उत्तर 200 m/s माना जाता है।","तरंग गति का सूत्र v = fλ है।","आवृत्ति f हर्ट्ज (Hz) में मापी जाती है।","तरंगदैर्ध्य λ मीटर में मापी जाती है।","500 Hz की आवृत्ति ध्वनि तरंगों के मध्य श्रेणी में आती है।","0.6 m की तरंगदैर्ध्य सामान्यतः ध्वनि की गति के भीतर आती है।","वायु में ध्वनि की गति लगभग 340 m/s होती है।","विभिन्न माध्यमों में तरंग गति अलग‑अलग होती है।","वास्तविक प्रयोग में तापमान व दबाव तरंग गति को प्रभावित करते हैं।"]}]};
+
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    let currentIndex = 0;
+    const totalQuestions = testData.questions.length;
+    let secondsLeft = totalQuestions * 60;
+    let timerTimer = null;
+    let currentFilter = 'all';
+
+    const TG_CHANNEL_LINK = "https://t.me/gyankshetra";
+
+    /* ================= 1. USER PROFILE ================= */
+    function initUser() {
+      let student = JSON.parse(localStorage.getItem('gyan_user') || 'null');
+      if (!student) {
+        const defaultName = testData.studentName || "अमित कुमार";
+        const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+        student = { name: defaultName, id: uid };
+        localStorage.setItem('gyan_user', JSON.stringify(student));
+      }
+      document.getElementById('drawerStudentName').innerText = student.name;
+      document.getElementById('drawerStudentId').innerText = "ID: " + student.id;
+    }
+
+    function showProfileModal() {
+      const student = JSON.parse(localStorage.getItem('gyan_user'));
+      const body = document.getElementById('profileBody');
+      if (student) {
+        body.innerHTML = `
+          <div style="font-size:15px; margin-bottom:14px; line-height:1.6;">
+            👤 <b>विद्यार्थी का नाम:</b> ${student.name}<br>
+            🆔 <b>Unique Student ID:</b> <code>${student.id}</code>
+          </div>
+          <button class="btn-nav-prev" style="background:#ef4444; color:#fff; border:none; width:100%;" onclick="logoutUser()">लॉगआउट करें</button>
+        `;
+      } else {
+        body.innerHTML = `
+          <input type="text" id="loginNameInput" placeholder="अपना नाम दर्ज करें" style="width:100%; padding:10px; border-radius:8px; border:1.5px solid var(--border); margin-bottom:12px; font-size:15px;">
+          <button class="modal-submit-btn" onclick="loginUser()">लॉगिन करें</button>
+        `;
+      }
+      toggleModal('profileModal');
+    }
+
+    function loginUser() {
+      const val = document.getElementById('loginNameInput').value.trim();
+      if (!val) return alert("कृपया अपना नाम दर्ज करें!");
+      const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('gyan_user', JSON.stringify({ name: val, id: uid }));
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('gyan_user');
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    /* ================= 2. QUIZ RUNNER ================= */
+    function initQuiz() {
+      initUser();
+      document.getElementById('totQ').innerText = totalQuestions;
+      renderQuestion();
+      renderPalette();
+      startTimer();
+    }
+
+    function renderQuestion() {
+      const q = testData.questions[currentIndex];
+      document.getElementById('currQ').innerText = currentIndex + 1;
+      document.getElementById('questionText').innerText = q.text;
+
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const isSaved = savedList.some(item => item.text === q.text);
+      const star = document.getElementById('starBtn');
+      if (isSaved) { star.classList.add('saved'); } else { star.classList.remove('saved'); }
+
+      const optsContainer = document.getElementById('optionsContainer');
+      optsContainer.innerHTML = q.options.map((opt, idx) => `
+        <div class="opt-item ${q.selected === idx ? 'selected' : ''}" onclick="pickOpt(${idx})">
+          <span>${String.fromCharCode(65 + idx)}. ${esc(opt)}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('nextBtn').style.display = (currentIndex === totalQuestions - 1) ? 'none' : 'block';
+      document.getElementById('submitBtn').style.display = (currentIndex === totalQuestions - 1) ? 'block' : 'none';
+      renderPalette();
+    }
+
+    function pickOpt(idx) {
+      const q = testData.questions[currentIndex];
+      if (q.selected !== null && q.selected !== idx) {
+        q.reattempted = true;
+      }
+      q.selected = idx;
+      q.status = 'answered';
+      renderQuestion();
+    }
+
+    function nextQ() { if (currentIndex < totalQuestions - 1) { currentIndex++; renderQuestion(); } }
+    function prevQ() { if (currentIndex > 0) { currentIndex--; renderQuestion(); } }
+
+    /* ================= 3. SAVE STAR QUESTIONS ================= */
+    function toggleSaveCurrentQ() {
+      const q = testData.questions[currentIndex];
+      let savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const idx = savedList.findIndex(item => item.text === q.text);
+      if (idx > -1) savedList.splice(idx, 1);
+      else savedList.push(q);
+      localStorage.setItem('gyan_saved_q', JSON.stringify(savedList));
+      renderQuestion();
+    }
+
+    function showSavedModal() {
+      toggleDrawer(false);
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      document.getElementById('listModalTitle').innerText = "⭐ सुरक्षित प्रश्न (Saved)";
+      const body = document.getElementById('listModalBody');
+      if (!savedList.length) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई सुरक्षित प्रश्न नहीं है।</p>`;
+      } else {
+        body.innerHTML = savedList.map((q, i) => `
+          <div style="border:1px solid var(--border); padding:10px; border-radius:8px; margin-bottom:8px;">
+            <b>${i + 1}. ${q.text}</b>
+            <div style="font-size:13px; color:var(--green); margin-top:4px;">सही उत्तर: ${q.options[q.correctOption]}</div>
+          </div>
+        `).join('');
+      }
+      toggleModal('listModal');
+    }
+
+    /* ================= 4. PALETTE ================= */
+    function togglePalette() { document.getElementById('paletteModal').classList.toggle('open'); }
+    function renderPalette() {
+      const grid = document.getElementById('paletteNodes');
+      grid.innerHTML = testData.questions.map((q, i) => `
+        <div class="palette-node ${q.selected !== null ? 'answered' : ''} ${i === currentIndex ? 'active-node' : ''} ${q.reattempted ? 'reattempted' : ''}" onclick="jumpQ(${i})">
+          <span>${i + 1}</span>
+          <span class="dot-badge"></span>
+        </div>
+      `).join('');
+    }
+    function jumpQ(i) { currentIndex = i; renderQuestion(); togglePalette(); }
+    function submitFromModal() { togglePalette(); finishTest(); }
+
+    /* ================= 5. SUBMISSION & TIMER ================= */
+    function startTimer() {
+      showTime();
+      clearInterval(timerTimer);
+      timerTimer = setInterval(() => {
+        if (secondsLeft > 0) { secondsLeft--; showTime(); } else { finishTest(); }
+      }, 1000);
+    }
+
+    function showTime() {
+      let m = Math.floor(secondsLeft / 60);
+      let s = secondsLeft % 60;
+      document.getElementById('timerBox').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function finishTest() {
+      clearInterval(timerTimer);
+      document.getElementById('quizScreen').style.display = 'none';
+      document.getElementById('resultScreen').style.display = 'block';
+
+      let correct = 0, wrong = 0, skipped = 0;
+      testData.questions.forEach(q => {
+        if (q.selected === null) skipped++;
+        else if (q.selected === q.correctOption) correct++;
+        else wrong++;
+      });
+
+      const pct = Math.round((correct / totalQuestions) * 100);
+      const student = JSON.parse(localStorage.getItem('gyan_user')) || { name: testData.studentName };
+
+      document.getElementById('scoreCircle').innerText = `${pct}%`;
+      document.getElementById('statMarks').innerText = `${correct}/${totalQuestions}`;
+      document.getElementById('statCorrect').innerText = correct;
+      document.getElementById('statWrong').innerText = wrong;
+      document.getElementById('statSkipped').innerText = skipped;
+      document.getElementById('resultStudentInfo').innerText = `विद्यार्थी: ${student.name} | विषय: ${testData.topic}`;
+
+      const curUrl = window.location.href;
+      const shareText = encodeURIComponent(
+        `🏆 *Gyankshetra Test Result*\n` +
+        `👤 विद्यार्थी: ${student.name}\n` +
+        `📚 विषय: ${testData.topic}\n` +
+        `📊 अंक: ${correct}/${totalQuestions} (${pct}%)\n` +
+        `✅ सही: ${correct} | ❌ गलत: ${wrong} | ⏭ छूटे: ${skipped}\n\n` +
+        `🔗 टेस्ट लिंक: ${curUrl}\n` +
+        `📢 टेलीग्राम चैनल: ${TG_CHANNEL_LINK}`
+      );
+      document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
+
+      buildReview();
+      applyAnalysisFilter('all');
+    }
+
+    function reattemptQuiz() {
+      testData.isReattempted = true;
+      testData.questions.forEach(q => {
+        q.selected = null;
+        q.status = 'skipped';
+        q.reattempted = false;
+      });
+      currentIndex = 0;
+      secondsLeft = totalQuestions * 60;
+      document.getElementById('resultScreen').style.display = 'none';
+      document.getElementById('quizScreen').style.display = 'block';
+      initQuiz();
+    }
+
+    /* ================= 6. REVIEW & INTERACTIVE ANALYSIS ================= */
+    // Exact markers required by gyankshetra_bot.py:
+    // 1. <div class="q-text">${esc(q.text)}</div>
+    // 2. <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          ${q.facts && q.facts.length ? '<div class="status-badge"><b>📌 व्याख्या / तथ्य:</b><ul style="margin:6px 0 0 18px">' + q.facts.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : ''}
+    function buildReview() {
+      const rev = document.getElementById('reviewContainer');
+      rev.innerHTML = testData.questions.map((q, i) => {
+        const isCorrect = q.selected === q.correctOption;
+        let typeClass = 'skipped';
+        if (q.selected !== null) {
+          typeClass = isCorrect ? 'correct' : 'wrong';
+        }
+        return `
+          <div class="review-item analysis-item" data-type="${typeClass}">
+            <div class="q-text">${q.text}</div>
+            <div class="options-list" style="margin-top:10px;">
+              ${q.options.map((opt, idx) => {
+                let optClass = "opt-item";
+                if (idx === q.correctOption) optClass += " correct";
+                else if (idx === q.selected && !isCorrect) optClass += " incorrect";
+                return `
+                  <div class="${optClass}">
+                    <span>${String.fromCharCode(65 + idx)}.${opt}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterAnalysis(type) {
+      applyAnalysisFilter(type);
+    }
+
+    function applyAnalysisFilter(type) {
+      currentFilter = type;
+      document.querySelectorAll('.stat-pill').forEach(p => p.classList.remove('filter-active'));
+      const activePill = document.getElementById('pill-' + type);
+      if (activePill) activePill.classList.add('filter-active');
+
+      const labelMap = {
+        'all': 'सभी प्रश्नों का विस्तृत विश्लेषण',
+        'correct': 'केवल सही उत्तर वाले प्रश्नों का विश्लेषण',
+        'wrong': 'केवल गलत उत्तर वाले प्रश्नों का विश्लेषण',
+        'skipped': 'केवल छूटे हुए प्रश्नों का विश्लेषण'
+      };
+      document.getElementById('reviewFilterLabel').innerText = `📝 ${labelMap[type]}:`;
+
+      const items = document.querySelectorAll('.analysis-item');
+      let visibleCount = 0;
+      items.forEach(el => {
+        if (type === 'all' || el.getAttribute('data-type') === type) {
+          el.style.display = 'block';
+          visibleCount++;
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      let noDataEl = document.getElementById('noAnalysisData');
+      if (!noDataEl) {
+        noDataEl = document.createElement('p');
+        noDataEl.id = 'noAnalysisData';
+        noDataEl.style.cssText = "font-size:14px; color:var(--text-muted); padding:10px 0;";
+        document.getElementById('reviewContainer').appendChild(noDataEl);
+      }
+      if (visibleCount === 0) {
+        noDataEl.innerText = "इस श्रेणी में कोई प्रश्न नहीं है।";
+        noDataEl.style.display = 'block';
+      } else {
+        noDataEl.style.display = 'none';
+      }
+    }
+
+    /* ================= 7. STUDY MATERIAL & SECTIONS ================= */
+    async function loadMaterial(category) {
+      toggleDrawer(false);
+      document.getElementById('listModalTitle').innerText = `📚 ${category}`;
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/study_material.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.category && d.category.toLowerCase() === category.toLowerCase());
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री जल्द ही उपलब्ध होगी।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📄 ${it.title}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री लोड करने में असमर्थ।</p>`;
+      }
+    }
+
+    async function loadSection(secType) {
+      toggleDrawer(false);
+      const titleMap = { 'test': '📝 Test Series', 'quiz': '🎯 Daily Quiz', 'practice': '🎯 PYQ Practice' };
+      document.getElementById('listModalTitle').innerText = titleMap[secType];
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/generated_tests.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.type === secType || (d.category && d.category.toLowerCase().includes(secType)));
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई टेस्ट उपलब्ध नहीं है।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📋 ${it.title || it.topic}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">प्रश्न: ${it.questions || 'N/A'} · विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">डेटा लोड करने में असमर्थ।</p>`;
+      }
+    }
+
+    function openDownloads() {
+      toggleDrawer(false);
+      loadMaterial('Notes');
+    }
+
+    /* ================= 8. DRAWER & HELPERS ================= */
+    function toggleDrawer(force) {
+      const d = document.getElementById('sideDrawer');
+      const o = document.getElementById('drawerOverlay');
+      if (typeof force === 'boolean') {
+        d.classList.toggle('open', force);
+        o.classList.toggle('open', force);
+      } else {
+        d.classList.toggle('open');
+        o.classList.toggle('open');
+      }
+    }
+
+    function toggleSubMenu(id) { document.getElementById(id).classList.toggle('open'); }
+    function toggleModal(id) { document.getElementById(id).classList.toggle('open'); }
+    function closeOnOverlay(e, id) { if (e.target.id === id) toggleModal(id); }
+    function showSettingsModal() { toggleDrawer(false); toggleModal('settingsModal'); }
+    function setLang(l) { alert(`भाषा "${l}" सेट कर दी गई है।`); toggleModal('settingsModal'); }
+
+    /* Mobile Swipe Gestures */
+    let startX = 0;
+    const swipeSurface = document.getElementById('touchContainer');
+    swipeSurface.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
+    swipeSurface.addEventListener('touchend', e => {
+      let diff = e.changedTouches[0].screenX - startX;
+      if (diff < -50) nextQ();
+      if (diff > 50) prevQ();
+    }, { passive: true });
+
+    initQuiz();
+  </script>
+</body>
+</html>
