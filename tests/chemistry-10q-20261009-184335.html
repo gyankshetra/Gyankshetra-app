@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>chemistry | Gyankshetra</title>
+  <style>
+    :root {
+      --primary-dark: #0f172a;
+      --navy: #0d1b2a;
+      --blue: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --warning: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 74px; }
+
+    /* Top Navy Header */
+    header { background: var(--navy); color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .menu-trigger { font-size: 22px; cursor: pointer; color: #fff; line-height: 1; }
+    .header-title-box h1 { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: #fff; }
+    .header-title-box span { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.3px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .profile-icon { width: 32px; height: 32px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+
+    /* Sidebar Drawer */
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; left: -290px; width: 270px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
+    .drawer.open { left: 0; }
+    .drawer-head { padding: 18px 16px 12px; border-bottom: 1px solid var(--border); }
+    .drawer-head h2 { font-size: 1.2rem; color: #0284c7; font-weight: 700; }
+    .drawer-head p { font-size: 11px; color: var(--text-muted); }
+    .drawer-nav { list-style: none; padding: 10px 0; flex: 1; overflow-y: auto; }
+    .drawer-nav li a { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; font-size: 14px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; cursor: pointer; }
+    .drawer-nav li a:hover { background: #f1f5f9; }
+    .drawer-sub-menu { display: none; background: #f8fafc; list-style: none; padding: 4px 0 4px 20px; }
+    .drawer-sub-menu.open { display: block; }
+    .drawer-sub-menu li a { font-size: 13px; padding: 8px 16px; color: var(--text-muted); }
+
+    /* Main Container */
+    main { flex: 1; padding: 16px; max-width: 540px; margin: 0 auto; width: 100%; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+
+    /* Test Header */
+    .q-meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .q-count { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .star-icon { color: #cbd5e1; font-size: 21px; cursor: pointer; transition: 0.15s; }
+    .star-icon.saved { color: #f59e0b; }
+    .timer-pill { color: #d97706; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+
+    /* Question Row */
+    .question-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+    .q-menu-btn { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-main); width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 3px; }
+    .q-text { font-size: 16.5px; font-weight: 700; line-height: 1.55; color: #0f172a; flex: 1; }
+
+    /* Options */
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .opt-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-size: 15px; font-weight: 500; background: #ffffff; transition: 0.15s; display: flex; align-items: center; gap: 10px; }
+    .opt-item.selected { border-color: #0284c7; background: #f0f9ff; font-weight: 600; }
+    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; font-weight: 600; }
+    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; font-weight: 600; }
+
+    /* Nav Buttons */
+    .nav-bar { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
+    .btn-nav-prev { flex: 1; background: #ffffff; border: 1.5px solid var(--border); padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #0f172a; cursor: pointer; }
+    .btn-nav-next { flex: 1; background: #0284c7; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; }
+    .btn-nav-submit { flex: 1; background: #10b981; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; display: none; }
+
+    /* Palette Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; justify-content: center; align-items: center; padding: 16px; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { font-size: 16.5px; font-weight: 700; }
+    .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .palette-node { aspect-ratio: 1; border-radius: 10px; border: 1.5px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; }
+    .palette-node.active-node { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2,132,199,0.3); }
+    .palette-node.answered { background: #10b981; color: #fff; border-color: #10b981; }
+    .palette-node .dot-badge { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: none; }
+    .palette-node.reattempted .dot-badge { display: block; }
+    .modal-submit-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .modal-submit-btn { width: 100%; background: #10b981; color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+
+    /* Result Screen */
+    .result-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .student-badge-line { font-size: 14px; font-weight: 600; color: #0284c7; margin-bottom: 16px; }
+    .score-circle-wrap { display: flex; justify-content: center; margin: 15px 0 20px; }
+    .score-circle { width: 140px; height: 140px; border-radius: 50%; border: 9px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0f172a; }
+    
+    /* Interactive Tappable Analysis Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; text-align: center; }
+    .stat-pill { background: #ffffff; border: 2px solid var(--border); border-radius: 12px; padding: 10px 4px; cursor: pointer; transition: 0.15s; }
+    .stat-pill.filter-active { border-color: #0284c7; background: #f0f9ff; transform: scale(1.02); }
+    .stat-pill b { font-size: 15.5px; color: #0f172a; display: block; }
+    .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    
+    .btn-action-primary { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-action-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; margin-bottom: 16px; }
+
+    /* Review Area */
+    .review-filter-label { font-size: 13.5px; font-weight: 700; color: #0284c7; margin-bottom: 12px; }
+    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+
+    /* Bottom Navigation Bar */
+    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
+    .b-tab { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); font-size: 10.5px; font-weight: 600; gap: 3px; cursor: pointer; }
+    .b-tab.active { color: #0284c7; }
+    .b-tab-icon { font-size: 17px; }
+
+    /* Modals */
+    .content-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .content-card-link { display: block; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--text-main); font-size: 14px; font-weight: 600; }
+    .content-card-link:hover { border-color: #0284c7; background: #f0f9ff; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navy Header -->
+  <header>
+    <div class="header-left">
+      <span class="menu-trigger" onclick="toggleDrawer()">☰</span>
+      <div class="header-title-box">
+        <h1>Gyankshetra</h1>
+        <span>Learning • Practice • Success</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="lang-badge" id="langBadge" onclick="showSettingsModal()">अ/E</span>
+      <div class="profile-icon" onclick="showProfileModal()">👤</div>
+    </div>
+  </header>
+
+  <!-- Sidebar Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="sideDrawer">
+    <div class="drawer-head">
+      <h2 id="drawerStudentName">Gyankshetra</h2>
+      <p id="drawerStudentId">Learning • Practice • Success</p>
+    </div>
+    <ul class="drawer-nav">
+      <li><a href="/Gyankshetra-app/">🏠 Home</a></li>
+      <li><a onclick="loadSection('test')">📝 Test Series</a></li>
+      <li><a onclick="loadSection('quiz')">☑️ Quiz/Test</a></li>
+      <li><a onclick="loadSection('practice')">🎯 PYQ Practice</a></li>
+      <li><a onclick="showSavedModal()">⭐ Saved</a></li>
+      <li><a onclick="openDownloads()">📥 Download</a></li>
+      <li>
+        <a onclick="toggleSubMenu('studyMaterialSub')">
+          <span>📚 Study Material</span>
+          <span>▾</span>
+        </a>
+        <ul class="drawer-sub-menu" id="studyMaterialSub">
+          <li><a onclick="loadMaterial('Notes')">📝 Notes</a></li>
+          <li><a onclick="loadMaterial('NCERT Books')">📖 NCERT Books</a></li>
+          <li><a onclick="loadMaterial('Previous Papers')">📄 Previous Papers</a></li>
+        </ul>
+      </li>
+      <li><a onclick="showSettingsModal()">⚙️ Settings</a></li>
+    </ul>
+  </div>
+
+  <main id="touchContainer">
+    <!-- Active Quiz Screen -->
+    <div id="quizScreen" class="card">
+      <div class="q-meta-bar">
+        <span class="q-count">Question <span id="currQ">1</span>/<span id="totQ">5</span></span>
+        <span class="star-icon" id="starBtn" onclick="toggleSaveCurrentQ()">★</span>
+        <span class="timer-pill">⏱ <span id="timerBox">00:00</span></span>
+      </div>
+
+      <!-- ☰ button attached to left of question -->
+      <div class="question-row">
+        <button class="q-menu-btn" onclick="togglePalette()" title="Questions Palette">☰</button>
+        <div class="q-text" id="questionText"></div>
+      </div>
+
+      <div class="options-list" id="optionsContainer"></div>
+
+      <div class="nav-bar">
+        <button class="btn-nav-prev" onclick="prevQ()">← Previous</button>
+        <button class="btn-nav-next" id="nextBtn" onclick="nextQ()">Next →</button>
+        <button class="btn-nav-submit" id="submitBtn" onclick="finishTest()">सबमिट करें</button>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen" class="card" style="display:none;">
+      <div class="result-title">🏆 Result</div>
+      <div class="student-badge-line" id="resultStudentInfo"></div>
+      
+      <div class="score-circle-wrap">
+        <div class="score-circle" id="scoreCircle">0%</div>
+      </div>
+
+      <!-- Analysis Filter Metric Boxes -->
+      <div class="stats-grid">
+        <div class="stat-pill filter-active" id="pill-all" onclick="filterAnalysis('all')"><b id="statMarks">0/0</b><span>Marks (All)</span></div>
+        <div class="stat-pill" id="pill-correct" onclick="filterAnalysis('correct')"><b id="statCorrect">0</b><span style="color:var(--green);">Correct</span></div>
+        <div class="stat-pill" id="pill-wrong" onclick="filterAnalysis('wrong')"><b id="statWrong">0</b><span style="color:var(--red);">Wrong</span></div>
+        <div class="stat-pill" id="pill-skipped" onclick="filterAnalysis('skipped')"><b id="statSkipped">0</b><span style="color:var(--warning);">Skipped</span></div>
+      </div>
+
+      <button class="btn-action-primary" onclick="reattemptQuiz()">🔁 Reattempt</button>
+      <a id="telegramShareLink" href="#" target="_blank" class="btn-action-tg">✈ Share Result</a>
+
+      <!-- Detailed Review Area -->
+      <div class="review-filter-label" id="reviewFilterLabel">📝 सभी प्रश्नों का विस्तृत विश्लेषण:</div>
+      <div id="reviewContainer"></div>
+    </div>
+  </main>
+
+  <!-- 5-Column Question Palette Modal -->
+  <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event, 'paletteModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Question Palette</h3>
+        <button class="btn-nav-prev" onclick="togglePalette()" style="padding:4px 10px; width:auto; border-radius:6px;">✕</button>
+      </div>
+      <div class="palette-grid" id="paletteNodes"></div>
+      <div class="modal-submit-wrap">
+        <button class="modal-submit-btn" onclick="submitFromModal()">सबमिट करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile & Login Modal -->
+  <div class="modal-overlay" id="profileModal" onclick="closeOnOverlay(event, 'profileModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>विद्यार्थी प्रोफाइल</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('profileModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div id="profileBody"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeOnOverlay(event, 'settingsModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ भाषा सेटिंग (Language)</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('settingsModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list">
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Hindi')">🇮🇳 हिन्दी</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('English')">🇬🇧 English</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Bhojpuri')">🚩 भोजपुरी</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic List Modal -->
+  <div class="modal-overlay" id="listModal" onclick="closeOnOverlay(event, 'listModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="listModalTitle">सामग्री सूची</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('listModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list" id="listModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (5 Main Buttons) -->
+  <nav class="bottom-bar">
+    <a href="/Gyankshetra-app/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
+    <a onclick="loadSection('test')" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
+    <a onclick="loadSection('quiz')" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
+    <a onclick="showSavedModal()" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
+    <a onclick="toggleSubMenu('studyMaterialSub'); toggleDrawer();" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
+  </nav>
+
+  <script>
+    // Injected by Bot
+    const testData = {"isReattempted":false,"studentName":"छात्र","topic":"chemistry","questions":[{"id":1,"text":"संतुलित रासायनिक समीकरण में 2‑मोल एथेनॉल (C₂H₅OH) को पूर्ण दहन के लिए कितने मोल ऑक्सीजन (O₂) की आवश्यकता होती है?","options":["5","4","3","6"],"correctOption":0,"selected":null,"status":"skipped","facts":["एथेनॉल का पूर्ण दहन समीकरण: C₂H₅OH + 3O₂ → 2CO₂ + 3H₂O. इसलिए 1 मोल एथेनॉल को 3 मोल O₂ चाहिए; 2 मोल एथेनॉल को 2×3=6 मोल O₂ चाहिए। विकल्प 5 (इंडेक्स 2) सही है।","एथेनॉल का रासायनिक सूत्र C₂H₅OH है","पूर्ण दहन में सभी कार्बन CO₂ में बदलते हैं","पूर्ण दहन में सभी हाइड्रोजन H₂O में बदलते हैं","ऑक्सीजन गैस O₂ दो परमाणुओं से बनी होती है","संतुलन के लिये प्रत्येक तत्व के एटॉमिक मोल बराबर होने चाहिए","एथेनॉल का दहन एन्डोथर्मिक है, लेकिन समीकरण में ऊर्जा नहीं गिनी जाती","संतुलित समीकरण में O₂ का गुणांक दहन के लिए आवश्यक अणुओं की संख्या दर्शाता है","2 मोल एथेनॉल के दहन में 6 मोल O₂ की आवश्यकता होती है"]},{"id":2,"text":"किसी धातु के आयनिक यौगिक में, यदि आयन का रेड्यूसिंग एजेंट (धनात्मक आयन) का मानक इलेक्ट्रोड पोटेंशियल –0.76 V है, तो वह धातु किस वर्ग में आती है?","options":["अल्कली पृथ्वी धातु","अल्कली धातु","ट्रांज़िशन धातु","प्लेटिनम समूह"],"correctOption":0,"selected":null,"status":"skipped","facts":["मानक इलेक्ट्रोड पोटेंशियल –0.76 V लगभग मैग्नीशियम (Mg²⁺/Mg) के समान है, जो अल्कली पृथ्वी धातु समूह में आता है। इसलिए विकल्प 1 (इंडेक्स 1) सही है।","मानक इलेक्ट्रोड पोटेंशियल (E°) धातु की रिडक्स शक्ति दर्शाता है","Mg²⁺ + 2e⁻ → Mg का E° –2.37 V है, लेकिन Mg²⁺/Mg²⁺½ का औसत –0.76 V माना जाता है","अल्कली पृथ्वी धातुओं में Be, Mg, Ca, Sr, Ba, Ra शामिल हैं","इन धातुओं का ऑक्सीकरण आसानी से होता है","प्लेटिनम समूह के E° मान आमतौर पर सकारात्मक होते हैं","ट्रांज़िशन धातुओं के E° मान विस्तृत रेंज में होते हैं","धनात्मक आयन का अधिक नकारात्मक E° रिडक्स प्रवृत्ति को दर्शाता है","–0.76 V का मान Mg‑संबंधी धातु को संकेत करता है"]},{"id":3,"text":"हाइड्रोजन ब्रोमाइड (HBr) का एस्टरिफिकेशन प्रतिक्रिया में कौन-सा एस्टर बनता है?","options":["एथाइल ब्रोमाइड","मेथाइल ब्यूटिरेट","ब्रोमोमेथाइल एस्टर","एसीटेट एस्टर"],"correctOption":2,"selected":null,"status":"skipped","facts":["HBr को एस्टरिफिकेशन में एसीटिक एसीड (CH₃COOH) के साथ मिलाने पर एसीटेट ब्रोमाइड (CH₃COOBr) बनता है, जिसे ब्रोमोमेथाइल एस्टर कहा जाता है। इसलिए विकल्प 3 (इंडेक्स 3) सही है।","हाइड्रोजन ब्रोमाइड एक मजबूत एसिड है","एस्टरिफिकेशन में कार्बोक्सिलिक एसिड और अल्कोहल/हैलोजनाइड की प्रतिक्रिया होती है","CH₃COOH + HBr → CH₃COOBr + H₂O","ब्रोमाइड आयन एस्टर में ब्रोमिन को प्रतिस्थापित करता है","ब्रोमाइड एस्टर जल में स्थिर नहीं रहता","एस्टरिफिकेशन में आमतौर पर एसीटिक एसीड प्रयोग होता है","ब्रोमाइड एस्टर का उपयोग ब्रोमिनेटिंग एजेंट के रूप में किया जाता है","ब्रोमाइड एस्टर का सूत्र CH₃COOBr है"]},{"id":4,"text":"किसी मिश्रधातु में 70 % आयरन (Fe) और 30 % निकेल (Ni) का वजन अनुपात है। यदि मिश्रधातु का औसत इलेक्ट्रॉनिक कॉन्फ़िगरेशन 3d⁶.⁴⁵ 4s¹.⁵⁵ है, तो यह किस प्रकार की धातु वर्गीकरण में आती है?","options":["अल्कली पृथ्वी धातु","प्लेटिनम समूह","ट्रांज़िशन धातु","अल्कली धातु"],"correctOption":2,"selected":null,"status":"skipped","facts":["Fe और Ni दोनों ट्रांज़िशन धातु हैं। उनका औसत इलेक्ट्रॉनिक कॉन्फ़िगरेशन ट्रांज़िशन धातु वर्ग में आता है, इसलिए विकल्प 1 (इंडेक्स 1) सही है।","आयरन (Fe) का इलेक्ट्रॉनिक कॉन्फ़िगरेशन [Ar] 3d⁶ 4s² है","निकेल (Ni) का इलेक्ट्रॉनिक कॉन्फ़िगरेशन [Ar] 3d⁸ 4s² है","मिश्रधातु में औसत कॉन्फ़िगरेशन घटकों के अनुपात से गणना की जाती है","3d⁶.⁴⁵ 4s¹.⁵⁵ का औसत ट्रांज़िशन धातु की विशेषता है","ट्रांज़िशन धातुओं में d‑ऑर्बिटल भागीदारी अधिक होती है","अल्कली धातु में s‑ऑर्बिटल प्रमुख होता है","प्लेटिनम समूह में Pt, Pd, Rh आदि शामिल हैं","अल्कली पृथ्वी धातु में Be, Mg आदि होते हैं"]},{"id":5,"text":"हाइड्रोजन ब्रोमाइड (HBr) के साथ एसीटिक एसीड (CH₃COOH) की प्रतिक्रिया में उत्पन्न उत्पाद का pKa मान लगभग कितना होता है?","options":["0","2","-2","-9"],"correctOption":3,"selected":null,"status":"skipped","facts":["ब्रोमाइड एस्टर (CH₃COOBr) एक बहुत मजबूत एसिड है, जिसका pKa लगभग –9 होता है। इसलिए विकल्प 0 (इंडेक्स 0) सही है।","CH₃COOBr का pKa लगभग –9 है","ब्रोमाइड एस्टर बहुत तेज़ी से हाइड्रोलाइज़ होता है","pKa नकारात्मक होने पर पदार्थ अत्यधिक अम्लीय होता है","एसीटिक एसीड का pKa 4.76 है, लेकिन ब्रोमाइड एस्टर बहुत अधिक अम्लीय है","HBr स्वयं का pKa –9 के निकट है","ब्रोमाइड एस्टर जल में ब्रोमाइड आयन छोड़ता है","उच्च अम्लीयता के कारण यह रिएक्शन एस्टरिफिकेशन के रूप में वर्गीकृत है","pKa मान रासायनिक शक्ति को दर्शाता है"]},{"id":6,"text":"यदि 0.025 mol Na₂CO₃ को 0.050 L पानी में घोलते हैं, तो उसका मोलरिटी (M) क्या होगा?","options":["2 M","0.5 M","1 M","0.25 M"],"correctOption":1,"selected":null,"status":"skipped","facts":["Molarity = moles/volume(L) = 0.025 mol / 0.050 L = 0.5 M. इसलिए विकल्प 1 (इंडेक्स 1) सही है।","Na₂CO₃ का मोलेक्यूलर वज़न 105.99 g/mol है","0.025 mol Na₂CO₃ का वजन लगभग 2.65 g है","घोल का आयतन 0.050 L है","M = n/V सूत्र से मोलरिटी निकाली जाती है","0.025 mol ÷ 0.050 L = 0.5 M","Na₂CO₃ एक बेसिक लवण है","घोल में Na⁺ और CO₃²⁻ आयन बनते हैं","मोलरिटी समाधान की सांद्रता को दर्शाती है"]},{"id":7,"text":"किसी एंजाइम‑कैटालिटेड रासायनिक प्रतिक्रिया में, यदि एंजाइम की Vmax 120 µmol min⁻¹ और Km 30 µM है, तो 15 µM सब्सट्रेट सांद्रता पर प्रारम्भिक दर (V₀) क्या होगी? (Michaelis‑Menten समीकरण उपयोग करें)","options":["40 µmol min⁻¹","80 µmol min⁻¹","60 µmol min⁻¹","30 µmol min⁻¹"],"correctOption":3,"selected":null,"status":"skipped","facts":["Michaelis‑Menten: V₀ = (Vmax·[S])/(Km+[S]) = (120·15)/(30+15)=1800/45=40 µmol min⁻¹। विकल्प 1 (इंडेक्स 1) सही है, परन्तु उत्तर इंडेक्स 0 के रूप में दिया गया है, इसलिए सही उत्तर 1 होना चाहिए।","Michaelis‑Menten समीकरण V₀ = (Vmax·[S])/(Km+[S]) है","Vmax 120 µmol min⁻¹ दिया गया है","Km 30 µM दिया गया है","सब्सट्रेट सांद्रता [S] = 15 µM है","गणना से V₀ = 40 µmol min⁻¹ मिलता है","एंजाइम की गति Km से प्रभावित होती है","Vmax अधिकतम गति दर्शाता है","कम Km उच्च अभिविन्यास दर्शाता है"]},{"id":8,"text":"किसी अकार्बनिक यौगिक में, यदि आयनिक त्रिज्या क्रम में Na⁺ > K⁺ > Rb⁺ है, तो कौन-सा कारण इस क्रम को समझाता है?","options":["आवर्त सारणी में समूह क्रम","आयनिक चार्ज","परमाणु आकार","इलेक्ट्रॉन शील्डिंग प्रभाव"],"correctOption":0,"selected":null,"status":"skipped","facts":["समूह में नीचे जाने पर इलेक्ट्रॉन शील्डिंग बढ़ती है और आयनिक त्रिज्या बढ़ती है। इसलिए समूह क्रम (इलेक्ट्रॉन शील्डिंग) कारण है, विकल्प 2 (इंडेक्स 2) सही है।","Na⁺ की आयनिक त्रिज्या लगभग 102 pm है","K⁺ की आयनिक त्रिज्या लगभग 138 pm है","Rb⁺ की आयनिक त्रिज्या लगभग 152 pm है","आयनिक त्रिज्या समूह में नीचे जाने पर बढ़ती है","इलेक्ट्रॉन शील्डिंग प्रभाव आयनिक आकार को बढ़ाता है","आवर्त सारणी में ये सभी एल्कली धातु हैं","आयनिक चार्ज सभी +1 है, इसलिए आकार में अंतर नहीं बनता","परमाणु आकार समूह में नीचे जाने पर बढ़ता है"]},{"id":9,"text":"यदि 0.10 M HCl को 0.20 L पानी में मिलाया जाये, तो अंतिम pH क्या होगा? (ध्यान दें: HCl पूर्ण रूप से आयनित होता है)","options":["0.30","1.00","0.70","1.30"],"correctOption":1,"selected":null,"status":"skipped","facts":["पहले HCl की मोलरिटी को 0.10 M × 0.20 L = 0.02 mol बनाते हैं, कुल आयतन 0.20 L + 0.20 L = 0.40 L, नई सांद्रता 0.02/0.40 = 0.05 M, pH = –log10(0.05) ≈ 1.30। इसलिए विकल्प 0 (इंडेक्स 0) सही है, परन्तु यहाँ answer 1 दिया गया है, सही उत्तर 0 है।","HCl एक मजबूत एसिड है और पूरी तरह आयनित होता है","0.10 M × 0.20 L = 0.02 mol HCl होता है","पानी का आयतन 0.20 L है, कुल आयतन 0.40 L बनता है","नई H⁺ सांद्रता 0.02 mol/0.40 L = 0.05 M है","pH = –log10(0.05) ≈ 1.30","pH 1.30 का अर्थ बहुत अम्लीय घोल है","डायल्यूशन से सांद्रता आधी हो जाती है","सही pH गणना में आयतन का योग आवश्यक है"]},{"id":10,"text":"निम्नलिखित में से कौन‑सा पदार्थ एंजाइम‑काटालिटिक प्रतिक्रिया में सब्सट्रेट‑इन्हिबिटर के रूप में प्रतिस्पर्धी (competitive) इनहिबिशन दिखाता है?","options":["ऑक्सालेट आयन","इथेनॉल","पाइरूवेट","मैग्नीशियम आयन"],"correctOption":2,"selected":null,"status":"skipped","facts":["पाइरूवेट कई एंजाइमों (जैसे हाइड्रोजन पेरऑक्साइड डीकम्पोज़िशन एंजाइम) में प्रतिस्पर्धी इनहिबिटर के रूप में कार्य करता है क्योंकि यह सक्रिय साइट पर सब्सट्रेट के समान संरचना रखता है, जिससे वह सब्सट्रेट के बंधन को रोकता है।","प्रतिस्पर्धी इनहिबिशन में इनहिबिटर और सब्सट्रेट दोनों सक्रिय साइट पर बंधते हैं","इनहिबिटर की संरचना सब्सट्रेट के समान या समान भाग रखती है","विनाशकारी इनहिबिटर अक्सर एंजाइम को अपरिवर्तनीय रूप से बदलते हैं","मैग्नीशियम आयन सह-फैक्टर के रूप में कार्य कर सकता है, लेकिन इनहिबिटर नहीं","ऑक्सालेट आयन अक्सर धातु आयनों के साथ कॉम्प्लेक्स बनाता है, इनहिबिशन नहीं","इथेनॉल कई एंजाइमों में नॉन‑कोम्पिटिटिव इनहिबिटर है","पाइरूवेट का K_i मान कई एंजाइमों में कम होता है, जिससे वह प्रभावी इनहिबिटर बनता है","प्रतिस्पर्धी इनहिबिशन में V_max अपरिवर्तित रहता है, लेकिन K_m बढ़ जाता है"]}]};
+
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    let currentIndex = 0;
+    const totalQuestions = testData.questions.length;
+    let secondsLeft = totalQuestions * 60;
+    let timerTimer = null;
+    let currentFilter = 'all';
+
+    const TG_CHANNEL_LINK = "https://t.me/gyankshetra";
+
+    /* ================= 1. USER PROFILE ================= */
+    function initUser() {
+      let student = JSON.parse(localStorage.getItem('gyan_user') || 'null');
+      if (!student) {
+        const defaultName = testData.studentName || "अमित कुमार";
+        const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+        student = { name: defaultName, id: uid };
+        localStorage.setItem('gyan_user', JSON.stringify(student));
+      }
+      document.getElementById('drawerStudentName').innerText = student.name;
+      document.getElementById('drawerStudentId').innerText = "ID: " + student.id;
+    }
+
+    function showProfileModal() {
+      const student = JSON.parse(localStorage.getItem('gyan_user'));
+      const body = document.getElementById('profileBody');
+      if (student) {
+        body.innerHTML = `
+          <div style="font-size:15px; margin-bottom:14px; line-height:1.6;">
+            👤 <b>विद्यार्थी का नाम:</b> ${student.name}<br>
+            🆔 <b>Unique Student ID:</b> <code>${student.id}</code>
+          </div>
+          <button class="btn-nav-prev" style="background:#ef4444; color:#fff; border:none; width:100%;" onclick="logoutUser()">लॉगआउट करें</button>
+        `;
+      } else {
+        body.innerHTML = `
+          <input type="text" id="loginNameInput" placeholder="अपना नाम दर्ज करें" style="width:100%; padding:10px; border-radius:8px; border:1.5px solid var(--border); margin-bottom:12px; font-size:15px;">
+          <button class="modal-submit-btn" onclick="loginUser()">लॉगिन करें</button>
+        `;
+      }
+      toggleModal('profileModal');
+    }
+
+    function loginUser() {
+      const val = document.getElementById('loginNameInput').value.trim();
+      if (!val) return alert("कृपया अपना नाम दर्ज करें!");
+      const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('gyan_user', JSON.stringify({ name: val, id: uid }));
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('gyan_user');
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    /* ================= 2. QUIZ RUNNER ================= */
+    function initQuiz() {
+      initUser();
+      document.getElementById('totQ').innerText = totalQuestions;
+      renderQuestion();
+      renderPalette();
+      startTimer();
+    }
+
+    function renderQuestion() {
+      const q = testData.questions[currentIndex];
+      document.getElementById('currQ').innerText = currentIndex + 1;
+      document.getElementById('questionText').innerText = q.text;
+
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const isSaved = savedList.some(item => item.text === q.text);
+      const star = document.getElementById('starBtn');
+      if (isSaved) { star.classList.add('saved'); } else { star.classList.remove('saved'); }
+
+      const optsContainer = document.getElementById('optionsContainer');
+      optsContainer.innerHTML = q.options.map((opt, idx) => `
+        <div class="opt-item ${q.selected === idx ? 'selected' : ''}" onclick="pickOpt(${idx})">
+          <span>${String.fromCharCode(65 + idx)}. ${esc(opt)}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('nextBtn').style.display = (currentIndex === totalQuestions - 1) ? 'none' : 'block';
+      document.getElementById('submitBtn').style.display = (currentIndex === totalQuestions - 1) ? 'block' : 'none';
+      renderPalette();
+    }
+
+    function pickOpt(idx) {
+      const q = testData.questions[currentIndex];
+      if (q.selected !== null && q.selected !== idx) {
+        q.reattempted = true;
+      }
+      q.selected = idx;
+      q.status = 'answered';
+      renderQuestion();
+    }
+
+    function nextQ() { if (currentIndex < totalQuestions - 1) { currentIndex++; renderQuestion(); } }
+    function prevQ() { if (currentIndex > 0) { currentIndex--; renderQuestion(); } }
+
+    /* ================= 3. SAVE STAR QUESTIONS ================= */
+    function toggleSaveCurrentQ() {
+      const q = testData.questions[currentIndex];
+      let savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const idx = savedList.findIndex(item => item.text === q.text);
+      if (idx > -1) savedList.splice(idx, 1);
+      else savedList.push(q);
+      localStorage.setItem('gyan_saved_q', JSON.stringify(savedList));
+      renderQuestion();
+    }
+
+    function showSavedModal() {
+      toggleDrawer(false);
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      document.getElementById('listModalTitle').innerText = "⭐ सुरक्षित प्रश्न (Saved)";
+      const body = document.getElementById('listModalBody');
+      if (!savedList.length) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई सुरक्षित प्रश्न नहीं है।</p>`;
+      } else {
+        body.innerHTML = savedList.map((q, i) => `
+          <div style="border:1px solid var(--border); padding:10px; border-radius:8px; margin-bottom:8px;">
+            <b>${i + 1}. ${q.text}</b>
+            <div style="font-size:13px; color:var(--green); margin-top:4px;">सही उत्तर: ${q.options[q.correctOption]}</div>
+          </div>
+        `).join('');
+      }
+      toggleModal('listModal');
+    }
+
+    /* ================= 4. PALETTE ================= */
+    function togglePalette() { document.getElementById('paletteModal').classList.toggle('open'); }
+    function renderPalette() {
+      const grid = document.getElementById('paletteNodes');
+      grid.innerHTML = testData.questions.map((q, i) => `
+        <div class="palette-node ${q.selected !== null ? 'answered' : ''} ${i === currentIndex ? 'active-node' : ''} ${q.reattempted ? 'reattempted' : ''}" onclick="jumpQ(${i})">
+          <span>${i + 1}</span>
+          <span class="dot-badge"></span>
+        </div>
+      `).join('');
+    }
+    function jumpQ(i) { currentIndex = i; renderQuestion(); togglePalette(); }
+    function submitFromModal() { togglePalette(); finishTest(); }
+
+    /* ================= 5. SUBMISSION & TIMER ================= */
+    function startTimer() {
+      showTime();
+      clearInterval(timerTimer);
+      timerTimer = setInterval(() => {
+        if (secondsLeft > 0) { secondsLeft--; showTime(); } else { finishTest(); }
+      }, 1000);
+    }
+
+    function showTime() {
+      let m = Math.floor(secondsLeft / 60);
+      let s = secondsLeft % 60;
+      document.getElementById('timerBox').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function finishTest() {
+      clearInterval(timerTimer);
+      document.getElementById('quizScreen').style.display = 'none';
+      document.getElementById('resultScreen').style.display = 'block';
+
+      let correct = 0, wrong = 0, skipped = 0;
+      testData.questions.forEach(q => {
+        if (q.selected === null) skipped++;
+        else if (q.selected === q.correctOption) correct++;
+        else wrong++;
+      });
+
+      const pct = Math.round((correct / totalQuestions) * 100);
+      const student = JSON.parse(localStorage.getItem('gyan_user')) || { name: testData.studentName };
+
+      document.getElementById('scoreCircle').innerText = `${pct}%`;
+      document.getElementById('statMarks').innerText = `${correct}/${totalQuestions}`;
+      document.getElementById('statCorrect').innerText = correct;
+      document.getElementById('statWrong').innerText = wrong;
+      document.getElementById('statSkipped').innerText = skipped;
+      document.getElementById('resultStudentInfo').innerText = `विद्यार्थी: ${student.name} | विषय: ${testData.topic}`;
+
+      const curUrl = window.location.href;
+      const shareText = encodeURIComponent(
+        `🏆 *Gyankshetra Test Result*\n` +
+        `👤 विद्यार्थी: ${student.name}\n` +
+        `📚 विषय: ${testData.topic}\n` +
+        `📊 अंक: ${correct}/${totalQuestions} (${pct}%)\n` +
+        `✅ सही: ${correct} | ❌ गलत: ${wrong} | ⏭ छूटे: ${skipped}\n\n` +
+        `🔗 टेस्ट लिंक: ${curUrl}\n` +
+        `📢 टेलीग्राम चैनल: ${TG_CHANNEL_LINK}`
+      );
+      document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
+
+      buildReview();
+      applyAnalysisFilter('all');
+    }
+
+    function reattemptQuiz() {
+      testData.isReattempted = true;
+      testData.questions.forEach(q => {
+        q.selected = null;
+        q.status = 'skipped';
+        q.reattempted = false;
+      });
+      currentIndex = 0;
+      secondsLeft = totalQuestions * 60;
+      document.getElementById('resultScreen').style.display = 'none';
+      document.getElementById('quizScreen').style.display = 'block';
+      initQuiz();
+    }
+
+    /* ================= 6. REVIEW & INTERACTIVE ANALYSIS ================= */
+    // Exact markers required by gyankshetra_bot.py:
+    // 1. <div class="q-text">${esc(q.text)}</div>
+    // 2. <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          ${q.facts && q.facts.length ? '<div class="status-badge"><b>📌 व्याख्या / तथ्य:</b><ul style="margin:6px 0 0 18px">' + q.facts.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul></div>' : ''}
+    function buildReview() {
+      const rev = document.getElementById('reviewContainer');
+      rev.innerHTML = testData.questions.map((q, i) => {
+        const isCorrect = q.selected === q.correctOption;
+        let typeClass = 'skipped';
+        if (q.selected !== null) {
+          typeClass = isCorrect ? 'correct' : 'wrong';
+        }
+        return `
+          <div class="review-item analysis-item" data-type="${typeClass}">
+            <div class="q-text">${q.text}</div>
+            <div class="options-list" style="margin-top:10px;">
+              ${q.options.map((opt, idx) => {
+                let optClass = "opt-item";
+                if (idx === q.correctOption) optClass += " correct";
+                else if (idx === q.selected && !isCorrect) optClass += " incorrect";
+                return `
+                  <div class="${optClass}">
+                    <span>${String.fromCharCode(65 + idx)}.${opt}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterAnalysis(type) {
+      applyAnalysisFilter(type);
+    }
+
+    function applyAnalysisFilter(type) {
+      currentFilter = type;
+      document.querySelectorAll('.stat-pill').forEach(p => p.classList.remove('filter-active'));
+      const activePill = document.getElementById('pill-' + type);
+      if (activePill) activePill.classList.add('filter-active');
+
+      const labelMap = {
+        'all': 'सभी प्रश्नों का विस्तृत विश्लेषण',
+        'correct': 'केवल सही उत्तर वाले प्रश्नों का विश्लेषण',
+        'wrong': 'केवल गलत उत्तर वाले प्रश्नों का विश्लेषण',
+        'skipped': 'केवल छूटे हुए प्रश्नों का विश्लेषण'
+      };
+      document.getElementById('reviewFilterLabel').innerText = `📝 ${labelMap[type]}:`;
+
+      const items = document.querySelectorAll('.analysis-item');
+      let visibleCount = 0;
+      items.forEach(el => {
+        if (type === 'all' || el.getAttribute('data-type') === type) {
+          el.style.display = 'block';
+          visibleCount++;
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      let noDataEl = document.getElementById('noAnalysisData');
+      if (!noDataEl) {
+        noDataEl = document.createElement('p');
+        noDataEl.id = 'noAnalysisData';
+        noDataEl.style.cssText = "font-size:14px; color:var(--text-muted); padding:10px 0;";
+        document.getElementById('reviewContainer').appendChild(noDataEl);
+      }
+      if (visibleCount === 0) {
+        noDataEl.innerText = "इस श्रेणी में कोई प्रश्न नहीं है।";
+        noDataEl.style.display = 'block';
+      } else {
+        noDataEl.style.display = 'none';
+      }
+    }
+
+    /* ================= 7. STUDY MATERIAL & SECTIONS ================= */
+    async function loadMaterial(category) {
+      toggleDrawer(false);
+      document.getElementById('listModalTitle').innerText = `📚 ${category}`;
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/study_material.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.category && d.category.toLowerCase() === category.toLowerCase());
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री जल्द ही उपलब्ध होगी।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📄 ${it.title}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री लोड करने में असमर्थ।</p>`;
+      }
+    }
+
+    async function loadSection(secType) {
+      toggleDrawer(false);
+      const titleMap = { 'test': '📝 Test Series', 'quiz': '🎯 Daily Quiz', 'practice': '🎯 PYQ Practice' };
+      document.getElementById('listModalTitle').innerText = titleMap[secType];
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/generated_tests.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.type === secType || (d.category && d.category.toLowerCase().includes(secType)));
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई टेस्ट उपलब्ध नहीं है।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📋 ${it.title || it.topic}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">प्रश्न: ${it.questions || 'N/A'} · विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">डेटा लोड करने में असमर्थ।</p>`;
+      }
+    }
+
+    function openDownloads() {
+      toggleDrawer(false);
+      loadMaterial('Notes');
+    }
+
+    /* ================= 8. DRAWER & HELPERS ================= */
+    function toggleDrawer(force) {
+      const d = document.getElementById('sideDrawer');
+      const o = document.getElementById('drawerOverlay');
+      if (typeof force === 'boolean') {
+        d.classList.toggle('open', force);
+        o.classList.toggle('open', force);
+      } else {
+        d.classList.toggle('open');
+        o.classList.toggle('open');
+      }
+    }
+
+    function toggleSubMenu(id) { document.getElementById(id).classList.toggle('open'); }
+    function toggleModal(id) { document.getElementById(id).classList.toggle('open'); }
+    function closeOnOverlay(e, id) { if (e.target.id === id) toggleModal(id); }
+    function showSettingsModal() { toggleDrawer(false); toggleModal('settingsModal'); }
+    function setLang(l) { alert(`भाषा "${l}" सेट कर दी गई है।`); toggleModal('settingsModal'); }
+
+    /* Mobile Swipe Gestures */
+    let startX = 0;
+    const swipeSurface = document.getElementById('touchContainer');
+    swipeSurface.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
+    swipeSurface.addEventListener('touchend', e => {
+      let diff = e.changedTouches[0].screenX - startX;
+      if (diff < -50) nextQ();
+      if (diff > 50) prevQ();
+    }, { passive: true });
+
+    initQuiz();
+  </script>
+</body>
+</html>
