@@ -95,21 +95,21 @@
     .student-badge-line { font-size: 14px; font-weight: 600; color: #0284c7; margin-bottom: 16px; }
     .score-circle-wrap { display: flex; justify-content: center; margin: 15px 0 20px; }
     .score-circle { width: 140px; height: 140px; border-radius: 50%; border: 9px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0f172a; }
+    
+    /* Interactive Tappable Analysis Grid */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; text-align: center; }
-    .stat-pill { background: #ffffff; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 4px; cursor: pointer; transition: 0.15s; }
-    .stat-pill:active, .stat-pill.filter-active { border-color: #0284c7; background: #f0f9ff; }
+    .stat-pill { background: #ffffff; border: 2px solid var(--border); border-radius: 12px; padding: 10px 4px; cursor: pointer; transition: 0.15s; }
+    .stat-pill.filter-active { border-color: #0284c7; background: #f0f9ff; transform: scale(1.02); }
     .stat-pill b { font-size: 15.5px; color: #0f172a; display: block; }
     .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    
     .btn-action-primary { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
     .btn-action-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; margin-bottom: 16px; }
 
-    /* Interactive Review Section */
+    /* Review Area */
     .review-filter-label { font-size: 13.5px; font-weight: 700; color: #0284c7; margin-bottom: 12px; }
     .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
     .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13px; line-height: 1.5; }
-    .status-badge b { color: #0284c7; }
-    .facts-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 13px; line-height: 1.6; }
-    .facts-box ul { margin-left: 18px; margin-top: 4px; }
 
     /* Bottom Navigation Bar */
     .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
@@ -117,7 +117,7 @@
     .b-tab.active { color: #0284c7; }
     .b-tab-icon { font-size: 17px; }
 
-    /* Generic Content Viewer Modal */
+    /* Modals */
     .content-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
     .content-card-link { display: block; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--text-main); font-size: 14px; font-weight: 600; }
     .content-card-link:hover { border-color: #0284c7; background: #f0f9ff; }
@@ -169,7 +169,6 @@
     </ul>
   </div>
 
-  <!-- Test Player Main Container -->
   <main id="touchContainer">
     <!-- Active Quiz Screen -->
     <div id="quizScreen" class="card">
@@ -203,18 +202,18 @@
         <div class="score-circle" id="scoreCircle">0%</div>
       </div>
 
-      <!-- Analysis Tappable Filter Metric Grid -->
+      <!-- Analysis Filter Metric Boxes -->
       <div class="stats-grid">
-        <div class="stat-pill" onclick="filterAnalysis('all')"><b id="statMarks">0/0</b><span>Marks</span></div>
-        <div class="stat-pill" onclick="filterAnalysis('correct')"><b id="statCorrect">0</b><span style="color:var(--green);">Correct</span></div>
-        <div class="stat-pill" onclick="filterAnalysis('wrong')"><b id="statWrong">0</b><span style="color:var(--red);">Wrong</span></div>
-        <div class="stat-pill" onclick="filterAnalysis('skipped')"><b id="statSkipped">0</b><span style="color:var(--warning);">Skipped</span></div>
+        <div class="stat-pill filter-active" id="pill-all" onclick="filterAnalysis('all')"><b id="statMarks">0/0</b><span>Marks (All)</span></div>
+        <div class="stat-pill" id="pill-correct" onclick="filterAnalysis('correct')"><b id="statCorrect">0</b><span style="color:var(--green);">Correct</span></div>
+        <div class="stat-pill" id="pill-wrong" onclick="filterAnalysis('wrong')"><b id="statWrong">0</b><span style="color:var(--red);">Wrong</span></div>
+        <div class="stat-pill" id="pill-skipped" onclick="filterAnalysis('skipped')"><b id="statSkipped">0</b><span style="color:var(--warning);">Skipped</span></div>
       </div>
 
       <button class="btn-action-primary" onclick="reattemptQuiz()">🔁 Reattempt</button>
       <a id="telegramShareLink" href="#" target="_blank" class="btn-action-tg">✈ Share Result</a>
 
-      <!-- Detailed Review & Analysis Area -->
+      <!-- Detailed Review Area -->
       <div class="review-filter-label" id="reviewFilterLabel">📝 सभी प्रश्नों का विस्तृत विश्लेषण:</div>
       <div id="reviewContainer"></div>
     </div>
@@ -245,7 +244,7 @@
     </div>
   </div>
 
-  <!-- Settings Modal (Language: Hindi, English, Bhojpuri) -->
+  <!-- Settings Modal -->
   <div class="modal-overlay" id="settingsModal" onclick="closeOnOverlay(event, 'settingsModal')">
     <div class="modal-box">
       <div class="modal-head">
@@ -260,7 +259,7 @@
     </div>
   </div>
 
-  <!-- Generic List Modal (Saved / Study Material / Tests) -->
+  <!-- Generic List Modal -->
   <div class="modal-overlay" id="listModal" onclick="closeOnOverlay(event, 'listModal')">
     <div class="modal-box">
       <div class="modal-head">
@@ -281,7 +280,7 @@
   </nav>
 
   <script>
-    // Injected by Bot (DO NOT REMOVE TEMPLATE ANCHORS)
+    // Injected by Bot
     const testData = {
       "isReattempted": false,
       "studentName": "अमित कुमार",
@@ -303,12 +302,11 @@
     const totalQuestions = testData.questions.length;
     let secondsLeft = totalQuestions * 60;
     let timerTimer = null;
-    let activeAnalysisFilter = 'all';
+    let currentFilter = 'all';
 
-    // Telegram Bot & Channel
     const TG_CHANNEL_LINK = "https://t.me/gyankshetra";
 
-    /* ================= 1. LOGIN & PROFILE LOGIC ================= */
+    /* ================= 1. USER PROFILE ================= */
     function initUser() {
       let student = JSON.parse(localStorage.getItem('gyan_user') || 'null');
       if (!student) {
@@ -370,7 +368,6 @@
       document.getElementById('currQ').innerText = currentIndex + 1;
       document.getElementById('questionText').innerText = q.text;
 
-      // Update Star Save Icon Status
       const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
       const isSaved = savedList.some(item => item.text === q.text);
       const star = document.getElementById('starBtn');
@@ -406,11 +403,8 @@
       const q = testData.questions[currentIndex];
       let savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
       const idx = savedList.findIndex(item => item.text === q.text);
-      if (idx > -1) {
-        savedList.splice(idx, 1);
-      } else {
-        savedList.push(q);
-      }
+      if (idx > -1) savedList.splice(idx, 1);
+      else savedList.push(q);
       localStorage.setItem('gyan_saved_q', JSON.stringify(savedList));
       renderQuestion();
     }
@@ -433,7 +427,7 @@
       toggleModal('listModal');
     }
 
-    /* ================= 4. PALETTE MODAL ================= */
+    /* ================= 4. PALETTE ================= */
     function togglePalette() { document.getElementById('paletteModal').classList.toggle('open'); }
     function renderPalette() {
       const grid = document.getElementById('paletteNodes');
@@ -447,7 +441,7 @@
     function jumpQ(i) { currentIndex = i; renderQuestion(); togglePalette(); }
     function submitFromModal() { togglePalette(); finishTest(); }
 
-    /* ================= 5. TIMER & SUBMISSION ================= */
+    /* ================= 5. SUBMISSION & TIMER ================= */
     function startTimer() {
       showTime();
       clearInterval(timerTimer);
@@ -484,7 +478,6 @@
       document.getElementById('statSkipped').innerText = skipped;
       document.getElementById('resultStudentInfo').innerText = `विद्यार्थी: ${student.name} | विषय: ${testData.topic}`;
 
-      // Telegram Share Result
       const curUrl = window.location.href;
       const shareText = encodeURIComponent(
         `🏆 *Gyankshetra Test Result*\n` +
@@ -497,7 +490,8 @@
       );
       document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
 
-      filterAnalysis('all');
+      buildReview();
+      applyAnalysisFilter('all');
     }
 
     function reattemptQuiz() {
@@ -514,38 +508,20 @@
       initQuiz();
     }
 
-    /* ================= 6. INTERACTIVE ANALYSIS FILTER ================= */
-    function filterAnalysis(type) {
-      activeAnalysisFilter = type;
-      const labelMap = {
-        'all': 'सभी प्रश्नों का विस्तृत विश्लेषण',
-        'correct': 'केवल सही उत्तर वाले प्रश्नों का विश्लेषण',
-        'wrong': 'केवल गलत उत्तर वाले प्रश्नों का विश्लेषण',
-        'skipped': 'केवल छूटे हुए प्रश्नों का विश्लेषण'
-      };
-      document.getElementById('reviewFilterLabel').innerText = `📝 ${labelMap[type]}:`;
-      buildReview();
-    }
-
-    // Exact marker required by gyankshetra_bot.py: <div class="q-text">${q.text}</div>
+    /* ================= 6. REVIEW & INTERACTIVE ANALYSIS ================= */
+    // Exact markers required by gyankshetra_bot.py:
+    // 1. <div class="q-text">${q.text}</div>
+    // 2. <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
     function buildReview() {
       const rev = document.getElementById('reviewContainer');
-      const filtered = testData.questions.filter(q => {
-        if (activeAnalysisFilter === 'all') return true;
-        if (activeAnalysisFilter === 'correct') return q.selected === q.correctOption;
-        if (activeAnalysisFilter === 'wrong') return q.selected !== null && q.selected !== q.correctOption;
-        if (activeAnalysisFilter === 'skipped') return q.selected === null;
-      });
-
-      if (!filtered.length) {
-        rev.innerHTML = `<p style="font-size:14px; color:var(--text-muted); padding:10px 0;">इस श्रेणी में कोई प्रश्न नहीं है।</p>`;
-        return;
-      }
-
-      rev.innerHTML = filtered.map((q, i) => {
+      rev.innerHTML = testData.questions.map((q, i) => {
         const isCorrect = q.selected === q.correctOption;
+        let typeClass = 'skipped';
+        if (q.selected !== null) {
+          typeClass = isCorrect ? 'correct' : 'wrong';
+        }
         return `
-          <div class="review-item">
+          <div class="review-item analysis-item" data-type="${typeClass}">
             <div class="q-text">${q.text}</div>
             <div class="options-list" style="margin-top:10px;">
               ${q.options.map((opt, idx) => {
@@ -559,15 +535,57 @@
                 `;
               }).join('')}
             </div>
-            <div class="status-badge">
-              स्थिति: <b>${q.selected === null ? 'SKIPPED' : (isCorrect ? 'CORRECT' : 'INCORRECT')}</b>
-            </div>
+            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
           </div>
         `;
       }).join('');
     }
 
-    /* ================= 7. STUDY MATERIAL & REAL GITHUB LINKS ================= */
+    function filterAnalysis(type) {
+      applyAnalysisFilter(type);
+    }
+
+    function applyAnalysisFilter(type) {
+      currentFilter = type;
+      document.querySelectorAll('.stat-pill').forEach(p => p.classList.remove('filter-active'));
+      const activePill = document.getElementById('pill-' + type);
+      if (activePill) activePill.classList.add('filter-active');
+
+      const labelMap = {
+        'all': 'सभी प्रश्नों का विस्तृत विश्लेषण',
+        'correct': 'केवल सही उत्तर वाले प्रश्नों का विश्लेषण',
+        'wrong': 'केवल गलत उत्तर वाले प्रश्नों का विश्लेषण',
+        'skipped': 'केवल छूटे हुए प्रश्नों का विश्लेषण'
+      };
+      document.getElementById('reviewFilterLabel').innerText = `📝 ${labelMap[type]}:`;
+
+      const items = document.querySelectorAll('.analysis-item');
+      let visibleCount = 0;
+      items.forEach(el => {
+        if (type === 'all' || el.getAttribute('data-type') === type) {
+          el.style.display = 'block';
+          visibleCount++;
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      let noDataEl = document.getElementById('noAnalysisData');
+      if (!noDataEl) {
+        noDataEl = document.createElement('p');
+        noDataEl.id = 'noAnalysisData';
+        noDataEl.style.cssText = "font-size:14px; color:var(--text-muted); padding:10px 0;";
+        document.getElementById('reviewContainer').appendChild(noDataEl);
+      }
+      if (visibleCount === 0) {
+        noDataEl.innerText = "इस श्रेणी में कोई प्रश्न नहीं है।";
+        noDataEl.style.display = 'block';
+      } else {
+        noDataEl.style.display = 'none';
+      }
+    }
+
+    /* ================= 7. STUDY MATERIAL & SECTIONS ================= */
     async function loadMaterial(category) {
       toggleDrawer(false);
       document.getElementById('listModalTitle').innerText = `📚 ${category}`;
@@ -628,7 +646,7 @@
       loadMaterial('Notes');
     }
 
-    /* ================= 8. DRAWER & UI HELPERS ================= */
+    /* ================= 8. DRAWER & HELPERS ================= */
     function toggleDrawer(force) {
       const d = document.getElementById('sideDrawer');
       const o = document.getElementById('drawerOverlay');
@@ -641,27 +659,11 @@
       }
     }
 
-    function toggleSubMenu(id) {
-      document.getElementById(id).classList.toggle('open');
-    }
-
-    function toggleModal(id) {
-      document.getElementById(id).classList.toggle('open');
-    }
-
-    function closeOnOverlay(e, id) {
-      if (e.target.id === id) toggleModal(id);
-    }
-
-    function showSettingsModal() {
-      toggleDrawer(false);
-      toggleModal('settingsModal');
-    }
-
-    function setLang(l) {
-      alert(`भाषा "${l}" सेट कर दी गई है।`);
-      toggleModal('settingsModal');
-    }
+    function toggleSubMenu(id) { document.getElementById(id).classList.toggle('open'); }
+    function toggleModal(id) { document.getElementById(id).classList.toggle('open'); }
+    function closeOnOverlay(e, id) { if (e.target.id === id) toggleModal(id); }
+    function showSettingsModal() { toggleDrawer(false); toggleModal('settingsModal'); }
+    function setLang(l) { alert(`भाषा "${l}" सेट कर दी गई है।`); toggleModal('settingsModal'); }
 
     /* Mobile Swipe Gestures */
     let startX = 0;
