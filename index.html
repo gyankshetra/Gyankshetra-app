@@ -9,9 +9,9 @@
       --primary-dark: #0f172a;
       --navy: #0d1b2a;
       --blue: #0284c7;
-      --blue-accent: #0284c7;
       --green: #10b981;
       --red: #ef4444;
+      --warning: #f59e0b;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --border: #e2e8f0;
@@ -19,7 +19,7 @@
       --text-muted: #64748b;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 70px; }
+    body { background-color: var(--bg); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 74px; }
 
     /* Top Navy Header */
     header { background: var(--navy); color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -27,21 +27,24 @@
     .menu-trigger { font-size: 22px; cursor: pointer; color: #fff; line-height: 1; }
     .header-title-box h1 { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: #fff; }
     .header-title-box span { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.3px; }
-    .header-right { display: flex; align-items: center; gap: 12px; }
-    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-    .profile-icon { width: 30px; height: 30px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .lang-badge { border: 1.5px solid #ffffff; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .profile-icon { width: 32px; height: 32px; border-radius: 50%; background: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
 
     /* Sidebar Drawer */
     .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; }
     .drawer-overlay.open { display: block; }
-    .drawer { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
+    .drawer { position: fixed; top: 0; left: -290px; width: 270px; height: 100%; background: #ffffff; z-index: 301; box-shadow: 2px 0 10px rgba(0,0,0,0.15); transition: 0.25s ease-in-out; display: flex; flex-direction: column; }
     .drawer.open { left: 0; }
-    .drawer-head { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+    .drawer-head { padding: 18px 16px 12px; border-bottom: 1px solid var(--border); }
     .drawer-head h2 { font-size: 1.2rem; color: #0284c7; font-weight: 700; }
     .drawer-head p { font-size: 11px; color: var(--text-muted); }
-    .drawer-nav { list-style: none; padding: 12px 0; flex: 1; overflow-y: auto; }
-    .drawer-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14.5px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; }
+    .drawer-nav { list-style: none; padding: 10px 0; flex: 1; overflow-y: auto; }
+    .drawer-nav li a { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; font-size: 14px; font-weight: 500; color: var(--text-main); text-decoration: none; border-bottom: 1px solid #f8fafc; cursor: pointer; }
     .drawer-nav li a:hover { background: #f1f5f9; }
+    .drawer-sub-menu { display: none; background: #f8fafc; list-style: none; padding: 4px 0 4px 20px; }
+    .drawer-sub-menu.open { display: block; }
+    .drawer-sub-menu li a { font-size: 13px; padding: 8px 16px; color: var(--text-muted); }
 
     /* Main Container */
     main { flex: 1; padding: 16px; max-width: 540px; margin: 0 auto; width: 100%; }
@@ -50,7 +53,8 @@
     /* Test Header */
     .q-meta-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
     .q-count { font-size: 15px; font-weight: 700; color: #0f172a; }
-    .star-icon { color: #f59e0b; font-size: 19px; cursor: pointer; }
+    .star-icon { color: #cbd5e1; font-size: 21px; cursor: pointer; transition: 0.15s; }
+    .star-icon.saved { color: #f59e0b; }
     .timer-pill { color: #d97706; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
 
     /* Question Row */
@@ -62,8 +66,8 @@
     .options-list { display: flex; flex-direction: column; gap: 12px; }
     .opt-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-size: 15px; font-weight: 500; background: #ffffff; transition: 0.15s; display: flex; align-items: center; gap: 10px; }
     .opt-item.selected { border-color: #0284c7; background: #f0f9ff; font-weight: 600; }
-    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
-    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+    .opt-item.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; font-weight: 600; }
+    .opt-item.incorrect { border-color: #ef4444; background: #fef2f2; color: #991b1b; font-weight: 600; }
 
     /* Nav Buttons */
     .nav-bar { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
@@ -71,10 +75,10 @@
     .btn-nav-next { flex: 1; background: #0284c7; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; }
     .btn-nav-submit { flex: 1; background: #10b981; border: none; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: #ffffff; cursor: pointer; display: none; }
 
-    /* 5-Column Question Palette Modal */
+    /* Palette Modal */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; justify-content: center; align-items: center; padding: 16px; }
     .modal-overlay.open { display: flex; }
-    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .modal-box { background: #fff; border-radius: 18px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; padding: 20px; }
     .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
     .modal-head h3 { font-size: 16.5px; font-weight: 700; }
     .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
@@ -86,35 +90,42 @@
     .modal-submit-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
     .modal-submit-btn { width: 100%; background: #10b981; color: #fff; border: none; padding: 12px; font-size: 15px; font-weight: 700; border-radius: 10px; cursor: pointer; }
 
-    /* Result Screen Original UI */
-    .result-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; margin-bottom: 18px; }
-    .score-circle-wrap { display: flex; justify-content: center; margin: 20px 0; }
-    .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #0f172a; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 24px 0; text-align: center; }
-    .stat-pill { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-    .stat-pill b { font-size: 16px; color: #0f172a; display: block; margin-bottom: 2px; }
+    /* Result Screen */
+    .result-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .student-badge-line { font-size: 14px; font-weight: 600; color: #0284c7; margin-bottom: 16px; }
+    .score-circle-wrap { display: flex; justify-content: center; margin: 15px 0 20px; }
+    .score-circle { width: 140px; height: 140px; border-radius: 50%; border: 9px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0f172a; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; text-align: center; }
+    .stat-pill { background: #ffffff; border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 4px; cursor: pointer; transition: 0.15s; }
+    .stat-pill:active, .stat-pill.filter-active { border-color: #0284c7; background: #f0f9ff; }
+    .stat-pill b { font-size: 15.5px; color: #0f172a; display: block; }
     .stat-pill span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
-    .btn-review-blue { width: 100%; background: #0284c7; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
-    .btn-reattempt-green { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
-    .btn-share-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; }
+    .btn-action-primary { width: 100%; background: #10b981; color: #ffffff; border: none; padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    .btn-action-tg { width: 100%; background: #0088cc; color: #ffffff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-size: 14.5px; font-weight: 700; margin-bottom: 16px; }
 
-    /* Review Area */
-    .review-wrap { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; display: none; }
-    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #f1f5f9; }
-    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13.5px; }
-    .facts-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+    /* Interactive Review Section */
+    .review-filter-label { font-size: 13.5px; font-weight: 700; color: #0284c7; margin-bottom: 12px; }
+    .review-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .status-badge { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin-top: 10px; font-size: 13px; line-height: 1.5; }
+    .status-badge b { color: #0284c7; }
+    .facts-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: 13px; line-height: 1.6; }
     .facts-box ul { margin-left: 18px; margin-top: 4px; }
 
-    /* Bottom Sticky Tab Bar */
+    /* Bottom Navigation Bar */
     .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 6px; z-index: 100; }
     .b-tab { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); font-size: 10.5px; font-weight: 600; gap: 3px; cursor: pointer; }
     .b-tab.active { color: #0284c7; }
     .b-tab-icon { font-size: 17px; }
+
+    /* Generic Content Viewer Modal */
+    .content-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .content-card-link { display: block; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; text-decoration: none; color: var(--text-main); font-size: 14px; font-weight: 600; }
+    .content-card-link:hover { border-color: #0284c7; background: #f0f9ff; }
   </style>
 </head>
 <body>
 
-  <!-- Navy Header -->
+  <!-- Top Navy Header -->
   <header>
     <div class="header-left">
       <span class="menu-trigger" onclick="toggleDrawer()">☰</span>
@@ -124,8 +135,8 @@
       </div>
     </div>
     <div class="header-right">
-      <span class="lang-badge">अ/E</span>
-      <div class="profile-icon">👤</div>
+      <span class="lang-badge" id="langBadge" onclick="showSettingsModal()">अ/E</span>
+      <div class="profile-icon" onclick="showProfileModal()">👤</div>
     </div>
   </header>
 
@@ -133,26 +144,38 @@
   <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
   <div class="drawer" id="sideDrawer">
     <div class="drawer-head">
-      <h2>Gyankshetra</h2>
-      <p>Learning • Practice • Success</p>
+      <h2 id="drawerStudentName">Gyankshetra</h2>
+      <p id="drawerStudentId">Learning • Practice • Success</p>
     </div>
     <ul class="drawer-nav">
-      <li><a href="/">🏠 Home</a></li>
-      <li><a href="/tests/">📝 Test Series</a></li>
-      <li><a href="/quiz/">☑️ Quiz/Test</a></li>
-      <li><a href="/practice/">🎯 PYQ Practice</a></li>
-      <li><a href="#saved">⭐ Saved</a></li>
-      <li><a href="/notes/">⬇️ Study Material</a></li>
-      <li><a href="#settings">⚙️ Settings</a></li>
+      <li><a href="/Gyankshetra-app/">🏠 Home</a></li>
+      <li><a onclick="loadSection('test')">📝 Test Series</a></li>
+      <li><a onclick="loadSection('quiz')">☑️ Quiz/Test</a></li>
+      <li><a onclick="loadSection('practice')">🎯 PYQ Practice</a></li>
+      <li><a onclick="showSavedModal()">⭐ Saved</a></li>
+      <li><a onclick="openDownloads()">📥 Download</a></li>
+      <li>
+        <a onclick="toggleSubMenu('studyMaterialSub')">
+          <span>📚 Study Material</span>
+          <span>▾</span>
+        </a>
+        <ul class="drawer-sub-menu" id="studyMaterialSub">
+          <li><a onclick="loadMaterial('Notes')">📝 Notes</a></li>
+          <li><a onclick="loadMaterial('NCERT Books')">📖 NCERT Books</a></li>
+          <li><a onclick="loadMaterial('Previous Papers')">📄 Previous Papers</a></li>
+        </ul>
+      </li>
+      <li><a onclick="showSettingsModal()">⚙️ Settings</a></li>
     </ul>
   </div>
 
+  <!-- Test Player Main Container -->
   <main id="touchContainer">
-    <!-- Quiz Screen -->
+    <!-- Active Quiz Screen -->
     <div id="quizScreen" class="card">
       <div class="q-meta-bar">
         <span class="q-count">Question <span id="currQ">1</span>/<span id="totQ">5</span></span>
-        <span class="star-icon">⭐</span>
+        <span class="star-icon" id="starBtn" onclick="toggleSaveCurrentQ()">★</span>
         <span class="timer-pill">⏱ <span id="timerBox">00:00</span></span>
       </div>
 
@@ -174,28 +197,31 @@
     <!-- Result Screen -->
     <div id="resultScreen" class="card" style="display:none;">
       <div class="result-title">🏆 Result</div>
+      <div class="student-badge-line" id="resultStudentInfo"></div>
       
       <div class="score-circle-wrap">
         <div class="score-circle" id="scoreCircle">0%</div>
       </div>
 
+      <!-- Analysis Tappable Filter Metric Grid -->
       <div class="stats-grid">
-        <div class="stat-pill"><b id="statMarks">0/5</b><span>Marks</span></div>
-        <div class="stat-pill"><b id="statCorrect">0</b><span>Correct</span></div>
-        <div class="stat-pill"><b id="statWrong">0</b><span>Wrong</span></div>
-        <div class="stat-pill"><b id="statSkipped">0</b><span>Skipped</span></div>
+        <div class="stat-pill" onclick="filterAnalysis('all')"><b id="statMarks">0/0</b><span>Marks</span></div>
+        <div class="stat-pill" onclick="filterAnalysis('correct')"><b id="statCorrect">0</b><span style="color:var(--green);">Correct</span></div>
+        <div class="stat-pill" onclick="filterAnalysis('wrong')"><b id="statWrong">0</b><span style="color:var(--red);">Wrong</span></div>
+        <div class="stat-pill" onclick="filterAnalysis('skipped')"><b id="statSkipped">0</b><span style="color:var(--warning);">Skipped</span></div>
       </div>
 
-      <button class="btn-review-blue" onclick="toggleReviewArea()">📖 Review</button>
-      <button class="btn-reattempt-green" onclick="reattemptQuiz()">🔁 Reattempt</button>
-      <a id="telegramShareLink" href="#" target="_blank" class="btn-share-tg">✈ Share on Telegram</a>
+      <button class="btn-action-primary" onclick="reattemptQuiz()">🔁 Reattempt</button>
+      <a id="telegramShareLink" href="#" target="_blank" class="btn-action-tg">✈ Share Result</a>
 
-      <div id="reviewContainer" class="review-wrap"></div>
+      <!-- Detailed Review & Analysis Area -->
+      <div class="review-filter-label" id="reviewFilterLabel">📝 सभी प्रश्नों का विस्तृत विश्लेषण:</div>
+      <div id="reviewContainer"></div>
     </div>
   </main>
 
   <!-- 5-Column Question Palette Modal -->
-  <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event)">
+  <div class="modal-overlay" id="paletteModal" onclick="closeOnOverlay(event, 'paletteModal')">
     <div class="modal-box">
       <div class="modal-head">
         <h3>Question Palette</h3>
@@ -208,30 +234,67 @@
     </div>
   </div>
 
-  <!-- Bottom Navigation Bar -->
+  <!-- Profile & Login Modal -->
+  <div class="modal-overlay" id="profileModal" onclick="closeOnOverlay(event, 'profileModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>विद्यार्थी प्रोफाइल</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('profileModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div id="profileBody"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Language: Hindi, English, Bhojpuri) -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeOnOverlay(event, 'settingsModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ भाषा सेटिंग (Language)</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('settingsModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list">
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Hindi')">🇮🇳 हिन्दी</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('English')">🇬🇧 English</button>
+        <button class="btn-nav-prev" style="text-align:left;" onclick="setLang('Bhojpuri')">🚩 भोजपुरी</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic List Modal (Saved / Study Material / Tests) -->
+  <div class="modal-overlay" id="listModal" onclick="closeOnOverlay(event, 'listModal')">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="listModalTitle">सामग्री सूची</h3>
+        <button class="btn-nav-prev" onclick="toggleModal('listModal')" style="padding:4px 10px; width:auto;">✕</button>
+      </div>
+      <div class="content-list" id="listModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (5 Main Buttons) -->
   <nav class="bottom-bar">
-    <a href="/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
-    <a href="/tests/" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
-    <a href="/quiz/" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
-    <a href="#saved" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
-    <a href="/notes/" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
+    <a href="/Gyankshetra-app/" class="b-tab active"><span class="b-tab-icon">🏠</span><span>Home</span></a>
+    <a onclick="loadSection('test')" class="b-tab"><span class="b-tab-icon">📝</span><span>Tests</span></a>
+    <a onclick="loadSection('quiz')" class="b-tab"><span class="b-tab-icon">🎯</span><span>Quiz</span></a>
+    <a onclick="showSavedModal()" class="b-tab"><span class="b-tab-icon">⭐</span><span>Saved</span></a>
+    <a onclick="toggleSubMenu('studyMaterialSub'); toggleDrawer();" class="b-tab"><span class="b-tab-icon">📚</span><span>Study Material</span></a>
   </nav>
 
   <script>
-    // Injected by Bot
+    // Injected by Bot (DO NOT REMOVE TEMPLATE ANCHORS)
     const testData = {
       "isReattempted": false,
-      "studentName": "छात्र",
-      "topic": "Physics",
+      "studentName": "अमित कुमार",
+      "topic": "सामान्य अध्ययन",
       "questions": [
         {
           "id": 1,
-          "text": "गुरुत्वाकर्षण नियतांक (G) का मान क्या होता है?",
-          "options": ["6.67 × 10^-11 N m²/kg²", "9.8 m/s²", "6.4 × 10^6 m", "1.6 × 10^-19 C"],
+          "text": "भारत के संविधान का कौन सा अनुच्छेद समानता के अधिकार से संबंधित है?",
+          "options": ["अनुच्छेद 14", "अनुच्छेद 19", "अनुच्छेद 21", "अनुच्छेद 32"],
           "correctOption": 0,
           "selected": null,
           "status": "skipped",
-          "facts": ["G का मान हेनरी कैवेंडिश ने संवेदनशील तुला द्वारा ज्ञात किया था।"]
+          "facts": ["अनुच्छेद 14 कानून के समक्ष समानता की गारंटी देता है।"]
         }
       ]
     };
@@ -240,8 +303,62 @@
     const totalQuestions = testData.questions.length;
     let secondsLeft = totalQuestions * 60;
     let timerTimer = null;
+    let activeAnalysisFilter = 'all';
 
+    // Telegram Bot & Channel
+    const TG_CHANNEL_LINK = "https://t.me/gyankshetra";
+
+    /* ================= 1. LOGIN & PROFILE LOGIC ================= */
+    function initUser() {
+      let student = JSON.parse(localStorage.getItem('gyan_user') || 'null');
+      if (!student) {
+        const defaultName = testData.studentName || "अमित कुमार";
+        const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+        student = { name: defaultName, id: uid };
+        localStorage.setItem('gyan_user', JSON.stringify(student));
+      }
+      document.getElementById('drawerStudentName').innerText = student.name;
+      document.getElementById('drawerStudentId').innerText = "ID: " + student.id;
+    }
+
+    function showProfileModal() {
+      const student = JSON.parse(localStorage.getItem('gyan_user'));
+      const body = document.getElementById('profileBody');
+      if (student) {
+        body.innerHTML = `
+          <div style="font-size:15px; margin-bottom:14px; line-height:1.6;">
+            👤 <b>विद्यार्थी का नाम:</b> ${student.name}<br>
+            🆔 <b>Unique Student ID:</b> <code>${student.id}</code>
+          </div>
+          <button class="btn-nav-prev" style="background:#ef4444; color:#fff; border:none; width:100%;" onclick="logoutUser()">लॉगआउट करें</button>
+        `;
+      } else {
+        body.innerHTML = `
+          <input type="text" id="loginNameInput" placeholder="अपना नाम दर्ज करें" style="width:100%; padding:10px; border-radius:8px; border:1.5px solid var(--border); margin-bottom:12px; font-size:15px;">
+          <button class="modal-submit-btn" onclick="loginUser()">लॉगिन करें</button>
+        `;
+      }
+      toggleModal('profileModal');
+    }
+
+    function loginUser() {
+      const val = document.getElementById('loginNameInput').value.trim();
+      if (!val) return alert("कृपया अपना नाम दर्ज करें!");
+      const uid = 'GYAN-' + Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('gyan_user', JSON.stringify({ name: val, id: uid }));
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('gyan_user');
+      initUser();
+      toggleModal('profileModal');
+    }
+
+    /* ================= 2. QUIZ RUNNER ================= */
     function initQuiz() {
+      initUser();
       document.getElementById('totQ').innerText = totalQuestions;
       renderQuestion();
       renderPalette();
@@ -252,6 +369,12 @@
       const q = testData.questions[currentIndex];
       document.getElementById('currQ').innerText = currentIndex + 1;
       document.getElementById('questionText').innerText = q.text;
+
+      // Update Star Save Icon Status
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const isSaved = savedList.some(item => item.text === q.text);
+      const star = document.getElementById('starBtn');
+      if (isSaved) { star.classList.add('saved'); } else { star.classList.remove('saved'); }
 
       const optsContainer = document.getElementById('optionsContainer');
       optsContainer.innerHTML = q.options.map((opt, idx) => `
@@ -275,22 +398,43 @@
       renderQuestion();
     }
 
-    function nextQ() {
-      if (currentIndex < totalQuestions - 1) { currentIndex++; renderQuestion(); }
+    function nextQ() { if (currentIndex < totalQuestions - 1) { currentIndex++; renderQuestion(); } }
+    function prevQ() { if (currentIndex > 0) { currentIndex--; renderQuestion(); } }
+
+    /* ================= 3. SAVE STAR QUESTIONS ================= */
+    function toggleSaveCurrentQ() {
+      const q = testData.questions[currentIndex];
+      let savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      const idx = savedList.findIndex(item => item.text === q.text);
+      if (idx > -1) {
+        savedList.splice(idx, 1);
+      } else {
+        savedList.push(q);
+      }
+      localStorage.setItem('gyan_saved_q', JSON.stringify(savedList));
+      renderQuestion();
     }
 
-    function prevQ() {
-      if (currentIndex > 0) { currentIndex--; renderQuestion(); }
+    function showSavedModal() {
+      toggleDrawer(false);
+      const savedList = JSON.parse(localStorage.getItem('gyan_saved_q') || '[]');
+      document.getElementById('listModalTitle').innerText = "⭐ सुरक्षित प्रश्न (Saved)";
+      const body = document.getElementById('listModalBody');
+      if (!savedList.length) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई सुरक्षित प्रश्न नहीं है।</p>`;
+      } else {
+        body.innerHTML = savedList.map((q, i) => `
+          <div style="border:1px solid var(--border); padding:10px; border-radius:8px; margin-bottom:8px;">
+            <b>${i + 1}. ${q.text}</b>
+            <div style="font-size:13px; color:var(--green); margin-top:4px;">सही उत्तर: ${q.options[q.correctOption]}</div>
+          </div>
+        `).join('');
+      }
+      toggleModal('listModal');
     }
 
-    function togglePalette() {
-      document.getElementById('paletteModal').classList.toggle('open');
-    }
-
-    function closeOnOverlay(e) {
-      if (e.target.id === 'paletteModal') togglePalette();
-    }
-
+    /* ================= 4. PALETTE MODAL ================= */
+    function togglePalette() { document.getElementById('paletteModal').classList.toggle('open'); }
     function renderPalette() {
       const grid = document.getElementById('paletteNodes');
       grid.innerHTML = testData.questions.map((q, i) => `
@@ -300,28 +444,15 @@
         </div>
       `).join('');
     }
+    function jumpQ(i) { currentIndex = i; renderQuestion(); togglePalette(); }
+    function submitFromModal() { togglePalette(); finishTest(); }
 
-    function jumpQ(i) {
-      currentIndex = i;
-      renderQuestion();
-      togglePalette();
-    }
-
-    function submitFromModal() {
-      togglePalette();
-      finishTest();
-    }
-
+    /* ================= 5. TIMER & SUBMISSION ================= */
     function startTimer() {
       showTime();
       clearInterval(timerTimer);
       timerTimer = setInterval(() => {
-        if (secondsLeft > 0) {
-          secondsLeft--;
-          showTime();
-        } else {
-          finishTest();
-        }
+        if (secondsLeft > 0) { secondsLeft--; showTime(); } else { finishTest(); }
       }, 1000);
     }
 
@@ -336,42 +467,37 @@
       document.getElementById('quizScreen').style.display = 'none';
       document.getElementById('resultScreen').style.display = 'block';
 
-      let correct = 0;
-      let wrong = 0;
-      let skipped = 0;
-
+      let correct = 0, wrong = 0, skipped = 0;
       testData.questions.forEach(q => {
-        if (q.selected === null) {
-          skipped++;
-        } else if (q.selected === q.correctOption) {
-          correct++;
-        } else {
-          wrong++;
-        }
+        if (q.selected === null) skipped++;
+        else if (q.selected === q.correctOption) correct++;
+        else wrong++;
       });
 
       const pct = Math.round((correct / totalQuestions) * 100);
+      const student = JSON.parse(localStorage.getItem('gyan_user')) || { name: testData.studentName };
+
       document.getElementById('scoreCircle').innerText = `${pct}%`;
       document.getElementById('statMarks').innerText = `${correct}/${totalQuestions}`;
       document.getElementById('statCorrect').innerText = correct;
       document.getElementById('statWrong').innerText = wrong;
       document.getElementById('statSkipped').innerText = skipped;
+      document.getElementById('resultStudentInfo').innerText = `विद्यार्थी: ${student.name} | विषय: ${testData.topic}`;
 
+      // Telegram Share Result
       const curUrl = window.location.href;
       const shareText = encodeURIComponent(
-        `🎯 Gyankshetra Test\n` +
+        `🏆 *Gyankshetra Test Result*\n` +
+        `👤 विद्यार्थी: ${student.name}\n` +
         `📚 विषय: ${testData.topic}\n` +
-        `🏆 स्कोर: ${correct}/${totalQuestions} (${pct}%)\n\n` +
-        `🔗 टेस्ट हल करें: ${curUrl}`
+        `📊 अंक: ${correct}/${totalQuestions} (${pct}%)\n` +
+        `✅ सही: ${correct} | ❌ गलत: ${wrong} | ⏭ छूटे: ${skipped}\n\n` +
+        `🔗 टेस्ट लिंक: ${curUrl}\n` +
+        `📢 टेलीग्राम चैनल: ${TG_CHANNEL_LINK}`
       );
       document.getElementById('telegramShareLink').href = `https://t.me/share/url?url=${encodeURIComponent(curUrl)}&text=${shareText}`;
 
-      buildReview();
-    }
-
-    function toggleReviewArea() {
-      const rev = document.getElementById('reviewContainer');
-      rev.style.display = (rev.style.display === 'block') ? 'none' : 'block';
+      filterAnalysis('all');
     }
 
     function reattemptQuiz() {
@@ -388,10 +514,35 @@
       initQuiz();
     }
 
+    /* ================= 6. INTERACTIVE ANALYSIS FILTER ================= */
+    function filterAnalysis(type) {
+      activeAnalysisFilter = type;
+      const labelMap = {
+        'all': 'सभी प्रश्नों का विस्तृत विश्लेषण',
+        'correct': 'केवल सही उत्तर वाले प्रश्नों का विश्लेषण',
+        'wrong': 'केवल गलत उत्तर वाले प्रश्नों का विश्लेषण',
+        'skipped': 'केवल छूटे हुए प्रश्नों का विश्लेषण'
+      };
+      document.getElementById('reviewFilterLabel').innerText = `📝 ${labelMap[type]}:`;
+      buildReview();
+    }
+
     // Exact marker required by gyankshetra_bot.py: <div class="q-text">${q.text}</div>
     function buildReview() {
       const rev = document.getElementById('reviewContainer');
-      rev.innerHTML = testData.questions.map((q, i) => {
+      const filtered = testData.questions.filter(q => {
+        if (activeAnalysisFilter === 'all') return true;
+        if (activeAnalysisFilter === 'correct') return q.selected === q.correctOption;
+        if (activeAnalysisFilter === 'wrong') return q.selected !== null && q.selected !== q.correctOption;
+        if (activeAnalysisFilter === 'skipped') return q.selected === null;
+      });
+
+      if (!filtered.length) {
+        rev.innerHTML = `<p style="font-size:14px; color:var(--text-muted); padding:10px 0;">इस श्रेणी में कोई प्रश्न नहीं है।</p>`;
+        return;
+      }
+
+      rev.innerHTML = filtered.map((q, i) => {
         const isCorrect = q.selected === q.correctOption;
         return `
           <div class="review-item">
@@ -399,11 +550,8 @@
             <div class="options-list" style="margin-top:10px;">
               ${q.options.map((opt, idx) => {
                 let optClass = "opt-item";
-                if (idx === q.correctOption) {
-                  optClass += " correct";
-                } else if (idx === q.selected && !isCorrect) {
-                  optClass += " incorrect";
-                }
+                if (idx === q.correctOption) optClass += " correct";
+                else if (idx === q.selected && !isCorrect) optClass += " incorrect";
                 return `
                   <div class="${optClass}">
                     <span>${String.fromCharCode(65 + idx)}.${opt}</span>
@@ -411,18 +559,111 @@
                 `;
               }).join('')}
             </div>
-            <div class="status-badge">स्थिति: <b>${q.status.toUpperCase()}</b></div>
+            <div class="status-badge">
+              स्थिति: <b>${q.selected === null ? 'SKIPPED' : (isCorrect ? 'CORRECT' : 'INCORRECT')}</b>
+            </div>
           </div>
         `;
       }).join('');
     }
 
-    function toggleDrawer() {
-      document.getElementById('sideDrawer').classList.toggle('open');
-      document.getElementById('drawerOverlay').classList.toggle('open');
+    /* ================= 7. STUDY MATERIAL & REAL GITHUB LINKS ================= */
+    async function loadMaterial(category) {
+      toggleDrawer(false);
+      document.getElementById('listModalTitle').innerText = `📚 ${category}`;
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/study_material.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.category && d.category.toLowerCase() === category.toLowerCase());
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री जल्द ही उपलब्ध होगी।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📄 ${it.title}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">सामग्री लोड करने में असमर्थ।</p>`;
+      }
     }
 
-    /* Mobile Swipe */
+    async function loadSection(secType) {
+      toggleDrawer(false);
+      const titleMap = { 'test': '📝 Test Series', 'quiz': '🎯 Daily Quiz', 'practice': '🎯 PYQ Practice' };
+      document.getElementById('listModalTitle').innerText = titleMap[secType];
+      const body = document.getElementById('listModalBody');
+      body.innerHTML = 'लोड हो रहा है...';
+      toggleModal('listModal');
+
+      try {
+        const res = await fetch('/Gyankshetra-app/content/generated_tests.json');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.filter(d => d.type === secType || (d.category && d.category.toLowerCase().includes(secType)));
+        if (!items.length) {
+          body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">कोई टेस्ट उपलब्ध नहीं है।</p>`;
+        } else {
+          body.innerHTML = items.map(it => `
+            <a class="content-card-link" href="${it.url}">
+              📋 ${it.title || it.topic}
+              <div style="font-size:12px; color:var(--text-muted); font-weight:normal;">प्रश्न: ${it.questions || 'N/A'} · विषय: ${it.subject || 'General'}</div>
+            </a>
+          `).join('');
+        }
+      } catch (e) {
+        body.innerHTML = `<p style="font-size:14px; color:var(--text-muted);">डेटा लोड करने में असमर्थ।</p>`;
+      }
+    }
+
+    function openDownloads() {
+      toggleDrawer(false);
+      loadMaterial('Notes');
+    }
+
+    /* ================= 8. DRAWER & UI HELPERS ================= */
+    function toggleDrawer(force) {
+      const d = document.getElementById('sideDrawer');
+      const o = document.getElementById('drawerOverlay');
+      if (typeof force === 'boolean') {
+        d.classList.toggle('open', force);
+        o.classList.toggle('open', force);
+      } else {
+        d.classList.toggle('open');
+        o.classList.toggle('open');
+      }
+    }
+
+    function toggleSubMenu(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function toggleModal(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function closeOnOverlay(e, id) {
+      if (e.target.id === id) toggleModal(id);
+    }
+
+    function showSettingsModal() {
+      toggleDrawer(false);
+      toggleModal('settingsModal');
+    }
+
+    function setLang(l) {
+      alert(`भाषा "${l}" सेट कर दी गई है।`);
+      toggleModal('settingsModal');
+    }
+
+    /* Mobile Swipe Gestures */
     let startX = 0;
     const swipeSurface = document.getElementById('touchContainer');
     swipeSurface.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; }, { passive: true });
