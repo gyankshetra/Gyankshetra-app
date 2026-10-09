@@ -284,7 +284,7 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 def ask_groq(prompt, is_json=False):
     client = get_client()
     kwargs = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.3
     }
@@ -292,8 +292,7 @@ def ask_groq(prompt, is_json=False):
         kwargs["response_format"] = {"type": "json_object"}
 
     try:
-        response = client.completions.create(**kwargs) if hasattr(client, 'completions') else client.chat.completions.create(**kwargs)
-        # Handle chat completions response structure
+        response = client.chat.completions.create(**kwargs)
         return response.choices[0].message.content
     except Exception as e:
         raise RuntimeError(f"Groq API Error: {str(e)[:250]}")
