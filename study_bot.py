@@ -18,7 +18,7 @@ import base64, json, os, re, time, urllib.error, urllib.parse, urllib.request
 
 E = os.environ
 TG = "https://api.telegram.org/bot" + E.get("TELEGRAM_BOT_TOKEN", "")
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")   # पुराना llama-3.3 मॉडल Groq ने बंद कर दिया
 BRANCH = E.get("GITHUB_BRANCH", "main")
 MAX_PDF = 25 * 1024 * 1024
 SECTIONS = ("notes", "ncert", "papers")
@@ -200,7 +200,11 @@ def say(chat, text):
 def process(u, admins):
     m = u.get("message") or {}
     text, uid = m.get("text"), (m.get("from") or {}).get("id")
-    if not text or uid not in admins:      # सिर्फ़ admin repo में कुछ लिख सकता है
+    if not text:
+        return
+    if uid not in admins:                  # सिर्फ़ admin repo में कुछ लिख सकता है
+        print(f"अनजान ID {uid} का संदेश छोड़ा", flush=True)
+        say(m["chat"]["id"], f"⛔ अनुमति नहीं है।\nआपकी Telegram ID: {uid}\nइसे GitHub secret TELEGRAM_ALLOWED_CHAT_IDS में डालिए।")
         return
     say(m["chat"]["id"], "⏳ खोज रहा हूँ…")
     try:
