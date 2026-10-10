@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>force and motin (detailed) - Study Notes | Gyankshetra</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+            max-width: 850px;
+            margin: auto;
+            background: #fdfdfd;
+            color: #222;
+        }
+        h1, h2, h3 { color: #1a73e8; }
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+        th { background: #f1f5fd; }
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1a73e8;
+            padding-bottom: 12px;
+        }
+        .back-btn {
+            text-decoration: none;
+            color: #1a73e8;
+            font-weight: bold;
+            font-size: 26px;
+        }
+        .print-btn {
+            background: #1a73e8;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .content {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        @media print {
+            body { padding: 0; background: #fff; }
+            .action-bar { display: none !important; }
+            .content { border: none !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="action-bar">
+        <a href="../index.html" class="back-btn" aria-label="Back to App">←</a>
+        <button class="print-btn" onclick="window.print()">Download</button>
+    </div>
+    <div class="header">
+        <h1>📖 force and motin (detailed)</h1>
+        <p style="color: #666; margin: 0;">Gyankshetra AI Study Notes</p>
+    </div>
+    <div class="content">
+        <div>
+  <h2>बल (Force) और गति (Motion) – विस्तृत नोट्स (हिन्दी)</h2>
+
+  <h3>1. मुख्य परिभाषाएँ</h3>
+  <ul>
+    <li><b>बल (Force):</b> किसी वस्तु पर लागू होने वाला वह प्रभाव जो उसके गति या आकार में परिवर्तन लाता है। SI इकाई – न्यूटन (N)।</li>
+    <li><b>द्रव्यमान (Mass):</b> वस्तु की जड़त्व की मात्रा, जो बल के प्रभाव को प्रतिरोध करती है। SI इकाई – किलोग्राम (kg)।</li>
+    <li><b>त्वरण (Acceleration):</b> इकाई समय में वेग (velocity) का परिवर्तन। SI इकाई – मीटर प्रति सेकंड वर्ग (m/s²)।</li>
+    <li><b>वेग (Velocity):</b> दिशा सहित गति की मात्रा। SI इकाई – मीटर प्रति सेकंड (m/s)।</li>
+    <li><b>गति (Speed):</b> केवल परिमाण (magnitude) वाली गति, दिशा नहीं। SI इकाई – मीटर प्रति सेकंड (m/s)।</li>
+    <li><b>गुरुत्वाकर्षण बल (Gravitational Force):</b> दो द्रव्यमानों के बीच आकर्षण बल, F = G·m₁·m₂ / r²।</li>
+    <li><b>संतुलित बल (Balanced Forces):</b> कुल शून्य शुद्ध बल, जिससे वस्तु विश्राम या समान गति में रहती है।</li>
+    <li><b>असंतुलित बल (Unbalanced Forces):</b> शुद्ध बल ≠ 0, जिससे वस्तु में परिवर्तन (त्वरण) आता है।</li>
+  </ul>
+
+  <h3>2. प्रमुख सूत्र (Formulas)</h3>
+  <table>
+    <tr>
+      <th>क्रमांक</th>
+      <th>सूत्र</th>
+      <th>विवरण</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>F = m·a</td>
+      <td>न्यूटन का दूसरा नियम – बल = द्रव्यमान × त्वरण</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>a = Δv / Δt</td>
+      <td>त्वरण = वेग में परिवर्तन / समय अंतराल</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>v = u + a·t</td>
+      <td>समान त्वरण वाली गति में अंतिम वेग (v), प्रारम्भिक वेग (u)</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>s = u·t + ½ a·t²</td>
+      <td>समान त्वरण वाली गति में विस्थापन (s)</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>v² = u² + 2a·s</td>
+      <td>समान त्वरण वाली गति में वेग‑विस्थापन सम्बन्ध</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>W = F·d·cosθ</td>
+      <td>कार्य (Work) = बल × विस्थापन × कोसाइन कोण (θ)</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>P = W / t</td>
+      <td>शक्ति (Power) = कार्य / समय</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>KE = ½ m·v²</td>
+      <td>गतिक ऊर्जा (Kinetic Energy)</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>PE_g = m·g·h</td>
+      <td>गुरुत्वाकर्षण स्थितिज ऊर्जा (Potential Energy)</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>F_friction = μ·N</td>
+      <td>घर्षण बल = घर्षण गुणांक (μ) × सामान्य बल (N)</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>G = 6.674×10⁻¹¹ N·m²/kg²</td>
+      <td>गुरुत्वाकर्षण स्थिरांक (Newton’s law of gravitation)</td>
+    </tr>
+  </table>
+
+  <h3>3. गति के प्रकार (Types of Motion)</h3>
+  <ol>
+    <li><b>रेखीय गति (Linear Motion):</b> सीधी रेखा में गति।</li>
+    <li><b>परिक्रमण गति (Rotational Motion):</b> धुरी के चारों ओर घूमना। टॉर्क τ = I·α (I = जड़त्वाघूर्ण, α = कोणीय त्वरण)।</li>
+    <li><b>पराबैंगनी गति (Projectile Motion):</b> दो-आयामी गति, क्षैतिज और लंबवत घटकों का स्वतंत्र रूप से विश्लेषण।</li>
+    <li><b>सापेक्ष गति (Relative Motion):</b> दो फ्रेमों के बीच गति का अंतर।</li>
+  </ol>
+
+  <h3>4. महत्वपूर्ण अवधारणाएँ (Key Concepts)</h3>
+  <ul>
+    <li><b>जड़त्व (Inertia):</b> वस्तु की वह प्रवृत्ति कि वह विश्राम या समान गति में बनी रहे।</li>
+    <li><b>न्यूटन के तीन नियम:</b>
+      <ol>
+        <li>पहला नियम – विश्राम या समान गति में रहने की प्रवृत्ति (जड़त्व)।</li>
+        <li>दूसरा नियम – F = m·a (बल, द्रव्यमान, त्वरण का सम्बन्ध)।</li>
+        <li>तीसरा नियम – क्रिया-प्रतिक्रिया (Action–Reaction) के बराबर और विपरीत।</li>
+      </ol>
+    </li>
+    <li><b>घर्षण (Friction):</b> सतहों के बीच प्रतिरोध, दो प्रकार – स्थिर (static) और गतिज (kinetic)।</li>
+    <li><b>ऊर्जा संरक्षण सिद्धांत (Conservation of Energy):</b> बंद प्रणाली में कुल यांत्रिक ऊर्जा (KE + PE) स्थिर रहती है, जब गैर-रखरखाव कार्य नहीं किया जाता।</li>
+    <li><b>गति संरक्षण (Conservation of Momentum):</b> बंद प्रणाली में कुल संवेग (p = m·v) अपरिवर्तित रहता है।</li>
+    <li><b>केंद्रीय बल (Centripetal Force):</b> वृत्तीय गति में वस्तु को केंद्र की ओर खींचने वाला बल, F_c = m·v² / r।</li>
+    <li><b>केंद्रीय बल का कार्य (Centrifugal Effect):</b> जड़त्वीय बल जो बाहर की ओर महसूस होता है, वास्तविक नहीं बल्कि निरूपित बल है।</li>
+  </ul>
+
+  <h3>5. परीक्षा के लिए महत्वपूर्ण बिंदु (Exam‑Ready Points)</h3>
+  <ul>
+    <li>न्यूटन के नियमों को शब्दों में और सूत्रों में दोनों रूप में याद रखें।</li>
+    <li>सभी गति‑समीकरण (SUVAT) को क्रमशः लिखें और कब प्रयोग करना है, यह पहचानें।</li>
+    <li>घर्षण के दो प्रकार (स्थिर, गतिज) और उनके गुणांक (μ_s, μ_k) के अंतर को स्पष्ट रूप से लिखें।</li>
+    <li>ऊर्जा के रूपांतरण (PE → KE, KE → PE) के उदाहरण (उदा. पेंडुलम, ढलान पर फिसलना) तैयार रखें।</li>
+    <li>पराबैंगनी गति में अधिकतम ऊँचाई, समय‑आवधि, और क्षैतिज दूरी के सूत्र याद रखें:
+      <ul>
+        <li>t_up = u·sinθ / g</li>
+        <li>Range = (u²·sin2θ) / g</li>
+        <li>H_max = (u²·sin²θ) / (2g)</li>
+      </ul>
+    </li>
+    <li>संवेग (Momentum) के संरक्षण के प्रश्नों में टक्कर (elastic vs inelastic) के अंतर को समझें।</li>
+    <li>वास्तविक‑जड़त्वीय बल (Real vs Pseudo forces) – जैसे कि घूर्णन फ्रेम में कोरियोलिस बल।</li>
+    <li>गुरुत्वाकर्षण त्वरण (g) का मान 9.8 m/s² (या 10 m/s²) को प्रश्न के अनुसार प्रयोग करें।</li>
+    <li>सभी इकाइयों को SI में रखें; आवश्यकतानुसार CGS या अन्य इकाइयों में परिवर्तन का सूत्र याद रखें।</li>
+  </ul>
+
+  <h3>6. संक्षिप्त सारांश (Quick Summary)</h3>
+  <p>
+    बल वह कारण है जो गति या आकार बदलता है; न्यूटन के नियम इस संबंध को परिभाषित करते हैं। गति के मूलभूत समीकरण (SUVAT) समान त्वरण वाली स्थितियों में लागू होते हैं। ऊर्जा और संवेग के संरक्षण सिद्धांत सभी प्रकार की यांत्रिक प्रक्रियाओं में लागू होते हैं, जबकि घर्षण, गुरुत्वाकर्षण, और केंद्रीय बल विशेष परिस्थितियों में अतिरिक्त विचार देते हैं। इन सभी अवधारणाओं को सूत्रों के साथ याद रखें और विभिन्न प्रश्न प्रकारों (सिद्धान्त, संख्यात्मक, चित्रात्मक) में उनका प्रयोग करने का अभ्यास करें।
+  </p>
+</div>
+    </div>
+</body>
+</html>
