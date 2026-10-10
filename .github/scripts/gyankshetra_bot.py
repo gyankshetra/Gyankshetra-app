@@ -212,6 +212,10 @@ def extract_metadata(topic_text):
         grade, grade_text = "GENERAL", None
 
     subject_map = [
+        ("bihar current affairs", "Bihar Current Affairs"),
+        ("bihar gk", "Bihar GK"),
+        ("bihar general knowledge", "Bihar GK"),
+        ("current affairs", "Current Affairs"),
         ("hindi grammar", "Hindi Grammar"),
         ("english grammar", "English Grammar"),
         ("general science", "General Science"),
@@ -226,6 +230,7 @@ def extract_metadata(topic_text):
         ("geography", "Geography"),
         ("polity", "Polity"),
         ("political science", "Polity"),
+        ("science", "Science"),
         ("economics", "Economics"),
         ("reasoning", "Reasoning"),
         ("computer", "Computer"),
@@ -523,14 +528,14 @@ def generate_notes_html(topic):
             text-decoration: none;
             color: #1a73e8;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 26px;
         }}
         .print-btn {{
             background: #1a73e8;
             color: #ffffff;
             border: none;
             padding: 8px 16px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
@@ -551,8 +556,8 @@ def generate_notes_html(topic):
 </head>
 <body>
     <div class="action-bar">
-        <a href="../index.html" class="back-btn">⬅ Back to App</a>
-        <button class="print-btn" onclick="window.print()">📥 Download / Print PDF</button>
+        <a href="../index.html" class="back-btn" aria-label="Back to App">←</a>
+        <button class="print-btn" onclick="window.print()">Download</button>
     </div>
     <div class="header">
         <h1>📖 {safe_topic}</h1>
@@ -637,92 +642,284 @@ TEST_TEMPLATE = r"""<!DOCTYPE html>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4f6f9;color:#172033}
 .top{background:#111827;color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
 .top a{color:#fff;text-decoration:none;font-size:20px}.top .title{flex:1;font-weight:800;font-size:15px}
+.aE{background:none;border:1.5px solid #fff;color:#fff;border-radius:8px;padding:4px 8px;font-weight:800;font-size:13px}
 .wrap{max-width:620px;margin:auto;padding:14px}.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 3px 14px #0000000d;margin-bottom:12px}
 .line{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e9f0;padding-bottom:10px;margin-bottom:12px;font-weight:800}
-.timer{color:#d97706}.q{font-size:17px;font-weight:800;line-height:1.55;margin:6px 0 14px}
+.timer{color:#d97706}.q{font-size:17px;font-weight:800;line-height:1.55;margin:6px 0 14px}.qname{font-size:12px;color:#5b6b82;font-weight:700;margin:-4px 0 8px}
 .opt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid #d5dce6;border-radius:12px;padding:13px;margin-bottom:9px;font-size:15px}
 .opt.sel{border-color:#075fc3;background:#e8f1fd}.opt.ok{border-color:#1f9d55;background:#e7f7ee}.opt.bad{border-color:#e03a3a;background:#fdecec}
 .row{display:flex;gap:10px}.btn{flex:1;border:0;border-radius:12px;padding:13px;font-weight:800;font-size:15px}
-.pri{background:#075fc3;color:#fff}.sec{background:#fff;border:1.5px solid #d5dce6;color:#172033}.grn{background:#16834f;color:#fff}.tg{background:#229ed9;color:#fff}
+.pri{background:#075fc3;color:#fff}.sec{background:#fff;border:1.5px solid #d5dce6;color:#172033}.grn{background:#16834f;color:#fff}.tg{background:#229ed9;color:#fff}.red{background:#d92d2d;color:#fff}.blk{background:#111827;color:#fff}
 .pal{background:none;border:0;font-size:22px}.hide{display:none}
 .donut{width:150px;height:150px;border-radius:50%;margin:16px auto;display:flex;align-items:center;justify-content:center;position:relative;background:#c9d1dc}
 .donut:before{content:"";position:absolute;inset:16px;background:#f4f6f9;border-radius:50%}.donut b{position:relative;font-size:28px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.grid4 div{background:#fff;border-radius:12px;padding:10px 2px}.grid4 b{display:block;font-size:17px}.grid4 small{font-size:11px;color:#667085}
-.rv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}.rv button{border:0;border-radius:10px;padding:11px 2px;font-weight:800;font-size:12px;background:#e3f0ff;color:#075fc3}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.grid4 div{background:#fff;border-radius:12px;padding:10px 2px;cursor:pointer;border:1px solid #e3ebf5;box-shadow:0 2px 8px #0001}.grid4 div:active{background:#e3f0ff}.grid4 b{display:block;font-size:17px}.grid4 small{font-size:11px;color:#667085}
+.tip{text-align:center;font-size:11px;color:#7b8799;margin:6px 0 12px}
 .facts{background:#f1f5fb;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.6}.facts ul{margin:6px 0 0 18px;padding:0}
 .modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;z-index:20}.modal.open{display:flex}
 .box{background:#fff;border-radius:16px;padding:16px;width:88%;max-width:380px}.pg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0}
 .pg button{border:0;border-radius:10px;padding:12px 0;font-weight:800;background:#e6ebf2}.pg .a{background:#1f9d55;color:#fff}.pg .c{outline:3px solid #075fc3}
+.sheetm{align-items:flex-end}.sheet{background:#fff;width:100%;max-width:620px;border-radius:18px 18px 0 0;padding:16px 22px 24px}.sheet h4{color:#8b96a6;margin:0 0 6px}.sheet div{padding:15px 0;border-bottom:1px solid #eef1f5;font-size:16px}
 small.m{color:#667085}
 </style>
 </head>
 <body>
-<div class="top"><a href="../index.html" id="back">←</a><div class="title" id="ttl">Gyankshetra</div></div>
+<div class="top"><a href="../index.html" id="back">←</a><div class="title" id="ttl">Gyankshetra</div><button class="aE" onclick="openLang()">अ/E</button></div>
 <div class="wrap">
  <section id="quiz">
   <div class="card">
    <div class="line"><button class="pal" onclick="openPal()">☰</button><span id="qc"></span><span class="timer" id="tm"></span></div>
+   <div class="qname" id="nm"></div>
    <div class="q" id="qt"></div><div id="opts"></div>
-   <div class="row"><button class="btn sec" id="pv" onclick="go(-1)">← पिछला</button><button class="btn pri" id="nx" onclick="go(1)">अगला →</button></div>
+   <div class="row"><button class="btn sec" id="pv" onclick="go(-1)"></button><button class="btn pri" id="nx" onclick="go(1)"></button></div>
   </div>
  </section>
  <section id="result" class="hide">
-  <h2 style="margin:6px 0">🏆 परिणाम</h2><p id="who" style="text-align:center;font-weight:800;margin:0"></p>
+  <h2 style="margin:6px 0" data-i="result"></h2><p id="who" style="text-align:center;font-weight:800;margin:0"></p>
   <div class="donut" id="donut"><b id="pct">0%</b></div>
-  <div class="grid4"><div><b id="mk"></b><small>अंक</small></div><div><b id="co"></b><small>सही</small></div><div><b id="wr"></b><small>गलत</small></div><div><b id="sk"></b><small>छूटे</small></div></div>
-  <div class="rv"><button onclick="review('all')">📖 सभी</button><button onclick="review('ok')">✅ सही</button><button onclick="review('bad')">❌ गलत</button><button onclick="review('skip')">⏭ छूटे</button></div>
-  <div class="row" style="margin-bottom:10px"><button class="btn grn" onclick="location.reload()">🔁 Reattempt</button><button class="btn tg" onclick="share()">📤 Result Share करें</button></div>
-  <a href="../index.html" class="btn sec" style="display:block;text-align:center;text-decoration:none">⬅ Back to App</a>
+  <div class="grid4"><div onclick="review('all')"><b id="mk"></b><small data-i="marks"></small></div><div onclick="review('ok')"><b id="co"></b><small data-i="correct"></small></div><div onclick="review('bad')"><b id="wr"></b><small data-i="wrong"></small></div><div onclick="review('skip')"><b id="sk"></b><small data-i="skipped"></small></div></div>
+  <p class="tip" data-i="tip"></p>
+  <button class="btn pri" style="width:100%;margin-bottom:10px" onclick="review('all')" data-i="analysis"></button>
+  <div class="row" style="margin-bottom:10px"><button class="btn grn" onclick="location.reload()" data-i="reattempt"></button><button class="btn tg" onclick="share()" data-i="share"></button></div>
+  <a href="../index.html" class="btn blk" style="display:block;text-align:center;text-decoration:none" data-i="back"></a>
  </section>
  <section id="review" class="hide">
   <div class="card"><div class="line"><button class="pal" onclick="backRes()">←</button><span id="rc"></span><span></span></div>
    <div class="q" id="rq"></div><div id="ro"></div><div id="rf"></div>
-   <div class="row" style="margin-top:12px"><button class="btn sec" onclick="rgo(-1)">← Previous</button><button class="btn pri" onclick="rgo(1)">Next →</button></div>
+   <div class="row" style="margin-top:12px"><button class="btn sec" onclick="rgo(-1)" data-i="rprev"></button><button class="btn pri" onclick="rgo(1)" data-i="rnext"></button></div>
   </div>
  </section>
 </div>
-<div class="modal" id="pal" onclick="closePal()"><div class="box" onclick="event.stopPropagation()"><b>प्रश्न पैलेट</b><div class="pg" id="pg"></div><button class="btn pri" style="width:100%" onclick="closePal()">बंद करें</button></div></div>
+<div class="modal" id="pal" onclick="closePal()"><div class="box" onclick="event.stopPropagation()"><b data-i="palette"></b><div class="pg" id="pg"></div><button class="btn red" style="width:100%;margin-bottom:8px" onclick="closePal();submitNow()" data-i="submitBtn"></button><button class="btn sec" style="width:100%" onclick="closePal()" data-i="close"></button></div></div>
+<div class="modal sheetm" id="lsh" onclick="closeLang()"><div class="sheet" onclick="event.stopPropagation()"><h4 data-i="selLang"></h4><div onclick="setLang('hi')">हिन्दी</div><div onclick="setLang('en')">English</div><div onclick="setLang('bh')">भोजपुरी</div></div></div>
 <script>
 const testData = __TESTDATA__;
-const Q=testData.questions,N=Q.length;let ans=Array(N).fill(null),qi=0,left=N*60,tid=null,done=false,rOrder=[],ri=0,res={c:0,w:0,s:0};
+const Q=testData.questions,N=Q.length;let ans=Array(N).fill(null),qi=0,left=N*60,tid=null,done=false,rOrder=[],ri=0,res={c:0,w:0,s:0},phase='quiz';
 const $=id=>document.getElementById(id);
+const I18N={
+hi:{q:'प्रश्न',prev:'← पिछला',next:'अगला →',submitT:'Submit Test ✔',palette:'प्रश्न पैलेट',close:'बंद करें',submitBtn:'✅ Submit',result:'🏆 परिणाम',marks:'अंक',correct:'सही',wrong:'गलत',skipped:'छूटे',tip:'किसी भी बॉक्स पर टैप करें — उसका Analysis खुलेगा',analysis:'📚 Analysis',reattempt:'🔁 Reattempt',share:'📤 Result Share करें',back:'🏠 ऐप पर वापस जाएँ',review:'समीक्षा',rprev:'← पिछला',rnext:'अगला →',yours:'आपका उत्तर',notans:'छोड़ा गया',right:'सही उत्तर',factsH:'📌 व्याख्या / तथ्य:',empty:'इस श्रेणी में कोई प्रश्न नहीं है।',confirm:'क्या आप टेस्ट Submit करना चाहते हैं?',selLang:'भाषा चुनें'},
+en:{q:'Question',prev:'← Previous',next:'Next →',submitT:'Submit Test ✔',palette:'Question palette',close:'Close',submitBtn:'✅ Submit',result:'🏆 Result',marks:'Marks',correct:'Correct',wrong:'Wrong',skipped:'Skipped',tip:'Tap any box to open its analysis',analysis:'📚 Analysis',reattempt:'🔁 Reattempt',share:'📤 Share Result',back:'🏠 Back to App',review:'Review',rprev:'← Previous',rnext:'Next →',yours:'Your answer',notans:'Not answered',right:'Correct answer',factsH:'📌 Explanation / Facts:',empty:'No questions in this category.',confirm:'Do you want to submit the test?',selLang:'Select Language'},
+bh:{q:'सवाल',prev:'← पिछिला',next:'अगिला →',submitT:'Submit Test ✔',palette:'सवाल पैलेट',close:'बंद करीं',submitBtn:'✅ Submit',result:'🏆 नतीजा',marks:'अंक',correct:'सही',wrong:'गलत',skipped:'छोड़ल गइल',tip:'कवनो बॉक्स पर टैप करीं — ओकर विश्लेषण खुली',analysis:'📚 Analysis',reattempt:'🔁 Reattempt',share:'📤 Result Share करीं',back:'🏠 ऐप पर लौटीं',review:'समीक्षा',rprev:'← पिछिला',rnext:'अगिला →',yours:'रउआ जवाब',notans:'छोड़ल गइल',right:'सही जवाब',factsH:'📌 व्याख्या / तथ्य:',empty:'एह श्रेणी में कवनो सवाल नइखे।',confirm:'का रउआ टेस्ट Submit करे के चाहत बानी?',selLang:'भाषा चुनीं'}};
+let lang='hi';try{lang=localStorage.getItem('gyankshetraLang')||'hi'}catch(e){}
+if(!I18N[lang])lang='hi';
+function T(k){return (I18N[lang]&&I18N[lang][k])||I18N.hi[k]||k}
+function V(i){const q=Q[i],t=testData.tr&&testData.tr[lang]&&testData.tr[lang][i];
+if(t&&t.text&&Array.isArray(t.options)&&t.options.length===q.options.length)return{text:t.text,options:t.options,facts:(Array.isArray(t.facts)&&t.facts.length)?t.facts:q.facts};
+return{text:q.text,options:q.options,facts:q.facts}}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function fmt(t){t=Math.max(0,t);return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
 function uname(){try{if(localStorage.getItem('gyankshetraLoggedIn')==='1'){return localStorage.getItem('gyankshetraUserName')||testData.studentName}}catch(e){}return testData.studentName}
 $('ttl').textContent='Gyankshetra · '+testData.topic;
-function render(){const q=Q[qi];$('qc').textContent='प्रश्न '+(qi+1)+'/'+N;$('qt').textContent=q.text;
-$('opts').innerHTML=q.options.map((o,i)=>'<button class="opt '+(ans[qi]===i?'sel':'')+'" onclick="pick('+i+')">'+String.fromCharCode(65+i)+'. '+esc(o)+'</button>').join('');
-$('pv').disabled=qi===0;$('nx').textContent=qi===N-1?'Submit Test ✔':'अगला →';$('tm').textContent='⏱ '+fmt(left)}
+function render(){const v=V(qi);$('qc').textContent=T('q')+' '+(qi+1)+'/'+N;$('qt').textContent=v.text;$('nm').textContent='👤 '+uname();
+$('opts').innerHTML=v.options.map((o,i)=>'<button class="opt '+(ans[qi]===i?'sel':'')+'" onclick="pick('+i+')">'+String.fromCharCode(65+i)+'. '+esc(o)+'</button>').join('');
+$('pv').disabled=qi===0;$('pv').textContent=T('prev');$('nx').textContent=qi===N-1?T('submitT'):T('next');$('tm').textContent='⏱ '+fmt(left)}
 function pick(i){ans[qi]=i;render()}
-function go(d){if(d>0&&qi===N-1){if(confirm('क्या आप टेस्ट Submit करना चाहते हैं?'))finish();return}const n=qi+d;if(n<0||n>=N)return;qi=n;render()}
+function go(d){if(d>0&&qi===N-1){submitNow();return}const n=qi+d;if(n<0||n>=N)return;qi=n;render()}
+function submitNow(){const sk=ans.filter(a=>a===null).length;if(confirm(T('confirm')+(sk?'\n('+sk+' '+T('skipped')+')':'')))finish()}
 function tick(){left--;$('tm').textContent='⏱ '+fmt(left);if(left<=0)finish()}
 function openPal(){$('pg').innerHTML=Q.map((q,i)=>'<button class="'+(ans[i]!==null?'a ':'')+(i===qi?'c':'')+'" onclick="jump('+i+')">'+(i+1)+'</button>').join('');$('pal').classList.add('open')}
 function closePal(){$('pal').classList.remove('open')}
 function jump(i){qi=i;closePal();render()}
+function openLang(){$('lsh').classList.add('open')}
+function closeLang(){$('lsh').classList.remove('open')}
+function setLang(l){lang=l;try{localStorage.setItem('gyankshetraLang',l)}catch(e){}closeLang();applyLang()}
+function applyLang(){document.documentElement.lang=lang==='bh'?'bho':lang;document.querySelectorAll('[data-i]').forEach(e=>e.textContent=T(e.dataset.i));if(phase==='quiz')render();else if(phase==='result')paintRes();else rrender()}
+function paintRes(){const c=res.c,w=res.w,s=res.s,a=c/N*100,b=a+w/N*100;$('donut').style.background='conic-gradient(#1f9d55 0 '+a+'%,#e03a3a '+a+'% '+b+'%,#c9d1dc '+b+'% 100%)';
+$('pct').textContent=Math.round(a)+'%';$('mk').textContent=c+' / '+N;$('co').textContent=c;$('wr').textContent=w;$('sk').textContent=s;$('who').textContent='👤 '+uname()}
 function finish(){if(done)return;done=true;clearInterval(tid);closePal();let c=0,w=0,s=0;ans.forEach((a,i)=>{if(a===null)s++;else if(a===Q[i].correctOption)c++;else w++});res={c,w,s};
-const a=c/N*100,b=a+w/N*100;$('donut').style.background='conic-gradient(#1f9d55 0 '+a+'%,#e03a3a '+a+'% '+b+'%,#c9d1dc '+b+'% 100%)';
-$('pct').textContent=Math.round(a)+'%';$('mk').textContent=c+' / '+N;$('co').textContent=c;$('wr').textContent=w;$('sk').textContent=s;$('who').textContent='👤 '+uname();
 try{const h=JSON.parse(localStorage.getItem('gyankshetraHistory')||'[]');h.push({day:new Date().toISOString().slice(0,10),date:new Date().toLocaleString('hi-IN'),test:testData.topic,marks:c,correct:c,wrong:w,skipped:s,total:N});localStorage.setItem('gyankshetraHistory',JSON.stringify(h))}catch(e){}
-$('quiz').classList.add('hide');$('result').classList.remove('hide');window.scrollTo(0,0)}
-function review(f){rOrder=Q.map((q,i)=>i).filter(i=>f==='all'||(f==='ok'&&ans[i]===Q[i].correctOption)||(f==='bad'&&ans[i]!==null&&ans[i]!==Q[i].correctOption)||(f==='skip'&&ans[i]===null));if(!rOrder.length){alert('इस श्रेणी में कोई प्रश्न नहीं है।');return}ri=0;$('result').classList.add('hide');$('review').classList.remove('hide');rrender()}
-function rrender(){const i=rOrder[ri],q=Q[i];$('rc').textContent='Review '+(ri+1)+'/'+rOrder.length;$('rq').textContent=(i+1)+'. '+q.text;
-$('ro').innerHTML=q.options.map((o,k)=>'<div class="opt '+(k===q.correctOption?'ok':(k===ans[i]?'bad':''))+'">'+String.fromCharCode(65+k)+'. '+esc(o)+(k===q.correctOption?' ✅':'')+(k===ans[i]&&k!==q.correctOption?' ❌':'')+'</div>').join('');
-$('rf').innerHTML='<small class="m">आपका उत्तर: '+(ans[i]===null?'छोड़ा गया':String.fromCharCode(65+ans[i]))+' • सही उत्तर: '+String.fromCharCode(65+q.correctOption)+'</small>'+(q.facts&&q.facts.length?'<div class="facts"><b>📌 व्याख्या / तथ्य:</b><ul>'+q.facts.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul></div>':'')}
+phase='result';paintRes();$('quiz').classList.add('hide');$('result').classList.remove('hide');window.scrollTo(0,0)}
+function review(f){rOrder=Q.map((q,i)=>i).filter(i=>f==='all'||(f==='ok'&&ans[i]===Q[i].correctOption)||(f==='bad'&&ans[i]!==null&&ans[i]!==Q[i].correctOption)||(f==='skip'&&ans[i]===null));if(!rOrder.length){alert(T('empty'));return}ri=0;phase='review';$('result').classList.add('hide');$('review').classList.remove('hide');rrender()}
+function rrender(){const i=rOrder[ri],q=Q[i],v=V(i);$('rc').textContent=T('review')+' '+(ri+1)+'/'+rOrder.length;$('rq').textContent=(i+1)+'. '+v.text;
+$('ro').innerHTML=v.options.map((o,k)=>'<div class="opt '+(k===q.correctOption?'ok':(k===ans[i]?'bad':''))+'">'+String.fromCharCode(65+k)+'. '+esc(o)+(k===q.correctOption?' ✅':'')+(k===ans[i]&&k!==q.correctOption?' ❌':'')+'</div>').join('');
+$('rf').innerHTML='<small class="m">'+T('yours')+': '+(ans[i]===null?T('notans'):String.fromCharCode(65+ans[i]))+' • '+T('right')+': '+String.fromCharCode(65+q.correctOption)+'</small>'+(v.facts&&v.facts.length?'<div class="facts"><b>'+T('factsH')+'</b><ul>'+v.facts.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul></div>':'')}
 function rgo(d){const n=ri+d;if(n<0||n>=rOrder.length)return;ri=n;rrender()}
-function backRes(){$('review').classList.add('hide');$('result').classList.remove('hide')}
+function backRes(){phase='result';$('review').classList.add('hide');$('result').classList.remove('hide')}
 function share(){const link=location.href.split('#')[0].split('?')[0],p=Math.round(res.c/N*100);
 const t='🎓 Gyankshetra Result\n👤 '+uname()+'\n📝 '+testData.topic+'\n🏆 अंक: '+res.c+'/'+N+' ('+p+'%)\n✅ सही: '+res.c+'  ❌ गलत: '+res.w+'  ⏭ छूटे: '+res.s+'\n📢 Telegram चैनल: https://t.me/gyankshetra\n🔗 टेस्ट लिंक: '+link;
 window.open('https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(t),'_blank')}
 (function(){let x0=0,y0=0;const w=$('quiz');w.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
 w.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.3)return;if(dx>0){if(qi>0){qi--;render()}}else if(qi<N-1){qi++;render()}},{passive:true})})();
-render();tid=setInterval(tick,1000);
+applyLang();tid=setInterval(tick,1000);
 </script>
 </body>
 </html>
 """
 
 
-def make_test_page(topic, count, questions, test_id):
+
+# ------------------------------------------- Question translation (en / bh)
+TR_LANGS = {
+    "en": "English",
+    "bh": "भोजपुरी (देवनागरी लिपि में, सरल बोलचाल की भोजपुरी)",
+}
+TRANSLATE_TESTS = os.environ.get("TRANSLATE_TESTS", "1") != "0"
+TR_CHUNK = 5
+
+TR_PROMPT = """
+नीचे MCQ प्रश्नों की सूची JSON में है। हर प्रश्न का "text", "options" और "facts" का अनुवाद __LANG__ में करो।
+
+नियम:
+1. अर्थ, संख्याएँ, सूत्र, यूनिट और वैज्ञानिक/तकनीकी शब्द सही और जस के तस रखो।
+2. options की संख्या और क्रम बिल्कुल वही रखो (अनुवाद के बाद भी चार विकल्प, उसी क्रम में)।
+3. facts की संख्या और क्रम भी वही रखो।
+4. गलत या नया तथ्य मत जोड़ो।
+5. केवल वैध JSON दो, कोई अतिरिक्त टेक्स्ट या Markdown code fence नहीं।
+
+सिर्फ इस structure में JSON दो (items की संख्या इनपुट के बराबर हो):
+{"items":[{"text":"...","options":["...","...","...","..."],"facts":["..."]}]}
+
+इनपुट:
+__DATA__
+"""
+
+
+def _translate_chunk(chunk, lang_label):
+    data = json.dumps(
+        [{"text": q[0], "options": q[1], "facts": q[3]} for q in chunk],
+        ensure_ascii=False,
+    )
+    prompt = TR_PROMPT.replace("__LANG__", lang_label).replace("__DATA__", data)
+    last_err = None
+    for attempt in range(2):
+        try:
+            raw = ask_groq(prompt, is_json=True).strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
+            items = json.loads(raw).get("items")
+            if not isinstance(items, list) or len(items) != len(chunk):
+                raise ValueError("items की संख्या मेल नहीं खाती")
+            out = []
+            for q, it in zip(chunk, items):
+                ok = (
+                    isinstance(it, dict)
+                    and isinstance(it.get("text"), str) and it["text"].strip()
+                    and isinstance(it.get("options"), list)
+                    and len(it["options"]) == len(q[1])
+                    and all(isinstance(o, str) and o.strip() for o in it["options"])
+                )
+                if not ok:
+                    out.append(None)
+                    continue
+                facts = it.get("facts")
+                facts = [str(f) for f in facts if str(f).strip()] if isinstance(facts, list) else []
+                out.append({
+                    "text": it["text"].strip(),
+                    "options": [o.strip() for o in it["options"]],
+                    "facts": facts,
+                })
+            return out
+        except Exception as e:
+            last_err = e
+            print(f"Translate retry {attempt + 1}/2:", e)
+            time.sleep(_backoff(e, attempt))
+    print("Translate chunk failed:", last_err)
+    return [None] * len(chunk)
+
+
+def translate_questions(questions):
+    """Har prashn ka English + Bhojpuri anuvad. Fail hone par us bhasha me Hindi hi dikhega."""
+    result = {}
+    if not TRANSLATE_TESTS:
+        return result
+    for code, label in TR_LANGS.items():
+        items = []
+        for i in range(0, len(questions), TR_CHUNK):
+            items.extend(_translate_chunk(questions[i:i + TR_CHUNK], label))
+            time.sleep(1)
+        if any(items):
+            result[code] = items
+    return result
+
+
+# ------------------------------------------------------------- Notes title
+def _ordinal(n):
+    n = int(n)
+    if 10 <= n % 100 <= 20:
+        suf = "th"
+    else:
+        suf = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suf}"
+
+
+def hindi_chapter(text):
+    """Chapter ka naam Hindi me (jaise 'gravitation' -> 'गुरुत्वाकर्षण'). Fail ho to jaisa hai waisa."""
+    if re.search(r"[\u0900-\u097F]", text):
+        return text
+    try:
+        out = ask_groq(
+            "इस परीक्षा-विषय/अध्याय का केवल हिन्दी नाम लिखो (2-4 शब्द, कोई अतिरिक्त शब्द, चिह्न या अंग्रेज़ी नहीं): "
+            + text
+        ).strip().strip("\"'`.।\n ")
+        out = out.splitlines()[0].strip() if out else ""
+        if out and re.search(r"[\u0900-\u097F]", out) and len(out) <= 60:
+            return out
+    except Exception as e:
+        print("hindi_chapter failed:", e)
+    return text
+
+
+def notes_title(topic):
+    """'📄 9th Physics — गुरुत्वाकर्षण (Notes)' jaisa title (📄 app khud lagata hai)."""
+    meta = extract_metadata(topic)
+    head = []
+    m = re.search(r"\d+", meta["class"]) if meta["class"] != "GENERAL" else None
+    if m:
+        head.append(_ordinal(m.group(0)))
+    if meta["subject"] != "General":
+        head.append(meta["subject"])
+    chapter = hindi_chapter(meta["topic"])
+    left = " ".join(head)
+    return f"{left} — {chapter} (Notes)" if left else f"{chapter} (Notes)"
+
+
+def _find_index_html():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(os.getcwd(), "index.html"),
+              os.path.join(here, "index.html"),
+              os.path.join(here, "..", "index.html")):
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def make_test_page(topic, count, questions, test_id, translations=None):
+    """Repo ki index.html (app ka asli test UI) se naya test page banata hai.
+    index.html me GK_DATA_START/GK_DATA_END ke beech ka data badla jata hai.
+    index.html na mile ya marker na ho to simple template use hota hai."""
+    path = _find_index_html()
+    src = ""
+    if path:
+        with open(path, "r", encoding="utf-8") as f:
+            src = f.read()
+    a, b = src.find("/*GK_DATA_START*/"), src.find("/*GK_DATA_END*/")
+    if a < 0 or b < a:
+        print("index.html ya GK_DATA marker nahi mila - simple template use ho raha hai")
+        return make_test_page_simple(topic, count, questions, test_id, translations)
+
+    qlist = [[q[0], q[1], q[2], q[3]] for q in questions]
+    tr = {}
+    for code, items in (translations or {}).items():
+        tr[code] = [
+            [it["text"], it["options"], it.get("facts") or q[3]] if it else None
+            for it, q in zip(items, questions)
+        ]
+    data = (
+        "/*GK_DATA_START*/\n"
+        f"const TOTAL={count},TIME={count * 60},TEST_NAME={js_safe(topic)},TEST_ID={js_safe(test_id)};\n"
+        f"const questions={js_safe(qlist)};\n"
+        f"const TR={js_safe(tr)};\n"
+    )
+    page = src[:a] + data + src[b:]
+    safe = html.escape(topic)
+    page = re.sub(
+        r"<title>.*?</title>",
+        lambda m: f"<title>Gyankshetra — {safe} {count}Q</title>",
+        page, count=1, flags=re.S,
+    )
+    return page
+
+
+def make_test_page_simple(topic, count, questions, test_id, translations=None):
     """Bot ke andar rakhe template se naya test page banata hai (ab index.html par nirbhar nahi)."""
     data = {
         "isReattempted": False,
@@ -740,6 +937,7 @@ def make_test_page(topic, count, questions, test_id):
             }
             for i, q in enumerate(questions)
         ],
+        "tr": translations or {},
     }
     safe = html.escape(topic)
     s = TEST_TEMPLATE.replace("__TESTDATA__", js_safe(data))
@@ -766,7 +964,9 @@ def update_registry(topic, count, command, url, item_id):
     }
 
     target_file = STUDY_MATERIAL_FILE if command == "/notes" else REGISTRY_FILE
-    if command != "/notes":
+    if command == "/notes":
+        entry["title"] = notes_title(topic)
+    else:
         entry["questions"] = count
 
     try:
@@ -901,7 +1101,13 @@ def process_update(update):
         folder = info["folder"]
         os.makedirs(folder, exist_ok=True)
 
-        page = make_test_page(topic, count, questions, test_id)
+        try:
+            translations = translate_questions(questions)
+        except Exception as e:
+            print("Translation skipped:", e)
+            translations = {}
+
+        page = make_test_page(topic, count, questions, test_id, translations)
         with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
             f.write(page)
 
