@@ -1,5 +1,18 @@
 [
   {
+    "id": "20261010-053858",
+    "title": "🎯 Gk",
+    "class": "GENERAL",
+    "subject": "General",
+    "topic": "Gk",
+    "category": "Quiz",
+    "type": "quiz",
+    "url": "https://gyankshetra.github.io/Gyankshetra-app/quiz/Gk-15q-20261010-053858.html",
+    "btn_text": "QUIZ NOW",
+    "created_at": "20261010-053858",
+    "questions": 15
+  },
+  {
     "id": "20261010-042812",
     "title": "📝 10th chemistry",
     "class": "CLASS 10",
