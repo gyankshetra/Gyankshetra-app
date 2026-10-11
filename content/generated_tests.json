@@ -447,20 +447,6 @@
     "created": "20261007-205818"
   },
   {
-    "title": "🎯 geography",
-    "questions": 5,
-    "type": "quiz",
-    "url": "quiz/geography-5q-20261007-205756.html",
-    "id": "20261007-205756",
-    "topic": "geography",
-    "count": 5,
-    "command": "/quiz",
-    "box": "quiz",
-    "label": "Quiz",
-    "emoji": "🎯",
-    "created": "20261007-205756"
-  },
-  {
     "id": "20261007-172822",
     "topic": "इतिहास",
     "count": 5,
