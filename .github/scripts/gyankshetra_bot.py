@@ -11,7 +11,7 @@ import random
 import subprocess
 from html.parser import HTMLParser
 from datetime import datetime, timezone, timedelta
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import requests
 
@@ -1167,7 +1167,8 @@ HELP_TEXT = (
     "• 40 MCQ test: history 8, geo 8, math 8, science 8, current affairs 8\n"
     "• बिहार GK का mock test 50 प्रश्न\n"
     "• ऑक्सीकरण के short notes / study material\n"
-    "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n\n"
+    "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n"
+    "• Test 40Q 1 delete कर दो\n\n"
     "Commands भी चलते हैं: /test /mock /quiz /practice /pyq /notes"
 )
 
@@ -1182,6 +1183,7 @@ intent के विकल्प:
 - "practice": practice, अभ्यास, set, सवाल/प्रश्न बनाओ (बिना किसी और शब्द के)
 - "pyq": पिछले वर्षों के प्रश्न, PYQ
 - "notes": notes, नोट्स, study material, अध्ययन सामग्री, download, PDF, summary, पढ़ने की सामग्री
+- "delete": बना हुआ test/quiz/notes हटाना (delete, हटाओ, मिटाओ); topic में उसका नाम, जैसे "Test 40Q 1"
 - "chat": ऊपर में से कुछ नहीं; सामान्य सवाल/बातचीत
 
 JSON structure:
@@ -1211,6 +1213,8 @@ def natural_command(text):
     data = json.loads(raw)
 
     intent = str(data.get("intent", "")).lower().strip()
+    if intent == "delete":
+        return {"command": "/delete", "topic": str(data.get("topic", "")).strip()}, ""
     if intent not in _INTENT_CMD:
         return None, (str(data.get("reply", "")).strip() or HELP_TEXT)
 
@@ -1258,6 +1262,75 @@ def natural_command(text):
     }, ""
 
 
+
+# ------------------------------------------------------------------ Delete
+def _norm_title(t):
+    t = re.sub(r"^[^\w\u0900-\u097F]+", "", str(t or "")).lower()
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def delete_items(query):
+    """Naam se bana hua test/quiz/notes hatata hai (registry + HTML file). 
+    Return: (hataye gaye titles, ek se zyada milne par titles ki list)."""
+    q = _norm_title(query)
+    if not q:
+        return [], []
+    found = []
+    for path in (REGISTRY_FILE, STUDY_MATERIAL_FILE):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                reg = json.load(f)
+        except Exception:
+            continue
+        if isinstance(reg, list):
+            found.append((path, reg))
+
+    exact, partial = [], []
+    for path, reg in found:
+        for e in reg:
+            t = _norm_title(e.get("title"))
+            if t == q:
+                exact.append((path, e))
+            elif q in t:
+                partial.append((path, e))
+
+    hits = exact or partial
+    if not hits:
+        return [], []
+    if len(hits) > 1 and not exact:
+        return [], [str(e.get("title")) for _, e in hits]
+
+    deleted = []
+    for path, e in hits:
+        reg = dict(found)[path]
+        reg[:] = [x for x in reg if x.get("id") != e.get("id") or x.get("url") != e.get("url")]
+        url = str(e.get("url", ""))
+        if url.startswith(BASE_URL):
+            rel = unquote(url[len(BASE_URL):].split("?")[0].split("#")[0])
+            top = rel.split("/")[0]
+            if top in ("tests", "quiz", "practice", "notes") and rel.endswith(".html") and ".." not in rel and os.path.isfile(rel):
+                os.remove(rel)
+        deleted.append(str(e.get("title")))
+    for path, reg in found:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(reg, f, ensure_ascii=False, indent=2)
+    return deleted, []
+
+
+def handle_delete(chat_id, name):
+    if not str(name).strip():
+        send_message(chat_id, "❓ किसे हटाना है? जैसे: <b>Test 40Q 1 delete कर दो</b>")
+        return
+    deleted, many = delete_items(name)
+    if many:
+        send_message(chat_id, "❓ कई मिले, पूरा नाम लिखें:\n" + "\n".join("• " + html.escape(t) for t in many[:10]))
+    elif deleted:
+        git_publish("Delete: " + ", ".join(deleted)[:80])
+        send_message(chat_id, "🗑 हटा दिया: " + ", ".join(html.escape(t) for t in deleted))
+    else:
+        send_message(chat_id, "❌ इस नाम का कुछ नहीं मिला: " + html.escape(str(name)))
+
+
 def process_update(update):
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
@@ -1277,6 +1350,9 @@ def process_update(update):
     if word in ("/start", "/help"):
         send_message(chat_id, HELP_TEXT)
         return
+    if word == "/delete":
+        cmd = {"command": "/delete", "topic": text.split(None, 1)[1] if len(text.split(None, 1)) > 1 else ""}
+        return handle_delete(chat_id, cmd["topic"])
 
     cmd = parse_command(text)
     if not cmd:
@@ -1293,6 +1369,9 @@ def process_update(update):
         if not cmd:
             send_message(chat_id, html.escape(reply)[:3500] if reply != HELP_TEXT else reply)
             return
+
+    if cmd.get("command") == "/delete":
+        return handle_delete(chat_id, cmd.get("topic", ""))
 
     if cmd.get("error"):
         send_message(chat_id, "❌ " + cmd["error"])
