@@ -199,20 +199,6 @@
     "created": "20261008-090234"
   },
   {
-    "title": "🎯 9th physics gravitation",
-    "questions": 20,
-    "type": "quiz",
-    "url": "quiz/9th-physics-gravitation-20q-20261008-084820.html",
-    "id": "20261008-084820",
-    "topic": "9th physics gravitation",
-    "count": 20,
-    "command": "/quiz",
-    "box": "quiz",
-    "label": "Quiz",
-    "emoji": "🎯",
-    "created": "20261008-084820"
-  },
-  {
     "title": "📝 math_class_10th_mensuration",
     "questions": 5,
     "type": "test",
