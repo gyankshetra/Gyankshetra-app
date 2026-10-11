@@ -2,6 +2,7 @@
 """Gyankshetra Telegram bot (Groq AI)
 Automatic Quiz Generator, Notes Generator & Scheduled Channel Publisher
 """
+import io
 import os
 import re
 import json
@@ -1078,10 +1079,10 @@ def next_series_number(prefix):
     return max(nums) + 1
 
 
-def update_registry(topic, count, command, url, item_id, mixed=False):
+def update_registry(topic, count, command, url, item_id, mixed=False, meta_topic=None):
     os.makedirs("content", exist_ok=True)
     info = command_info(command)
-    meta = extract_metadata(topic)
+    meta = extract_metadata(meta_topic or topic)
 
     entry = {
         "id": item_id,
@@ -1095,6 +1096,9 @@ def update_registry(topic, count, command, url, item_id, mixed=False):
         "btn_text": info["btn_text"],
         "created_at": item_id
     }
+
+    if meta_topic:
+        entry["topic"] = topic
 
     if mixed:  # kai vishay ka test: kisi ek subject me nahi, seedha Test Series me
         entry["class"], entry["subject"], entry["topic"] = "GENERAL", "Mixed", topic
@@ -1168,7 +1172,8 @@ HELP_TEXT = (
     "• बिहार GK का mock test 50 प्रश्न\n"
     "• ऑक्सीकरण के short notes / study material\n"
     "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n"
-    "• Test 40Q 1 delete कर दो\n\n"
+    "• Test 40Q 1 delete कर दो\n"
+    "• 📎 PDF / DOCX भेजें (साथ में लिखें: 30 प्रश्न quiz, विषय अलग-अलग, chapter wise, या सब मिलाकर एक test)\n\n"
     "Commands भी चलते हैं: /test /mock /quiz /practice /pyq /notes"
 )
 
@@ -1317,6 +1322,389 @@ def delete_items(query):
     return deleted, []
 
 
+# ------------------------------------------- File upload (PDF / DOCX / TXT)
+MAX_FILE_MB = 20      # Telegram bot sirf itni badi file utaar sakta hai
+MAX_CHUNKS = 60       # ek file se zyada se zyada itne hisse padhe jate hain
+CHUNK_CHARS = 4500
+MIN_GROUP = 5         # isse chhote vishay/chapter group "अन्य" me mila diye jate hain
+MAX_PER_TEST = 100
+
+SUBJ_HI = {
+    "History": "इतिहास", "Geography": "भूगोल", "Polity": "राजव्यवस्था", "Economics": "अर्थशास्त्र",
+    "Physics": "भौतिक विज्ञान", "Chemistry": "रसायन विज्ञान", "Biology": "जीव विज्ञान",
+    "Science": "विज्ञान", "Social Science": "सामाजिक विज्ञान", "Maths": "गणित",
+    "Reasoning": "रीज़निंग", "Hindi": "हिन्दी", "English": "English", "Sanskrit": "संस्कृत",
+    "Computer": "कंप्यूटर", "Pedagogy": "शिक्षाशास्त्र", "EVS": "EVS",
+    "Current Affairs": "करेंट अफेयर्स", "Bihar GK": "बिहार GK",
+    "Bihar Current Affairs": "बिहार करेंट अफेयर्स", "General Knowledge": "सामान्य ज्ञान",
+}
+
+EXTRACT_PROMPT = """
+नीचे किसी परीक्षा-पेपर / प्रश्न-सेट (PDF या Word) का टेक्स्ट है। इसमें जितने भी बहुविकल्पीय प्रश्न (MCQ) हैं, सब निकालकर JSON दो।
+
+नियम:
+1. अपनी तरफ से कोई नया प्रश्न मत जोड़ो; अधूरा या कटा हुआ प्रश्न छोड़ दो।
+2. प्रश्न और विकल्प जैसे लिखे हैं वैसे ही रखो (हिन्दी/English जो भी हो)। विकल्पों से (A), (B), 1., क) जैसे लेबल हटा दो। ठीक 4 विकल्प हों।
+3. answer: सही विकल्प का index (0, 1, 2 या 3)। उत्तर फ़ाइल में (या नीचे उत्तर-कुंजी में) दिया हो तो वही लो और answer_in_file true रखो; न मिले तो खुद हल करके सही उत्तर चुनो और answer_in_file false रखो।
+4. subject: इस सूची में से ठीक एक अंग्रेज़ी नाम: History, Geography, Polity, Economics, Physics, Chemistry, Biology, Science, Maths, Reasoning, Hindi, English, Sanskrit, Computer, Pedagogy, EVS, Current Affairs, Bihar GK, Bihar Current Affairs, General Knowledge. फ़ाइल के शीर्षक/सेक्शन से तय करो, न मिले तो प्रश्न देखकर।
+5. chapter: अध्याय/टॉपिक का छोटा नाम (हिन्दी में); न पता हो तो "".
+6. facts: उत्तर का एक पंक्ति का छोटा तथ्य/व्याख्या (हिन्दी में)।
+7. एक भी प्रश्न न मिले तो {"items": []} दो।
+केवल JSON दो: {"items":[{"q":"","options":["","","",""],"answer":0,"answer_in_file":true,"subject":"","chapter":"","facts":[""]}]}
+__KEY__
+
+टेक्स्ट:
+__TEXT__
+"""
+
+GEN_FROM_TEXT_PROMPT = """
+नीचे अध्ययन-सामग्री का टेक्स्ट है। केवल इसी सामग्री के आधार पर __N__ बहुविकल्पीय प्रश्न (MCQ) हिन्दी में बनाओ।
+
+नियम:
+1. सभी प्रश्न परीक्षा-उपयोगी हों और सामग्री में दिए तथ्यों पर टिके हों; अपनी तरफ से गलत तथ्य मत जोड़ो।
+2. प्रत्येक प्रश्न के ठीक 4 अलग-अलग विकल्प हों। answer सही विकल्प का index (0-3) हो।
+3. subject: इस सूची में से ठीक एक अंग्रेज़ी नाम: History, Geography, Polity, Economics, Physics, Chemistry, Biology, Science, Maths, Reasoning, Hindi, English, Sanskrit, Computer, Pedagogy, EVS, Current Affairs, Bihar GK, Bihar Current Affairs, General Knowledge.
+4. chapter: अध्याय/टॉपिक का छोटा नाम (हिन्दी में); facts: उत्तर की एक पंक्ति की व्याख्या।__NOTE__
+केवल JSON दो: {"items":[{"q":"","options":["","","",""],"answer":0,"subject":"","chapter":"","facts":[""]}]}
+
+सामग्री:
+__TEXT__
+"""
+
+
+def download_telegram_file(file_id):
+    info = telegram("getFile", {"file_id": file_id})
+    path = (info.get("result") or {}).get("file_path")
+    if not path:
+        raise RuntimeError("Telegram से फ़ाइल उतार नहीं पाया")
+    r = requests.get("https://api.telegram.org/file/bot" + BOT_TOKEN + "/" + path, timeout=120)
+    r.raise_for_status()
+    return r.content
+
+
+def extract_text(data, filename):
+    ext = os.path.splitext(filename.lower())[1]
+    if ext == ".pdf":
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise RuntimeError("pypdf install नहीं है। GitHub workflow में pip install वाली लाइन में pypdf और python-docx जोड़ें।")
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    if ext == ".docx":
+        try:
+            from docx import Document
+            from docx.table import Table
+            from docx.text.paragraph import Paragraph
+        except ImportError:
+            raise RuntimeError("python-docx install नहीं है। GitHub workflow में pip install वाली लाइन में pypdf और python-docx जोड़ें।")
+        doc = Document(io.BytesIO(data))
+        out = []
+        for el in doc.element.body.iterchildren():
+            if el.tag.endswith("}p"):
+                out.append(Paragraph(el, doc).text)
+            elif el.tag.endswith("}tbl"):
+                for row in Table(el, doc).rows:
+                    out.append(" | ".join(c.text.strip() for c in row.cells))
+        return "\n".join(out)
+    if ext in (".txt", ".md"):
+        return data.decode("utf-8", errors="replace")
+    raise RuntimeError("सिर्फ़ PDF, DOCX या TXT फ़ाइल भेजें।")
+
+
+def find_answer_key(text):
+    """Aakhri hisse me 'उत्तरमाला / Answer Key' ho to (prashn-bhaag, kunji) deta hai."""
+    start = int(len(text) * 0.55)
+    m = re.search(r"(उत्तर\s*(?:माला|कुंजी|सूची)|answer\s*key|answers?\s*:)", text[start:], flags=re.IGNORECASE)
+    if not m:
+        return text, ""
+    pos = start + m.start()
+    block = text[pos:pos + 4000]
+    if len(re.findall(r"\b\d{1,3}\s*[\.\-\):]?\s*\(?[A-Da-dक-घ1-4]\)?(?=\s|,|;|$)", block)) < 10:
+        return text, ""
+    return text[:pos], block
+
+
+def make_chunks(text):
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    chunks, cur, size, fresh = [], [], 0, 0
+    for line in lines:
+        cur.append(line)
+        size += len(line) + 1
+        fresh += 1
+        if size >= CHUNK_CHARS:
+            chunks.append("\n".join(cur))
+            cur = cur[-4:]          # thoda overlap, taaki beech me kata prashn na chhute
+            size = sum(len(x) + 1 for x in cur)
+            fresh = 0
+    if cur and fresh:
+        chunks.append("\n".join(cur))
+    return chunks
+
+
+def canon_subject(raw):
+    s0 = str(raw or "").strip()
+    for en, hi in SUBJ_HI.items():
+        if s0.lower() == en.lower() or s0 == hi:
+            return en
+    found = extract_metadata(s0.lower())["subject"]
+    alias = {"General": "", "General Science": "Science", "Hindi Grammar": "Hindi", "English Grammar": "English"}
+    found = alias.get(found, found)
+    return found or s0 or "General Knowledge"
+
+
+def _items_from_raw(raw):
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", (raw or "").strip())
+    data = json.loads(raw)
+    items = data.get("items") if isinstance(data, dict) else data
+    out = []
+    for it in items or []:
+        try:
+            q = str(it.get("q", "")).strip()
+            opts = [str(x).strip() for x in (it.get("options") or []) if str(x).strip()]
+            ans = int(it.get("answer", -1))
+        except Exception:
+            continue
+        if not q or len(opts) < 4 or not 0 <= ans <= 3 or len(set(opts[:4])) < 4:
+            continue
+        facts = it.get("facts")
+        facts = [str(f).strip() for f in facts if str(f).strip()][:2] if isinstance(facts, list) else ([str(facts).strip()] if facts else [])
+        out.append({
+            "q": [q, opts[:4], ans, facts],
+            "subject": canon_subject(it.get("subject")),
+            "chapter": str(it.get("chapter", "") or "").strip()[:40],
+            "solved": it.get("answer_in_file") is False,
+        })
+    return out
+
+
+def groq_items(prompt, tries=3):
+    last = None
+    for attempt in range(tries):
+        try:
+            return _items_from_raw(ask_groq(prompt, is_json=True))
+        except Exception as e:
+            last = e
+            time.sleep(_backoff(e, attempt))
+    raise last
+
+
+def dedupe_items(items):
+    seen, out = set(), []
+    for it in items:
+        k = re.sub(r"\W+", "", it["q"][0].lower())[:60]
+        if k and k not in seen:
+            seen.add(k)
+            out.append(it)
+    return out
+
+
+def extract_mcqs(chunks, key, cache):
+    items, failed = [], 0
+    for i, ch in enumerate(chunks):
+        if i not in cache:
+            prompt = EXTRACT_PROMPT.replace("__KEY__", ("\nउत्तर-कुंजी (प्रश्न-संख्या से मिलाओ):\n" + key + "\n") if key else "").replace("__TEXT__", ch)
+            try:
+                cache[i] = groq_items(prompt)
+            except Exception as e:
+                print("chunk failed:", i, e)
+                cache[i] = []
+                failed += 1
+            time.sleep(1)
+        items.extend(cache[i])
+    return dedupe_items(items), failed
+
+
+def generate_from_text(chunks, count, note):
+    k = max(1, min(len(chunks), -(-count // 8)))
+    picks = sorted({int(i * len(chunks) / k) for i in range(k)})
+    per = -(-count // len(picks))
+    items = []
+    for i in picks:
+        prompt = GEN_FROM_TEXT_PROMPT.replace("__N__", str(min(per, 12))).replace("__NOTE__", ("\n" + note.strip(" ()")) if note else "").replace("__TEXT__", chunks[i])
+        try:
+            items.extend(groq_items(prompt))
+        except Exception as e:
+            print("generate chunk failed:", i, e)
+        time.sleep(1)
+    return dedupe_items(items)[:count]
+
+
+def doc_options(caption):
+    """Caption se: kaun sa type, kitne prashn, kaise groups."""
+    cap = (caption or "").strip()
+    low = cap.lower()
+    first = low.split()[0].split("@")[0] if low.split() else ""
+    command = "/test"
+    for cmd_name in ("/mock", "/quiz", "/practice", "/pyq", "/test"):
+        if first == cmd_name:
+            command = cmd_name
+    if first not in ("/mock", "/quiz", "/practice", "/pyq", "/test"):
+        if re.search(r"\bmock\b|मॉक", low):
+            command = "/mock"
+        elif re.search(r"quiz|क्विज", low):
+            command = "/quiz"
+        elif re.search(r"practice|अभ्यास|\bset\b|सेट", low):
+            command = "/practice"
+        elif re.search(r"\bpyq\b|पिछले", low):
+            command = "/pyq"
+    cap_clean, difficulty = extract_difficulty(cap)
+    m = (re.search(r"(\d{1,3})\s*(?:q\b|mcqs?|प्रश्न|सवाल|questions?)", cap, re.IGNORECASE)
+         or re.search(r"(?:\bq|mcqs?|questions?)\s*[:\-]?\s*(\d{1,3})\b", cap, re.IGNORECASE)
+         or re.fullmatch(r"\s*/?\w*\s+(\d{1,3})\s*", cap_clean))
+    count = int(m.group(1)) if m else None
+    if re.search(r"मिलाकर|मिक्स|mixed|combine|एक ही|ek hi|ek test|single|one test|सब मिला", low):
+        group = "combined"
+    elif re.search(r"chapter|अध्याय|चैप्टर|टॉपिक|topic", low):
+        group = "chapter"
+    else:
+        group = "subject"
+    return {"command": command, "count": count, "difficulty": difficulty, "group": group}
+
+
+def write_test_page(topic, command, questions, seq, mixed=False, meta_topic=None):
+    info = command_info(command)
+    count = len(questions)
+    test_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + f"-{seq:02d}"
+    filename = f"{safe_slug(topic)}-{count}q-{test_id}.html"
+    folder = info["folder"]
+    os.makedirs(folder, exist_ok=True)
+    try:
+        translations = translate_questions(questions)
+    except Exception as e:
+        print("Translation skipped:", e)
+        translations = {}
+    page = make_test_page(topic, count, questions, test_id, translations)
+    with open(os.path.join(folder, filename), "w", encoding="utf-8") as f:
+        f.write(page)
+    url = BASE_URL + folder + "/" + quote(filename)
+    update_registry(topic, count, command, url, test_id, mixed=mixed, meta_topic=meta_topic)
+    return url
+
+
+def split_message(lines, limit=3500):
+    parts, cur = [], ""
+    for line in lines:
+        if len(cur) + len(line) + 1 > limit and cur:
+            parts.append(cur)
+            cur = ""
+        cur += line + "\n"
+    if cur:
+        parts.append(cur)
+    return parts
+
+
+def handle_document(chat_id, doc, caption):
+    name = doc.get("file_name") or "file"
+    ext = os.path.splitext(name.lower())[1]
+    if ext not in (".pdf", ".docx", ".txt"):
+        send_message(chat_id, "❌ सिर्फ़ PDF, DOCX या TXT फ़ाइल भेजें। (पुरानी .doc फ़ाइल को Word में DOCX करके भेजें)")
+        return
+    if (doc.get("file_size") or 0) > MAX_FILE_MB * 1024 * 1024:
+        send_message(chat_id, f"❌ फ़ाइल {MAX_FILE_MB} MB से बड़ी है। उसे छोटे हिस्सों में बाँटकर भेजें।")
+        return
+
+    opt = doc_options(caption)
+    command, count, group = opt["command"], opt["count"], opt["group"]
+    info = command_info(command)
+    note = difficulty_note(opt["difficulty"])
+    stem = re.sub(r"[_\-]+", " ", os.path.splitext(name)[0]).strip()[:25] or "File"
+
+    send_message(chat_id, f"📄 <b>{html.escape(name)}</b> पढ़ रहा हूँ...")
+    try:
+        text = re.sub(r"[ \t]+", " ", extract_text(download_telegram_file(doc["file_id"]), name))
+        if len(text.strip()) < 200:
+            raise RuntimeError("फ़ाइल से लगभग कोई टेक्स्ट नहीं मिला। शायद यह स्कैन/फ़ोटो वाली PDF है (इसे अभी नहीं पढ़ सकता)।")
+        body, key = find_answer_key(text)
+        chunks = make_chunks(body)
+        truncated = len(chunks) > MAX_CHUNKS
+        chunks = chunks[:MAX_CHUNKS]
+        send_message(chat_id, f"🤖 {len(text):,} अक्षर, {len(chunks)} हिस्से। प्रश्न ढूँढ रहा हूँ... (समय लग सकता है)")
+
+        # pehle 3 hisse jaanch kar dekho: file me taiyar MCQ hain ya sirf padhne ki saamagri
+        cache, mode, failed = {}, "extract", 0
+        probe = sorted({0, len(chunks) // 2, len(chunks) - 1})
+        probe_found = []
+        for i in probe:
+            got, f = extract_mcqs([chunks[i]], key, {})
+            cache[i] = got
+            failed += f
+            probe_found += got
+        if len(dedupe_items(probe_found)) >= 3:
+            items, f2 = extract_mcqs(chunks, key, cache)
+            failed += f2
+        else:
+            mode = "generate"
+            items = generate_from_text(chunks, count or 20, note)
+        if not items:
+            raise RuntimeError("फ़ाइल से कोई प्रश्न नहीं मिला/बना। हो सकता है PDF का फ़ॉन्ट पढ़ा न जा रहा हो (पुराने Hindi फ़ॉन्ट) या फ़ाइल बहुत छोटी हो।")
+
+        if count and mode == "extract" and len(items) > count:
+            keep = sorted(random.sample(range(len(items)), count))
+            items = [items[i] for i in keep]
+        solved = sum(1 for it in items if it["solved"])
+
+        # groups
+        label = {"/test": "Test", "/mock": "Mock", "/quiz": "Quiz", "/practice": "Practice", "/pyq": "PYQ"}[command]
+        groups = {}
+        if group == "combined":
+            groups[("", "")] = items
+        else:
+            for it in items:
+                groups.setdefault((it["subject"], it["chapter"] or "अन्य" if group == "chapter" else ""), []).append(it)
+            small = [k for k, v in groups.items() if len(v) < MIN_GROUP]
+            if small and len(small) < len(groups) + 1:
+                other = []
+                for k in small:
+                    other += groups.pop(k)
+                if len(other) >= MIN_GROUP or not groups:
+                    groups[("General Knowledge", "अन्य")] = groups.get(("General Knowledge", "अन्य"), []) + other
+                else:  # bahut kam bache: sabse bade group me jod do
+                    big = max(groups, key=lambda k: len(groups[k]))
+                    groups[big] += other
+
+        send_message(chat_id, f"✅ {len(items)} प्रश्न {'फ़ाइल से निकाले' if mode == 'extract' else 'फ़ाइल की सामग्री से बनाए'}। अब {len(groups)} test बना रहा हूँ...")
+
+        made, seq = [], 0
+        for (subj, chap), qs in groups.items():
+            parts = [qs[i:i + MAX_PER_TEST] for i in range(0, len(qs), MAX_PER_TEST)]
+            for pi, part in enumerate(parts, 1):
+                questions = [p["q"] for p in part]
+                n = len(questions)
+                suffix = f" भाग {pi}" if len(parts) > 1 else ""
+                if group == "combined":
+                    base = f"{label} {n}Q"
+                    topic = f"{base} {next_series_number(base)}"
+                    meta, mixed = None, True
+                else:
+                    hi = SUBJ_HI.get(subj, subj)
+                    middle = chap if group == "chapter" else stem
+                    topic = f"{hi} — {middle} {n}Q{suffix}"
+                    meta, mixed = (subj if subj in SUBJ_HI else None), False
+                seq += 1
+                url = write_test_page(topic, command, questions, seq, mixed=mixed, meta_topic=meta)
+                made.append((topic, n, url))
+
+        if not git_publish(f"Generate from file: {name} ({len(items)}Q)"):
+            raise RuntimeError("GitHub पर publish नहीं हो पाया, link काम नहीं करेगा")
+
+        lines = [f"✅ <b>{len(made)} {info['label']} तैयार!</b>", ""]
+        for topic, n, url in made:
+            lines.append(f'• {html.escape(topic)} ({n} प्रश्न)\n  <a href="{html.escape(url, quote=True)}">🔗 {info["btn_text"]}</a>')
+        extra = []
+        if solved:
+            extra.append(f"⚠️ {solved} प्रश्नों का उत्तर फ़ाइल में नहीं मिला, AI ने खुद हल किया है। एक बार जाँच लें।")
+        if failed:
+            extra.append(f"⚠️ {failed} हिस्से नहीं पढ़ पाया (Groq error), उनके प्रश्न छूट गए हो सकते हैं।")
+        if truncated:
+            extra.append(f"⚠️ फ़ाइल बहुत बड़ी थी, सिर्फ़ शुरू के {MAX_CHUNKS} हिस्से पढ़े गए।")
+        extra.append("(GitHub Pages पर लिंक चालू होने में 1-2 मिनट लग सकते हैं)")
+        for part in split_message(lines + [""] + extra):
+            send_message(chat_id, part)
+    except Exception as e:
+        send_message(chat_id, f"❌ फ़ाइल से test नहीं बन पाया\n\n{html.escape(str(e)[:1200])}")
+
+
 def handle_delete(chat_id, name):
     if not str(name).strip():
         send_message(chat_id, "❓ किसे हटाना है? जैसे: <b>Test 40Q 1 delete कर दो</b>")
@@ -1334,11 +1722,12 @@ def handle_delete(chat_id, name):
 def process_update(update):
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
-    text = (message.get("text") or "").strip()
-    if not chat_id or not text:
+    doc = message.get("document")
+    text = (message.get("text") or message.get("caption") or "").strip()
+    if not chat_id or (not text and not doc):
         return
 
-    word = text.split()[0].lower().split("@")[0]
+    word = text.split()[0].lower().split("@")[0] if text else ""
     if word == "/id":
         send_message(chat_id, f"आपका chat id: {chat_id}")
         return
@@ -1346,6 +1735,9 @@ def process_update(update):
     if ALLOWED and str(chat_id) not in ALLOWED:
         send_message(chat_id, "यह bot निजी है।")
         return
+
+    if doc:
+        return handle_document(chat_id, doc, text)
 
     if word in ("/start", "/help"):
         send_message(chat_id, HELP_TEXT)
