@@ -1129,7 +1129,7 @@ def git_publish(message):
         run = lambda *a: subprocess.run(a, check=True)
         run("git", "config", "user.name", "gyankshetra")
         run("git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
-        dirs = [d for d in ("content", "tests", "quiz", "practice", "notes") if os.path.isdir(d)]
+        dirs = [d for d in ("content", "tests", "quiz", "practice", "notes", "materials") if os.path.isdir(d)]
         run("git", "add", *dirs)
         if subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0:
             return True
@@ -1173,6 +1173,7 @@ HELP_TEXT = (
     "• ऑक्सीकरण के short notes / study material\n"
     "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n"
     "• Test 40Q 1 delete कर दो\n"
+    "• BPSC 2019 paper से 30 प्रश्न का quiz (ऐप में सेव की हुई फ़ाइल से)\n"
     "• 📎 PDF / DOCX भेजें (साथ में लिखें: 30 प्रश्न quiz, विषय अलग-अलग, chapter wise, या सब मिलाकर एक test)\n\n"
     "Commands भी चलते हैं: /test /mock /quiz /practice /pyq /notes"
 )
@@ -1188,6 +1189,7 @@ intent के विकल्प:
 - "practice": practice, अभ्यास, set, सवाल/प्रश्न बनाओ (बिना किसी और शब्द के)
 - "pyq": पिछले वर्षों के प्रश्न, PYQ
 - "notes": notes, नोट्स, study material, अध्ययन सामग्री, download, PDF, summary, पढ़ने की सामग्री
+- "from_file": यूज़र नीचे दी गई "सेव की हुई फ़ाइलें" में से किसी फ़ाइल/paper/किताब से test/quiz बनवाना चाहे (नाम मिलता-जुलता हो या "इस paper से" जैसा संकेत हो); topic में फ़ाइल का नाम
 - "delete": बना हुआ test/quiz/notes हटाना (delete, हटाओ, मिटाओ); topic में उसका नाम, जैसे "Test 40Q 1"
 - "chat": ऊपर में से कुछ नहीं; सामान्य सवाल/बातचीत
 
@@ -1202,6 +1204,9 @@ JSON structure:
 5. intent "chat" हो तो reply में हिन्दी में छोटा, सही जवाब (अधिकतम 800 अक्षर) दो और बाकी खाली रखो।
 6. केवल JSON, कोई अतिरिक्त शब्द या Markdown नहीं।
 
+सेव की हुई फ़ाइलें (ऐप के Study Material में):
+__FILES__
+
 यूज़र का संदेश:
 __TEXT__
 """
@@ -1213,11 +1218,13 @@ def natural_command(text):
     """Seedhe likhe sandesh ko Groq se samajh kar parse_command jaisa dict deta hai.
     Return: (cmd, reply). Chat jaisa ho to cmd None aur reply me jawab."""
     schedule_ts, cleaned = parse_schedule_time(text)
-    raw = ask_groq(NL_PROMPT.replace("__TEXT__", cleaned), is_json=True).strip()
+    raw = ask_groq(NL_PROMPT.replace("__FILES__", "\n".join(material_titles()) or "(कोई नहीं)").replace("__TEXT__", cleaned), is_json=True).strip()
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
     data = json.loads(raw)
 
     intent = str(data.get("intent", "")).lower().strip()
+    if intent == "from_file":
+        return {"command": "/doc", "topic": str(data.get("topic", "")).strip(), "caption": text}, ""
     if intent == "delete":
         return {"command": "/delete", "topic": str(data.get("topic", "")).strip()}, ""
     if intent not in _INTENT_CMD:
@@ -1313,7 +1320,8 @@ def delete_items(query):
         if url.startswith(BASE_URL):
             rel = unquote(url[len(BASE_URL):].split("?")[0].split("#")[0])
             top = rel.split("/")[0]
-            if top in ("tests", "quiz", "practice", "notes") and rel.endswith(".html") and ".." not in rel and os.path.isfile(rel):
+            ok_dir = (top in ("tests", "quiz", "practice", "notes") and rel.endswith(".html")) or top == "materials"
+            if ok_dir and ".." not in rel and os.path.isfile(rel):
                 os.remove(rel)
         deleted.append(str(e.get("title")))
     for path, reg in found:
@@ -1530,6 +1538,26 @@ def generate_from_text(chunks, count, note):
     return dedupe_items(items)[:count]
 
 
+_EXCL_RE = re.compile(r"(chod\s*kar|chhod\s*kar|chodkar|छोड़\s*कर|छोड़कर|छोडकर|हटाकर|हटा\s*कर|except|excluding|exclude|without|बिना)")
+_INCL_RE = re.compile(r"(?:sirf|सिर्फ़|सिर्फ|केवल|only)\b(.*)")
+
+
+def _subjects_in(seg):
+    """Text me jo vishay ke naam aaye (English ya Hindi) unka set deta hai."""
+    low = seg.lower()
+    names = []
+    for en, hi in SUBJ_HI.items():
+        names += [(en.lower(), en), (hi, en)]
+    names += [("current affair", "Current Affairs"), ("करेंट", "Current Affairs")]
+    names.sort(key=lambda x: -len(x[0]))        # lambe naam pehle: 'social science' ko 'science' na samjhe
+    found = set()
+    for n, en in names:
+        if n and n in low:
+            found.add(en)
+            low = low.replace(n, " ")
+    return found
+
+
 def doc_options(caption):
     """Caption se: kaun sa type, kitne prashn, kaise groups."""
     cap = (caption or "").strip()
@@ -1549,17 +1577,30 @@ def doc_options(caption):
         elif re.search(r"\bpyq\b|पिछले", low):
             command = "/pyq"
     cap_clean, difficulty = extract_difficulty(cap)
-    m = (re.search(r"(\d{1,3})\s*(?:q\b|mcqs?|प्रश्न|सवाल|questions?)", cap, re.IGNORECASE)
-         or re.search(r"(?:\bq|mcqs?|questions?)\s*[:\-]?\s*(\d{1,3})\b", cap, re.IGNORECASE)
+    m = (re.search(r"(\d{1,3})\s*(?:q\b|mcqs?|prashn|prasn|prshn|sawal|saval|swal|ques\w*|प्रश्न|सवाल|questions?)", cap, re.IGNORECASE)
+         or re.search(r"(?:\bq|mcqs?|questions?|prashn|sawal)\s*[:\-]?\s*(\d{1,3})\b", cap, re.IGNORECASE)
          or re.fullmatch(r"\s*/?\w*\s+(\d{1,3})\s*", cap_clean))
     count = int(m.group(1)) if m else None
     if re.search(r"मिलाकर|मिक्स|mixed|combine|एक ही|ek hi|ek test|single|one test|सब मिला", low):
         group = "combined"
     elif re.search(r"chapter|अध्याय|चैप्टर|टॉपिक|topic", low):
         group = "chapter"
-    else:
+    elif re.search(r"subject|विषय|अलग|alag|wise", low):
         group = "subject"
-    return {"command": command, "count": count, "difficulty": difficulty, "group": group}
+    else:
+        group = "combined" if count else "subject"   # ginti likhi ho to ek hi test
+
+    exclude, include = set(), set()
+    mk = _EXCL_RE.search(low)
+    if mk:
+        after_first = re.match(r"except|exclud|without|बिना", mk.group(0))
+        exclude = _subjects_in(low[mk.end():] if after_first else low[:mk.start()])
+    else:
+        mi = _INCL_RE.search(low)
+        if mi:
+            include = _subjects_in(mi.group(1))
+    return {"command": command, "count": count, "difficulty": difficulty, "group": group,
+            "exclude": exclude, "include": include}
 
 
 def write_test_page(topic, command, questions, seq, mixed=False, meta_topic=None):
@@ -1596,11 +1637,15 @@ def split_message(lines, limit=3500):
 
 def handle_document(chat_id, doc, caption):
     name = doc.get("file_name") or "file"
+    process_document(chat_id, name, doc.get("file_size") or 0, lambda: download_telegram_file(doc["file_id"]), caption)
+
+
+def process_document(chat_id, name, size, loader, caption, title=None):
     ext = os.path.splitext(name.lower())[1]
     if ext not in (".pdf", ".docx", ".txt"):
-        send_message(chat_id, "❌ सिर्फ़ PDF, DOCX या TXT फ़ाइल भेजें। (पुरानी .doc फ़ाइल को Word में DOCX करके भेजें)")
+        send_message(chat_id, "❌ सिर्फ़ PDF, DOCX या TXT फ़ाइल से test बन सकता है। (पुरानी .doc फ़ाइल को Word में DOCX करके भेजें)")
         return
-    if (doc.get("file_size") or 0) > MAX_FILE_MB * 1024 * 1024:
+    if size > MAX_FILE_MB * 1024 * 1024:
         send_message(chat_id, f"❌ फ़ाइल {MAX_FILE_MB} MB से बड़ी है। उसे छोटे हिस्सों में बाँटकर भेजें।")
         return
 
@@ -1608,13 +1653,14 @@ def handle_document(chat_id, doc, caption):
     command, count, group = opt["command"], opt["count"], opt["group"]
     info = command_info(command)
     note = difficulty_note(opt["difficulty"])
-    stem = re.sub(r"[_\-]+", " ", os.path.splitext(name)[0]).strip()[:25] or "File"
+    stem = (title or re.sub(r"[_\-]+", " ", os.path.splitext(name)[0])).strip()
+    stem = re.sub(r"^[^\w\u0900-\u097F]+", "", stem)[:25] or "File"
 
     send_message(chat_id, f"📄 <b>{html.escape(name)}</b> पढ़ रहा हूँ...")
     try:
-        text = re.sub(r"[ \t]+", " ", extract_text(download_telegram_file(doc["file_id"]), name))
+        text = re.sub(r"[ \t]+", " ", extract_text(loader(), name))
         if len(text.strip()) < 200:
-            raise RuntimeError("फ़ाइल से लगभग कोई टेक्स्ट नहीं मिला। शायद यह स्कैन/फ़ोटो वाली PDF है (इसे अभी नहीं पढ़ सकता)।")
+            raise RuntimeError("फ़ाइल से लगभग कोई टेक्स्ट नहीं मिला। अगर यह स्कैन/फ़ोटो वाली PDF है तो उसे अभी नहीं पढ़ सकता।")
         body, key = find_answer_key(text)
         chunks = make_chunks(body)
         truncated = len(chunks) > MAX_CHUNKS
@@ -1638,6 +1684,17 @@ def handle_document(chat_id, doc, caption):
             items = generate_from_text(chunks, count or 20, note)
         if not items:
             raise RuntimeError("फ़ाइल से कोई प्रश्न नहीं मिला/बना। हो सकता है PDF का फ़ॉन्ट पढ़ा न जा रहा हो (पुराने Hindi फ़ॉन्ट) या फ़ाइल बहुत छोटी हो।")
+
+        excl, incl = opt["exclude"], opt["include"]
+        if excl:
+            items = [it for it in items if it["subject"] not in excl]
+        if incl:
+            items = [it for it in items if it["subject"] in incl]
+        if not items:
+            raise RuntimeError("विषय-फ़िल्टर के बाद कोई प्रश्न नहीं बचा।")
+        available = len(items)
+        filt_note = (" (" + ", ".join(SUBJ_HI.get(x, x) for x in sorted(excl)) + " छोड़कर)") if excl else \
+                    (" (सिर्फ़ " + ", ".join(SUBJ_HI.get(x, x) for x in sorted(incl)) + ")") if incl else ""
 
         if count and mode == "extract" and len(items) > count:
             keep = sorted(random.sample(range(len(items)), count))
@@ -1663,7 +1720,7 @@ def handle_document(chat_id, doc, caption):
                     big = max(groups, key=lambda k: len(groups[k]))
                     groups[big] += other
 
-        send_message(chat_id, f"✅ {len(items)} प्रश्न {'फ़ाइल से निकाले' if mode == 'extract' else 'फ़ाइल की सामग्री से बनाए'}। अब {len(groups)} test बना रहा हूँ...")
+        send_message(chat_id, f"✅ {len(items)} प्रश्न {'फ़ाइल से निकाले' if mode == 'extract' else 'फ़ाइल की सामग्री से बनाए'}{filt_note}। अब {len(groups)} test बना रहा हूँ...")
 
         made, seq = [], 0
         for (subj, chap), qs in groups.items():
@@ -1696,6 +1753,8 @@ def handle_document(chat_id, doc, caption):
             extra.append(f"⚠️ {solved} प्रश्नों का उत्तर फ़ाइल में नहीं मिला, AI ने खुद हल किया है। एक बार जाँच लें।")
         if failed:
             extra.append(f"⚠️ {failed} हिस्से नहीं पढ़ पाया (Groq error), उनके प्रश्न छूट गए हो सकते हैं।")
+        if count and available < count:
+            extra.append(f"⚠️ आपने {count} प्रश्न माँगे थे, फ़ाइल में सिर्फ़ {available} मिले।")
         if truncated:
             extra.append(f"⚠️ फ़ाइल बहुत बड़ी थी, सिर्फ़ शुरू के {MAX_CHUNKS} हिस्से पढ़े गए।")
         extra.append("(GitHub Pages पर लिंक चालू होने में 1-2 मिनट लग सकते हैं)")
@@ -1703,6 +1762,113 @@ def handle_document(chat_id, doc, caption):
             send_message(chat_id, part)
     except Exception as e:
         send_message(chat_id, f"❌ फ़ाइल से test नहीं बन पाया\n\n{html.escape(str(e)[:1200])}")
+
+
+# ----------------------------------- App me Admin ne jo documents save kiye
+def _html_text(raw):
+    """HTML se saaf text (script/style hata kar)."""
+    raw = str(raw or "")
+    m = re.search(r'class="content"[^>]*>(.*)', raw, flags=re.S)
+    if m:
+        raw = m.group(1)
+    raw = re.sub(r"(?is)<(script|style).*?</\1>", " ", raw)
+    raw = re.sub(r"(?i)<br\s*/?>|</(p|div|h[1-6]|li|tr|ul|ol)>", "\n", raw)
+    raw = re.sub(r"<[^>]+>", " ", raw)
+    return re.sub(r"\n\s*\n+", "\n", html.unescape(raw)).strip()
+
+
+def _notes_page_path(e):
+    url = str(e.get("url", ""))
+    if not url.startswith(BASE_URL):
+        return None
+    rel = unquote(url[len(BASE_URL):].split("?")[0].split("#")[0])
+    if rel.startswith("notes/") and rel.endswith(".html") and ".." not in rel and os.path.isfile(rel):
+        return rel
+    return None
+
+
+def _material_entries():
+    """App me save hui cheezein jinse test ban sakta hai:
+    upload ki gayi file, app me likha note, aur bot ke bane notes."""
+    try:
+        with open(STUDY_MATERIAL_FILE, "r", encoding="utf-8") as f:
+            reg = json.load(f)
+    except Exception:
+        return []
+    out = []
+    for e in reg if isinstance(reg, list) else []:
+        if not isinstance(e, dict) or not e.get("title"):
+            continue
+        t = e.get("type")
+        if t == "file" and str(e.get("path", "")).startswith("materials/"):
+            out.append(e)
+        elif t == "note" and e.get("html"):
+            out.append(e)
+        elif t == "notes" and _notes_page_path(e):
+            out.append(e)
+    return out
+
+
+def material_titles():
+    return [str(e.get("title")) for e in _material_entries()][:40]
+
+
+def find_material(query):
+    """(mila hua, ek se zyada/sujhav) deta hai."""
+    import difflib
+    files = _material_entries()
+    q = _norm_title(query)
+    if not q or not files:
+        return [], []
+    exact = [e for e in files if _norm_title(e["title"]) == q]
+    if exact:
+        return exact[:1], []
+    part = [e for e in files if q in _norm_title(e["title"]) or _norm_title(e["title"]) in q]
+    if len(part) == 1:
+        return part, []
+    if len(part) > 1:
+        return [], part[:8]
+    scored = sorted(files, key=lambda e: -difflib.SequenceMatcher(None, q, _norm_title(e["title"])).ratio())
+    ratios = [difflib.SequenceMatcher(None, q, _norm_title(e["title"])).ratio() for e in scored]
+    if ratios[0] >= 0.6 and (len(ratios) == 1 or ratios[0] - ratios[1] >= 0.08):
+        return scored[:1], []
+    return [], scored[:5]
+
+
+def handle_material(chat_id, query, caption):
+    files = _material_entries()
+    if not files:
+        send_message(chat_id, "❌ ऐप के Study Material में अभी कोई फ़ाइल सेव नहीं है। पहले Admin Login करके फ़ाइल upload करें।")
+        return
+    match, many = find_material(query)
+    if not match:
+        names = "\n".join("• " + html.escape(str(e.get("title"))) for e in (many or files[:8]))
+        send_message(chat_id, "❓ कौन सी फ़ाइल? पूरा नाम लिखें:\n" + names)
+        return
+    e = match[0]
+    kind = e.get("type")
+    title = str(e.get("title"))
+    if kind == "file":
+        path = str(e.get("path", ""))
+        if ".." in path or not path.startswith("materials/") or not os.path.isfile(path):
+            send_message(chat_id, "❌ यह फ़ाइल बॉट को अभी नहीं मिली। upload के 1-2 मिनट बाद फिर कोशिश करें।")
+            return
+
+        def loader():
+            with open(path, "rb") as f:
+                return f.read()
+
+        process_document(chat_id, os.path.basename(path), os.path.getsize(path), loader, caption or "", title=title)
+        return
+
+    # app me likha note ya bot ka bana notes: HTML se text nikaal kar
+    if kind == "note":
+        text = _html_text(e.get("html"))
+    else:
+        with open(_notes_page_path(e), "r", encoding="utf-8") as f:
+            text = _html_text(f.read())
+    data = text.encode("utf-8")
+    process_document(chat_id, "note.txt", len(data), lambda: data, caption or "", title=title)
 
 
 def handle_delete(chat_id, name):
@@ -1742,6 +1908,10 @@ def process_update(update):
     if word in ("/start", "/help"):
         send_message(chat_id, HELP_TEXT)
         return
+    if word in ("/doc", "/file"):
+        rest = text.split(None, 1)[1] if len(text.split(None, 1)) > 1 else ""
+        name, _, cap = rest.partition("|")
+        return handle_material(chat_id, name.strip(), cap.strip())
     if word == "/delete":
         cmd = {"command": "/delete", "topic": text.split(None, 1)[1] if len(text.split(None, 1)) > 1 else ""}
         return handle_delete(chat_id, cmd["topic"])
@@ -1764,6 +1934,8 @@ def process_update(update):
 
     if cmd.get("command") == "/delete":
         return handle_delete(chat_id, cmd.get("topic", ""))
+    if cmd.get("command") == "/doc":
+        return handle_material(chat_id, cmd.get("topic", ""), cmd.get("caption", ""))
 
     if cmd.get("error"):
         send_message(chat_id, "❌ " + cmd["error"])
@@ -1907,6 +2079,12 @@ def main():
                 process_update(u)
             except Exception as e:
                 print("process_update failed:", e)
+                try:
+                    cid = ((u.get("message") or {}).get("chat") or {}).get("id")
+                    if cid:
+                        send_message(cid, "❌ Bot में error आया: " + html.escape(str(e)[:300]))
+                except Exception:
+                    pass
     except Exception as e:
         print("Error fetching updates:", e)
 
