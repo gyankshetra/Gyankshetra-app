@@ -211,13 +211,43 @@ def parse_sections(text):
     return None
 
 
-def generate_sections(sections, mode):
+def generate_sections(sections, mode, note=""):
     """Har vishay ke apne prashn alag bana kar ek list me jodta hai."""
     out = []
     for i, (name, n) in enumerate(sections):
         print(f"Section {i + 1}/{len(sections)}: {name} x{n}")
-        out.extend(generate_all(name, n, mode))
+        out.extend(generate_all(name + note, n, mode))
     return out
+
+
+_DIFF_RE = re.compile(r"\b(easy|moderate|medium|hard|difficult)\b|आसान|मध्यम|कठिन", re.IGNORECASE)
+
+
+def extract_difficulty(text):
+    """Text me se Easy/Moderate/Hard shabd nikal kar (saaf text, difficulty) deta hai.
+    Ek se zyada level likhe ho to 'mixed' (teeno ka mishran)."""
+    levels = set()
+    for m in _DIFF_RE.finditer(text or ""):
+        w = m.group(0).lower()
+        if w in ("easy", "आसान"):
+            levels.add("easy")
+        elif w in ("moderate", "medium", "मध्यम"):
+            levels.add("moderate")
+        else:
+            levels.add("hard")
+    clean = re.sub(r"\s+", " ", _DIFF_RE.sub(" ", text or "")).strip()
+    if len(levels) >= 2:
+        return clean, "mixed"
+    return clean, (levels.pop() if levels else "")
+
+
+def difficulty_note(level):
+    return {
+        "easy": " (कठिनाई: सभी प्रश्न Easy स्तर के हों)",
+        "moderate": " (कठिनाई: सभी प्रश्न Moderate स्तर के हों)",
+        "hard": " (कठिनाई: सभी प्रश्न Hard स्तर के हों)",
+        "mixed": " (कठिनाई: Easy, Moderate और Hard प्रश्नों का बराबर मिश्रण हो)",
+    }.get(level or "", "")
 
 
 def parse_command(text):
@@ -230,6 +260,7 @@ def parse_command(text):
 
     rest_str = " ".join(parts[1:])
     schedule_ts, cleaned_rest = parse_schedule_time(rest_str)
+    cleaned_rest, difficulty = extract_difficulty(cleaned_rest)
 
     sections = None
     if command != "/notes":
@@ -244,13 +275,14 @@ def parse_command(text):
             "count": total,
             "sections": sections,
             "error": "कुल प्रश्न 100 से ज़्यादा नहीं हो सकते।" if total > 100 else None,
+            "difficulty": difficulty,
             "schedule_ts": schedule_ts,
         }
 
     rest_parts = cleaned_rest.split()
     count = 10
     if rest_parts and command != "/notes":
-        m = re.fullmatch(r"(\d{1,3})[qQ]?", rest_parts[-1])
+        m = re.fullmatch(r"(\d{1,3})(?:q|mcqs?|प्रश्न)?", rest_parts[-1], flags=re.IGNORECASE)
         prev = rest_parts[-2].lower() if len(rest_parts) > 1 else ""
         if m and prev != "class":
             count = int(m.group(1))
@@ -263,6 +295,7 @@ def parse_command(text):
         "command": command,
         "topic": topic,
         "count": count,
+        "difficulty": difficulty,
         "schedule_ts": schedule_ts
     }
 
@@ -1126,6 +1159,106 @@ def save_offset(offset):
 
 
 # ------------------------------------------------------------------- Handler
+
+# ------------------------------------------------ Universal (natural language)
+HELP_TEXT = (
+    "🤖 <b>Gyankshetra Bot</b>\n\n"
+    "जो चाहिए सीधे लिख दें, जैसे:\n"
+    "• भारत का भूगोल 30 प्रश्न का quiz, Easy Moderate Hard\n"
+    "• 40 MCQ test: history 8, geo 8, math 8, science 8, current affairs 8\n"
+    "• बिहार GK का mock test 50 प्रश्न\n"
+    "• ऑक्सीकरण के short notes / study material\n"
+    "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n\n"
+    "Commands भी चलते हैं: /test /mock /quiz /practice /pyq /notes"
+)
+
+NL_PROMPT = """
+तुम Gyankshetra परीक्षा-ऐप के Telegram bot के लिए intent parser हो।
+नीचे यूज़र का संदेश है (हिन्दी / English / Hinglish)। समझो कि वह क्या बनवाना चाहता है और केवल वैध JSON दो।
+
+intent के विकल्प:
+- "test": test, टेस्ट, test series, question set, प्रश्न-सेट
+- "mock": mock test, मॉक
+- "quiz": quiz, क्विज़
+- "practice": practice, अभ्यास, set, सवाल/प्रश्न बनाओ (बिना किसी और शब्द के)
+- "pyq": पिछले वर्षों के प्रश्न, PYQ
+- "notes": notes, नोट्स, study material, अध्ययन सामग्री, download, PDF, summary, पढ़ने की सामग्री
+- "chat": ऊपर में से कुछ नहीं; सामान्य सवाल/बातचीत
+
+JSON structure:
+{"intent":"test","topic":"विषय","count":10,"sections":[],"difficulty":"","reply":""}
+
+नियम:
+1. topic में केवल विषय/अध्याय लिखो (संख्या, test/quiz जैसे शब्द और Easy/Hard हटाकर)।
+2. count: कुल प्रश्न (1 से 100)। न लिखा हो तो 10। notes पर count 0।
+3. अगर यूज़र कई विषयों के अलग-अलग प्रश्न चाहे (जैसे "history 8, geo 8, math 8"), तो sections में [{"name":"History","count":8},...] दो और topic खाली छोड़ो। वरना sections खाली [] रखो।
+4. difficulty: "easy", "moderate", "hard" में से, या अगर कई स्तर बताए तो "mixed", न बताया हो तो "".
+5. intent "chat" हो तो reply में हिन्दी में छोटा, सही जवाब (अधिकतम 800 अक्षर) दो और बाकी खाली रखो।
+6. केवल JSON, कोई अतिरिक्त शब्द या Markdown नहीं।
+
+यूज़र का संदेश:
+__TEXT__
+"""
+
+_INTENT_CMD = {"test": "/test", "mock": "/mock", "quiz": "/quiz", "practice": "/practice", "pyq": "/pyq", "notes": "/notes"}
+
+
+def natural_command(text):
+    """Seedhe likhe sandesh ko Groq se samajh kar parse_command jaisa dict deta hai.
+    Return: (cmd, reply). Chat jaisa ho to cmd None aur reply me jawab."""
+    schedule_ts, cleaned = parse_schedule_time(text)
+    raw = ask_groq(NL_PROMPT.replace("__TEXT__", cleaned), is_json=True).strip()
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
+    data = json.loads(raw)
+
+    intent = str(data.get("intent", "")).lower().strip()
+    if intent not in _INTENT_CMD:
+        return None, (str(data.get("reply", "")).strip() or HELP_TEXT)
+
+    command = _INTENT_CMD[intent]
+    _, diff_text = extract_difficulty(text)
+    difficulty = str(data.get("difficulty", "") or "").lower().strip()
+    if difficulty not in ("easy", "moderate", "hard", "mixed"):
+        difficulty = diff_text
+
+    sections = []
+    for sec in data.get("sections") or []:
+        try:
+            name = str(sec.get("name", "")).strip()
+            n = int(sec.get("count", 0))
+        except Exception:
+            continue
+        if name and 1 <= n <= 100:
+            sections.append((name, n))
+
+    if command != "/notes" and len(sections) >= 2:
+        total = sum(n for _, n in sections)
+        names = {"/test": "Test", "/mock": "Mock", "/quiz": "Quiz", "/practice": "Practice", "/pyq": "PYQ"}
+        return {
+            "command": command,
+            "topic": f"{names.get(command, 'Test')} {total}Q",
+            "count": total,
+            "sections": sections,
+            "error": "कुल प्रश्न 100 से ज़्यादा नहीं हो सकते।" if total > 100 else None,
+            "difficulty": difficulty,
+            "schedule_ts": schedule_ts,
+        }, ""
+
+    topic = str(data.get("topic", "")).strip() or "सामान्य अध्ययन"
+    try:
+        count = int(data.get("count", 10))
+    except Exception:
+        count = 10
+    count = max(1, min(count, 100))
+    return {
+        "command": command,
+        "topic": topic,
+        "count": count,
+        "difficulty": difficulty,
+        "schedule_ts": schedule_ts,
+    }, ""
+
+
 def process_update(update):
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
@@ -1142,9 +1275,25 @@ def process_update(update):
         send_message(chat_id, "यह bot निजी है।")
         return
 
+    if word in ("/start", "/help"):
+        send_message(chat_id, HELP_TEXT)
+        return
+
     cmd = parse_command(text)
     if not cmd:
-        return
+        if text.startswith("/"):
+            send_message(chat_id, "❓ यह command मुझे समझ नहीं आया।\n\n" + HELP_TEXT)
+            return
+        # seedhe likha sandesh: Groq se samajh kar kaam shuru
+        send_message(chat_id, "🤖 आपकी बात समझ रहा हूँ...")
+        try:
+            cmd, reply = natural_command(text)
+        except Exception as e:
+            send_message(chat_id, f"❌ समझ नहीं पाया: {html.escape(str(e)[:300])}\n\n" + HELP_TEXT)
+            return
+        if not cmd:
+            send_message(chat_id, html.escape(reply)[:3500] if reply != HELP_TEXT else reply)
+            return
 
     if cmd.get("error"):
         send_message(chat_id, "❌ " + cmd["error"])
@@ -1152,6 +1301,7 @@ def process_update(update):
 
     topic, count = cmd["topic"], cmd["count"]
     sections = cmd.get("sections")
+    note = difficulty_note(cmd.get("difficulty"))
     if sections:
         topic = f"{topic} {next_series_number(topic)}"  # jaise: Test 40Q 1, Test 40Q 2
     schedule_ts = cmd["schedule_ts"]
@@ -1194,10 +1344,11 @@ def process_update(update):
         f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {safe_topic}\n"
         f"📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n"
         + ("📚 " + ", ".join(f"{html.escape(n)} {c}" for n, c in sections) + "\n" if sections else "")
+        + (f"🎚 <b>कठिनाई:</b> {html.escape(cmd['difficulty'])}\n" if cmd.get("difficulty") else "")
         + "\nथोड़ा समय लगेगा..."
     )
     try:
-        questions = generate_sections(sections, info["label"]) if sections else generate_all(topic, count, info["label"])
+        questions = generate_sections(sections, info["label"], note) if sections else generate_all(topic + note, count, info["label"])
         if not questions:
             raise RuntimeError("कोई प्रश्न नहीं बन पाया।")
 
