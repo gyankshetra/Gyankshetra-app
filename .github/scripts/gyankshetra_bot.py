@@ -150,6 +150,76 @@ def parse_schedule_time(text):
     return target_dt.timestamp(), clean_text
 
 
+
+# ------------------------------------------------ Mixed (multi-subject) tests
+_Q_WORD = r"(?:q|mcqs?|questions?|prashn|प्रश्न|सवाल)"
+_BAD_NAMES = {"class", "chapter", "unit", "part", "lesson", "ch", "std", "paper", "set", "year", "ncert", "bpsc", "stet", "tre"}
+
+
+def _clean_section_name(chunk):
+    name = re.sub(r"\d{1,3}", " ", chunk)
+    name = re.sub(r"\b" + _Q_WORD + r"\b", " ", name, flags=re.IGNORECASE)
+    name = re.sub(r"[:\-–—()\[\]\.]", " ", name)
+    return re.sub(r"\s+", " ", name).strip()
+
+
+def _parse_pairs(t):
+    chunks = [c.strip() for c in re.split(r"[,;\n+|]", t) if c.strip()]
+    pairs = []
+    if len(chunks) >= 2:
+        for c in chunks:
+            nums = re.findall(r"\d{1,3}", c)
+            name = _clean_section_name(c)
+            if len(nums) != 1 or not name:
+                return None
+            pairs.append((name, int(nums[0])))
+    else:
+        # bina comma: 'history 8 geo 8 math 8'  ya  '8q history 8q geo'
+        if re.match(r"\s*\d", t):
+            found = re.findall(r"(\d{1,3})\s*(?:" + _Q_WORD + r")?\s*([^\d]+)", t, flags=re.IGNORECASE)
+            pairs = [(_clean_section_name(n), int(c)) for c, n in found]
+        else:
+            found = re.findall(r"([^\d]+?)\s*(\d{1,3})\s*(?:" + _Q_WORD + r")?(?=\s|$)", t, flags=re.IGNORECASE)
+            pairs = [(_clean_section_name(n), int(c)) for n, c in found]
+        if len(pairs) < 2:
+            return None
+    for name, n in pairs:
+        last = name.split()[-1].lower() if name.split() else ""
+        if not name or last in _BAD_NAMES or n < 1 or n > 100:
+            return None
+    return pairs
+
+
+def parse_sections(text):
+    """'history 8, geo 8, math 8' ya '8q history, 8q geo' jaise text se
+    [(naam, count), ...] banata hai. Normal '/test topic 20' ko nahi chhedta."""
+    t = (text or "").strip()
+    if not t:
+        return None
+    # shuru me total ("40 mcq ...", "40 questions ...") ho to pehle use hata kar dekho
+    strong = re.match(r"\s*(\d{1,3})\s*(?:mcqs?|questions?|prashn|प्रश्न|सवाल)\b", t, flags=re.IGNORECASE)
+    if strong:
+        pairs = _parse_pairs(t[strong.end():].strip(" ,;:-"))
+        if pairs:
+            return pairs
+    pairs = _parse_pairs(t)
+    if pairs:
+        return pairs
+    weak = re.match(r"\s*(\d{1,3})\s*q\b", t, flags=re.IGNORECASE)  # '40q history 8, geo 8'
+    if weak:
+        return _parse_pairs(t[weak.end():].strip(" ,;:-"))
+    return None
+
+
+def generate_sections(sections, mode):
+    """Har vishay ke apne prashn alag bana kar ek list me jodta hai."""
+    out = []
+    for i, (name, n) in enumerate(sections):
+        print(f"Section {i + 1}/{len(sections)}: {name} x{n}")
+        out.extend(generate_all(name, n, mode))
+    return out
+
+
 def parse_command(text):
     parts = (text or "").strip().split()
     if not parts:
@@ -160,6 +230,22 @@ def parse_command(text):
 
     rest_str = " ".join(parts[1:])
     schedule_ts, cleaned_rest = parse_schedule_time(rest_str)
+
+    sections = None
+    if command != "/notes":
+        sections = parse_sections(cleaned_rest)
+    if sections:
+        total = sum(n for _, n in sections)
+        names = {"/test": "Test", "/mock": "Mock", "/quiz": "Quiz", "/practice": "Practice", "/pyq": "PYQ"}
+        return {
+            "command": command,
+            "topic": f"{names.get(command, 'Test')} {total}Q",
+            "series": True,
+            "count": total,
+            "sections": sections,
+            "error": "कुल प्रश्न 100 से ज़्यादा नहीं हो सकते।" if total > 100 else None,
+            "schedule_ts": schedule_ts,
+        }
 
     rest_parts = cleaned_rest.split()
     count = 10
@@ -945,7 +1031,22 @@ def make_test_page_simple(topic, count, questions, test_id, translations=None):
     return s
 
 
-def update_registry(topic, count, command, url, item_id):
+def next_series_number(prefix):
+    """'Test 40Q' ke liye registry dekh kar agla number deta hai (1, 2, 3...)."""
+    try:
+        with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
+            reg = json.load(f)
+    except Exception:
+        reg = []
+    nums = [0]
+    for e in reg if isinstance(reg, list) else []:
+        m = re.fullmatch(re.escape(prefix) + r" (\d+)", str(e.get("topic", "")))
+        if m:
+            nums.append(int(m.group(1)))
+    return max(nums) + 1
+
+
+def update_registry(topic, count, command, url, item_id, mixed=False):
     os.makedirs("content", exist_ok=True)
     info = command_info(command)
     meta = extract_metadata(topic)
@@ -962,6 +1063,9 @@ def update_registry(topic, count, command, url, item_id):
         "btn_text": info["btn_text"],
         "created_at": item_id
     }
+
+    if mixed:  # kai vishay ka test: kisi ek subject me nahi, seedha Test Series me
+        entry["class"], entry["subject"], entry["topic"] = "GENERAL", "Mixed", topic
 
     target_file = STUDY_MATERIAL_FILE if command == "/notes" else REGISTRY_FILE
     if command == "/notes":
@@ -1042,7 +1146,14 @@ def process_update(update):
     if not cmd:
         return
 
+    if cmd.get("error"):
+        send_message(chat_id, "❌ " + cmd["error"])
+        return
+
     topic, count = cmd["topic"], cmd["count"]
+    sections = cmd.get("sections")
+    if sections:
+        topic = f"{topic} {next_series_number(topic)}"  # jaise: Test 40Q 1, Test 40Q 2
     schedule_ts = cmd["schedule_ts"]
     info = command_info(cmd["command"])
     safe_topic = html.escape(topic)
@@ -1081,10 +1192,12 @@ def process_update(update):
     send_message(
         chat_id,
         f"🤖 Groq AI प्रश्न तैयार कर रहा है...\n\n{info['emoji']} <b>विषय:</b> {safe_topic}\n"
-        f"📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n\nथोड़ा समय लगेगा..."
+        f"📌 <b>प्रकार:</b> {info['label']}\n📝 <b>प्रश्न:</b> {count}\n"
+        + ("📚 " + ", ".join(f"{html.escape(n)} {c}" for n, c in sections) + "\n" if sections else "")
+        + "\nथोड़ा समय लगेगा..."
     )
     try:
-        questions = generate_all(topic, count, info["label"])
+        questions = generate_sections(sections, info["label"]) if sections else generate_all(topic, count, info["label"])
         if not questions:
             raise RuntimeError("कोई प्रश्न नहीं बन पाया।")
 
@@ -1095,6 +1208,13 @@ def process_update(update):
             f"\n⚠️ माँगे गए {requested} में से {count} प्रश्न ही बन पाए।"
             if count < requested else ""
         )
+
+        if sections and count != requested:  # kam sawal bane to naam me asli ginti
+            m = re.fullmatch(r"(\S+) \d+Q \d+", topic)
+            if m:
+                base = f"{m.group(1)} {count}Q"
+                topic = f"{base} {next_series_number(base)}"
+                safe_topic = html.escape(topic)
 
         test_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         filename = f"{safe_slug(topic)}-{count}q-{test_id}.html"
@@ -1112,7 +1232,7 @@ def process_update(update):
             f.write(page)
 
         test_url = BASE_URL + folder + "/" + quote(filename)
-        update_registry(topic, count, cmd["command"], test_url, test_id)
+        update_registry(topic, count, cmd["command"], test_url, test_id, mixed=bool(sections))
         if not git_publish(f"Generate test: {topic} ({count}Q)"):
             raise RuntimeError("GitHub पर publish नहीं हो पाया, link काम नहीं करेगा")
 
