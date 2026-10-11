@@ -870,7 +870,6 @@ applyLang();tid=setInterval(tick,1000);
 # ------------------------------------------- Question translation (en / bh)
 TR_LANGS = {
     "en": "English",
-    "bh": "भोजपुरी (देवनागरी लिपि में, सरल बोलचाल की भोजपुरी)",
 }
 TRANSLATE_TESTS = os.environ.get("TRANSLATE_TESTS", "1") != "0"
 TR_CHUNK = 5
