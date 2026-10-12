@@ -1,5 +1,18 @@
 [
   {
+    "id": "20261012-030753",
+    "title": "🎯 सामान्य अध्ययन",
+    "class": "GENERAL",
+    "subject": "General",
+    "topic": "सामान्य अध्ययन",
+    "category": "Quiz",
+    "type": "quiz",
+    "url": "https://gyankshetra.github.io/Gyankshetra-app/quiz/%E0%A4%B8%E0%A4%BE%E0%A4%AE%E0%A4%BE%E0%A4%A8%E0%A5%8D%E0%A4%AF-%E0%A4%85%E0%A4%A7%E0%A5%8D%E0%A4%AF%E0%A4%AF%E0%A4%A8-10q-20261012-030753.html",
+    "btn_text": "QUIZ NOW",
+    "created_at": "20261012-030753",
+    "questions": 10
+  },
+  {
     "id": "20261012-024718-01",
     "title": "🎯 Quiz 23Q 1",
     "class": "GENERAL",
