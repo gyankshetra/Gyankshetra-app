@@ -3,6 +3,8 @@
 Automatic Quiz Generator, Notes Generator & Scheduled Channel Publisher
 """
 import io
+import base64
+import difflib
 import os
 import re
 import json
@@ -427,12 +429,12 @@ Gyankshetra Study Material के लिए उच्च-स्तरीय प�
 """
 
 
-def ask_groq(prompt, is_json=False):
+def ask_groq(prompt, is_json=False, temperature=None):
     client = get_client()
     kwargs = {
         "model": GROQ_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3,
+        "temperature": 0.3 if temperature is None else temperature,
         "max_tokens": MAX_TOKENS,
     }
     if "gpt-oss" in GROQ_MODEL:
@@ -879,6 +881,7 @@ TR_PROMPT = """
 नीचे MCQ प्रश्नों की सूची JSON में है। हर प्रश्न का "text", "options" और "facts" का अनुवाद __LANG__ में करो।
 
 नियम:
+0. अनुवाद शुद्ध, सटीक और परीक्षा-स्तर की सही भाषा में हो (शब्दशः नहीं, अर्थ के अनुसार)। वर्तनी/व्याकरण की गलती न हो। नाम (व्यक्ति, स्थान, संस्था, ग्रंथ) का मानक spelling इस्तेमाल करो (जैसे बिहार→Bihar, गया→Gaya, हड़प्पा→Harappa)। 'उपयुक्त में से कोई नहीं' जैसे विकल्पों का स्थापित रूप लिखो ('None of the above', 'More than one of the above')। मूल हिन्दी में कोई वर्तनी की गलती दिखे तो संदर्भ से सही अर्थ लेकर अनुवाद करो।
 1. अर्थ, संख्याएँ, सूत्र, यूनिट और वैज्ञानिक/तकनीकी शब्द सही और जस के तस रखो।
 2. options की संख्या और क्रम बिल्कुल वही रखो (अनुवाद के बाद भी चार विकल्प, उसी क्रम में)।
 3. facts की संख्या और क्रम भी वही रखो।
@@ -902,7 +905,7 @@ def _translate_chunk(chunk, lang_label):
     last_err = None
     for attempt in range(2):
         try:
-            raw = ask_groq(prompt, is_json=True).strip()
+            raw = ask_groq(prompt, is_json=True, temperature=0.1).strip()
             raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
             items = json.loads(raw).get("items")
             if not isinstance(items, list) or len(items) != len(chunk):
@@ -1143,8 +1146,15 @@ def git_publish(message):
 
 
 def safe_slug(text):
-    text = re.sub(r"[^\w\u0900-\u097F]+", "-", text, flags=re.UNICODE).strip("-")
-    return (text or "test")[:70]
+    """File ke naam ke liye sirf English akshar/ank (chhota, saaf URL; Hindi naam par 'test')."""
+    text = re.sub(r"[^A-Za-z0-9]+", "-", text or "").strip("-")
+    return (text or "test")[:50]
+
+
+def link_line(label, url):
+    """Link ko seedha dikhne wale URL ki tarah bhejta hai. Telegram text-link par 'Open Link' poochta hai,
+    jabki dikhta hua URL tap karne par seedha khul jata hai."""
+    return f"🔗 {label}\n{html.escape(url)}"
 
 
 def load_offset():
@@ -1164,7 +1174,7 @@ def save_offset(offset):
 # ------------------------------------------------------------------- Handler
 
 # ------------------------------------------------ Universal (natural language)
-BOT_VERSION = "2026-10-12b • PDF/DOCX + /doc + /rebuild"
+BOT_VERSION = "2026-10-12c • OCR + 8-point analysis + /rebuild"
 
 HELP_TEXT = (
     "🤖 <b>Gyankshetra Bot</b>\n"
@@ -1363,7 +1373,7 @@ EXTRACT_PROMPT = """
 
 नियम:
 1. अपनी तरफ से कोई नया प्रश्न मत जोड़ो; अधूरा या कटा हुआ प्रश्न छोड़ दो।
-2. प्रश्न और विकल्प जैसे लिखे हैं वैसे ही रखो (हिन्दी/English जो भी हो)। विकल्पों से (A), (B), 1., क) जैसे लेबल हटा दो। ठीक 4 विकल्प हों।
+2. प्रश्न और विकल्प उसी भाषा में रखो (हिन्दी/English)। PDF से निकले हिन्दी टेक्स्ट में शब्द टूटे या मात्राएँ गलत जगह हो सकती हैं (जैसे 'सबहार' = 'बिहार', 'सकि' = 'किस', 'िएक' = 'एक'); उन्हें संदर्भ से समझकर शुद्ध, सही वर्तनी वाली हिन्दी में ठीक करके लिखो, पर तथ्य/अर्थ न बदलो। विकल्पों से (A), (B), 1., क) जैसे लेबल हटा दो। ठीक 4 विकल्प हों।
 3. answer: सही विकल्प का index (0, 1, 2 या 3)। उत्तर फ़ाइल में (या नीचे उत्तर-कुंजी में) दिया हो तो वही लो और answer_in_file true रखो; न मिले तो खुद हल करके सही उत्तर चुनो और answer_in_file false रखो।
 4. subject: इस सूची में से ठीक एक अंग्रेज़ी नाम: History, Geography, Polity, Economics, Physics, Chemistry, Biology, Science, Maths, Reasoning, Hindi, English, Sanskrit, Computer, Pedagogy, EVS, Current Affairs, Bihar GK, Bihar Current Affairs, General Knowledge. फ़ाइल के शीर्षक/सेक्शन से तय करो, न मिले तो प्रश्न देखकर।
 5. chapter: अध्याय/टॉपिक का छोटा नाम (हिन्दी में); न पता हो तो "".
@@ -1466,6 +1476,10 @@ def canon_subject(raw):
     for en, hi in SUBJ_HI.items():
         if s0.lower() == en.lower() or s0 == hi:
             return en
+    short = {"geo": "Geography", "hist": "History", "pol": "Polity", "eco": "Economics", "sci": "Science", "ca": "Current Affairs",
+             "gk": "General Knowledge", "math": "Maths", "maths": "Maths", "bio": "Biology", "chem": "Chemistry", "phy": "Physics"}
+    if s0.lower() in short:
+        return short[s0.lower()]
     found = extract_metadata(s0.lower())["subject"]
     alias = {"General": "", "General Science": "Science", "Hindi Grammar": "Hindi", "English Grammar": "English"}
     found = alias.get(found, found)
@@ -1549,6 +1563,163 @@ def generate_from_text(chunks, count, note):
     return dedupe_items(items)[:count]
 
 
+# ---------------------------------------- Kharab-font PDF / scan: OCR + shuddh text + analysis
+MAX_OCR_PAGES = 40
+ENRICH = os.environ.get("ENRICH_ANALYSIS", "1") != "0"
+TESS_LANG = os.environ.get("TESS_LANG", "hin+eng")
+VISION_MODELS = [m for m in (os.environ.get("GROQ_VISION_MODEL"),
+                             "meta-llama/llama-4-scout-17b-16e-instruct",
+                             "meta-llama/llama-4-maverick-17b-128e-instruct") if m]
+
+OCR_PROMPT = """यह किसी परीक्षा-पेपर / किताब का एक पेज है। पेज पर लिखा पूरा टेक्स्ट पढ़ने के क्रम में, जैसा लिखा है बिल्कुल वैसा ही लिखो।
+- हिन्दी (देवनागरी) की मात्राएँ और वर्तनी सही रखो; English जैसा है वैसा रखो।
+- प्रश्न-संख्या, विकल्प (A)(B)(C)(D) या (1)(2)(3)(4) और उत्तर-कुंजी भी वैसे ही रखो।
+- अपनी तरफ से कुछ जोड़ो, बदलो या समझाओ मत।
+केवल पेज का टेक्स्ट दो।"""
+
+ENRICH_PROMPT = """
+नीचे MCQ प्रश्नों की सूची JSON में है (PDF/फ़ाइल से निकाले गए)। हर प्रश्न के लिए:
+1. "q" और "options" में वर्तनी, मात्रा और टूटे हुए शब्दों की गलतियाँ ठीक करो ताकि भाषा शुद्ध हो। अर्थ, नाम, संख्याएँ, तारीख़ें बिल्कुल न बदलो; विकल्प ठीक चार रहें और उनका क्रम वही रहे।
+2. "explanation" में सही उत्तर ("answer" index वाला विकल्प) की 1-2 पंक्ति की स्पष्ट व्याख्या दो।
+3. "facts" में उसी प्रश्न से जुड़े 8 महत्वपूर्ण, परीक्षा-उपयोगी तथ्य दो (हिन्दी में, हर तथ्य एक छोटी पंक्ति)। गलत या मनगढ़ंत तथ्य मत दो।
+4. प्रश्नों की संख्या और क्रम वही रखो।
+केवल वैध JSON दो: {"items":[{"q":"","options":["","","",""],"explanation":"","facts":["","","","","","","",""]}]}
+
+इनपुट:
+__DATA__
+"""
+
+
+def looks_garbled(text):
+    """PDF ka text-layer toota ho (matra akele / ulte) to True."""
+    dev = len(re.findall(r"[\u0900-\u097F]", text))
+    if dev < 100:
+        return False
+    orphan = len(re.findall(r"(?:^|[\s\W\d])[\u093E-\u094D\u0901-\u0903]", text, flags=re.M))
+    return orphan >= 6 or orphan / dev > 0.004
+
+
+def render_pdf_pages(data, max_pages=MAX_OCR_PAGES):
+    """PDF ke pages ko JPEG images me badalta hai. (images, kul pages)."""
+    try:
+        import fitz  # pymupdf
+        doc = fitz.open(stream=data, filetype="pdf")
+        out = []
+        for i, pg in enumerate(doc):
+            if i >= max_pages:
+                break
+            out.append(pg.get_pixmap(dpi=130).tobytes("jpeg"))
+        return out, len(doc)
+    except ImportError:
+        pass
+    try:
+        from pdf2image import convert_from_bytes
+        from pypdf import PdfReader
+    except ImportError:
+        raise RuntimeError("OCR ke liye pymupdf install nahi hai। GitHub workflow ki pip install lain me pymupdf jodein।")
+    total = len(PdfReader(io.BytesIO(data)).pages)
+    out = []
+    for im in convert_from_bytes(data, dpi=130, first_page=1, last_page=min(total, max_pages)):
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, "JPEG", quality=80)
+        out.append(buf.getvalue())
+    return out, total
+
+
+def ocr_page_vision(img):
+    b64 = base64.b64encode(img).decode()
+    last = None
+    for model in VISION_MODELS:
+        for attempt in range(2):
+            try:
+                resp = get_client().chat.completions.create(
+                    model=model, temperature=0, max_tokens=4000,
+                    messages=[{"role": "user", "content": [
+                        {"type": "text", "text": OCR_PROMPT},
+                        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64}},
+                    ]}],
+                )
+                return resp.choices[0].message.content or ""
+            except Exception as e:
+                last = e
+                if "429" in str(e) or "rate" in str(e).lower():
+                    time.sleep(_backoff(e, attempt))
+                    continue
+                break
+    raise RuntimeError("Vision OCR error: " + str(last)[:200])
+
+
+def ocr_page_tesseract(img):
+    import pytesseract
+    from PIL import Image
+    return pytesseract.image_to_string(Image.open(io.BytesIO(img)), lang=TESS_LANG)
+
+
+def ocr_pdf(data):
+    """(text, kul pages, fail hue pages). Pehle Groq vision, na chale to tesseract."""
+    imgs, total = render_pdf_pages(data)
+    texts, fails, last = [], 0, None
+    for img in imgs:
+        t = ""
+        try:
+            t = ocr_page_vision(img)
+        except Exception as e1:
+            last = e1
+            try:
+                t = ocr_page_tesseract(img)
+            except Exception:
+                pass
+        if not t.strip():
+            fails += 1
+        texts.append(t)
+        time.sleep(1)
+    if fails == len(imgs):
+        raise RuntimeError(str(last)[:200] if last else "pages se text nahi mila")
+    return "\n".join(texts), total, fails
+
+
+def enrich_items(items, batch=6):
+    """Har prashn ki vartani sudharta hai aur 8 tathya + vyakhya (purane jaisa analysis) jodta hai."""
+    done = 0
+    for i in range(0, len(items), batch):
+        part = items[i:i + batch]
+        data = json.dumps([{"q": it["q"][0], "options": it["q"][1], "answer": it["q"][2]} for it in part], ensure_ascii=False)
+        prompt = ENRICH_PROMPT.replace("__DATA__", data)
+        res = None
+        for attempt in range(2):
+            try:
+                raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", ask_groq(prompt, is_json=True, temperature=0.2).strip())
+                res = json.loads(raw).get("items")
+                if isinstance(res, list) and len(res) == len(part):
+                    break
+                res = None
+            except Exception as e:
+                print("enrich failed:", e)
+                time.sleep(_backoff(e, attempt))
+        if not res:
+            continue
+        for it, r in zip(part, res):
+            if not isinstance(r, dict):
+                continue
+            q = it["q"]
+            nq = str(r.get("q", "")).strip()
+            if nq and difflib.SequenceMatcher(None, q[0], nq).ratio() >= 0.4:
+                q[0] = nq
+            nopts = [str(x).strip() for x in (r.get("options") or [])]
+            if len(nopts) == 4 and all(nopts) and len(set(nopts)) == 4 and all(
+                    difflib.SequenceMatcher(None, a, b).ratio() >= 0.4 for a, b in zip(q[1], nopts)):
+                q[1] = nopts
+            facts = [str(x).strip() for x in (r.get("facts") or []) if str(x).strip()]
+            expl = str(r.get("explanation", "")).strip()
+            if expl:
+                facts = [expl] + facts
+            if facts:
+                q[3] = facts[:9]
+                done += 1
+        time.sleep(1)
+    return done
+
+
 _EXCL_RE = re.compile(r"(chod\s*kar|chhod\s*kar|chodkar|छोड़\s*कर|छोड़कर|छोडकर|हटाकर|हटा\s*कर|except|excluding|exclude|without|बिना)")
 _INCL_RE = re.compile(r"(?:sirf|सिर्फ़|सिर्फ|केवल|only)\b(.*)")
 
@@ -1567,6 +1738,59 @@ def _subjects_in(seg):
             found.add(en)
             low = low.replace(n, " ")
     return found
+
+
+POLISH_PROMPT = """
+नीचे MCQ (JSON) हैं। इनका हिन्दी टेक्स्ट PDF/Word से निकालने की वजह से बिगड़ा हो सकता है (जैसे 'सबहार' = 'बिहार', 'सकि' = 'किस', बिखरी मात्राएँ 'िएक' = 'एक', अधूरे या टूटे शब्द)।
+
+हर प्रश्न (q), विकल्प (options) और तथ्य (facts) को संदर्भ से समझकर शुद्ध, सही वर्तनी वाली हिन्दी में दोबारा लिखो।
+
+नियम:
+1. अर्थ, तथ्य, नाम, तिथि, संख्या, विकल्पों का क्रम और संख्या बिल्कुल न बदलो; सही उत्तर वही रहेगा।
+2. जो टेक्स्ट पहले से सही है या English में है, उसे वैसा ही रखो।
+3. कोई नया तथ्य मत जोड़ो।
+4. केवल JSON दो, items की संख्या इनपुट के बराबर और उसी क्रम में: {"items":[{"q":"","options":["","","",""],"facts":[""]}]}
+
+इनपुट:
+__DATA__
+"""
+
+
+def polish_items(items, batch=12):
+    """Extract kiye gaye (bigde) Hindi prashnon ko shuddh Hindi me sudharta hai."""
+    fixed = 0
+    for start in range(0, len(items), batch):
+        part = items[start:start + batch]
+        if not any(re.search(r"[\u0900-\u097F]", it["q"][0] + "".join(it["q"][1])) for it in part):
+            continue
+        data = json.dumps([{"q": it["q"][0], "options": it["q"][1], "facts": it["q"][3]} for it in part], ensure_ascii=False)
+        try:
+            raw = ask_groq(POLISH_PROMPT.replace("__DATA__", data), is_json=True)
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+            got = json.loads(raw).get("items")
+            if not isinstance(got, list) or len(got) != len(part):
+                raise ValueError("items ki sankhya mel nahi khati")
+        except Exception as e:
+            print("polish batch failed:", e)
+            continue
+        for it, g in zip(part, got):
+            try:
+                q = str(g["q"]).strip()
+                opts = [str(o).strip() for o in g["options"]]
+            except Exception:
+                continue
+            old_q = it["q"][0]
+            if not q or len(opts) != 4 or not all(opts) or len(set(opts)) < 4:
+                continue
+            if not 0.4 <= len(q) / max(1, len(old_q)) <= 2.5:
+                continue
+            it["q"][0], it["q"][1] = q, opts
+            facts = g.get("facts")
+            if isinstance(facts, list) and any(str(f).strip() for f in facts):
+                it["q"][3] = [str(f).strip() for f in facts if str(f).strip()][:2]
+            fixed += 1
+        time.sleep(1)
+    return fixed
 
 
 def doc_options(caption):
@@ -1671,9 +1895,27 @@ def process_document(chat_id, name, size, loader, caption, title=None):
 
     send_message(chat_id, f"📄 <b>{html.escape(name)}</b> पढ़ रहा हूँ...")
     try:
-        text = re.sub(r"[ \t]+", " ", extract_text(loader(), name))
+        data = loader()
+        text = re.sub(r"[ \t]+", " ", extract_text(data, name))
+        warns = []
+        if ext == ".pdf" and (len(text.strip()) < 200 or looks_garbled(text)):
+            send_message(chat_id, "🔍 इस PDF का टेक्स्ट सीधे नहीं पढ़ा जा रहा (फ़ॉन्ट खराब या स्कैन)। पेज देखकर पढ़ रहा हूँ, थोड़ा समय लगेगा...")
+            try:
+                ocr_text, total_pages, ocr_fail = ocr_pdf(data)
+                if len(ocr_text.strip()) >= 200:
+                    text = re.sub(r"[ \t]+", " ", ocr_text)
+                    if ocr_fail:
+                        warns.append(f"⚠️ {ocr_fail} पेज पढ़ नहीं पाया, उनके प्रश्न छूट सकते हैं।")
+                    if total_pages > MAX_OCR_PAGES:
+                        warns.append(f"⚠️ PDF में {total_pages} पेज हैं, सिर्फ़ पहले {MAX_OCR_PAGES} पढ़े गए।")
+                elif len(text.strip()) < 200:
+                    raise RuntimeError("OCR से भी पर्याप्त टेक्स्ट नहीं मिला।")
+            except Exception as e:
+                if len(text.strip()) < 200:
+                    raise RuntimeError("PDF का टेक्स्ट पढ़ नहीं पाया: " + str(e)[:300])
+                warns.append("⚠️ PDF का टेक्स्ट खराब था और पेज पढ़ने (OCR) में दिक्कत आई, इसलिए प्रश्नों में गलतियाँ हो सकती हैं: " + str(e)[:150])
         if len(text.strip()) < 200:
-            raise RuntimeError("फ़ाइल से लगभग कोई टेक्स्ट नहीं मिला। अगर यह स्कैन/फ़ोटो वाली PDF है तो उसे अभी नहीं पढ़ सकता।")
+            raise RuntimeError("फ़ाइल से लगभग कोई टेक्स्ट नहीं मिला।")
         body, key = find_answer_key(text)
         chunks = make_chunks(body)
         truncated = len(chunks) > MAX_CHUNKS
@@ -1713,10 +1955,33 @@ def process_document(chat_id, name, size, loader, caption, title=None):
         filt_note = (" (" + ", ".join(SUBJ_HI.get(x, x) for x in sorted(excl)) + " छोड़कर)") if excl else \
                     (" (सिर्फ़ " + ", ".join(SUBJ_HI.get(x, x) for x in sorted(incl)) + ")") if incl else ""
 
+        if mode == "extract":
+            send_message(chat_id, "✍️ हिन्दी की वर्तनी/मात्राएँ शुद्ध कर रहा हूँ...")
+            polish_items(items)
+
+        secs = parse_sections(caption) if mode == "extract" else None
+        sec_warn = []
+        if secs and len(secs) >= 2:
+            picked = []
+            for name, n in secs:
+                subj = canon_subject(name)
+                pool = [it for it in items if it["subject"] == subj]
+                take = sorted(random.sample(range(len(pool)), min(n, len(pool))))
+                picked += [pool[i] for i in take]
+                if len(pool) < n:
+                    sec_warn.append(f"{SUBJ_HI.get(subj, subj)}: {len(pool)}/{n}")
+            if not picked:
+                raise RuntimeError("लिखे हुए विषयों के प्रश्न फ़ाइल में नहीं मिले।")
+            items = picked
+            group = "combined"
+            count = None
         if count and mode == "extract" and len(items) > count:
             keep = sorted(random.sample(range(len(items)), count))
             items = [items[i] for i in keep]
         solved = sum(1 for it in items if it["solved"])
+        if ENRICH and items:
+            send_message(chat_id, f"✍️ {len(items)} प्रश्नों की भाषा शुद्ध करके हर प्रश्न का विस्तृत analysis (8 बिंदु) बना रहा हूँ...")
+            enrich_items(items)
 
         # sirf ek vishay ho to "Test 10Q 1" ki jagah file ke naam wala test banao
         if group == "combined" and len({it["subject"] for it in items}) == 1:
@@ -1768,12 +2033,14 @@ def process_document(chat_id, name, size, loader, caption, title=None):
 
         lines = [f"✅ <b>{len(made)} {info['label']} तैयार!</b>", ""]
         for topic, n, url in made:
-            lines.append(f'• {html.escape(topic)} ({n} प्रश्न)\n  <a href="{html.escape(url, quote=True)}">🔗 {info["btn_text"]}</a>')
-        extra = []
+            lines.append(f'• {html.escape(topic)} ({n} प्रश्न)\n' + link_line(info["btn_text"], url) + "\n")
+        extra = list(warns)
         if solved:
             extra.append(f"⚠️ {solved} प्रश्नों का उत्तर फ़ाइल में नहीं मिला, AI ने खुद हल किया है। एक बार जाँच लें।")
         if failed:
             extra.append(f"⚠️ {failed} हिस्से नहीं पढ़ पाया (Groq error), उनके प्रश्न छूट गए हो सकते हैं।")
+        if sec_warn:
+            extra.append("⚠️ कुछ विषयों के प्रश्न कम मिले (मिले/माँगे): " + ", ".join(sec_warn))
         if count and available < count:
             extra.append(f"⚠️ आपने {count} प्रश्न माँगे थे, फ़ाइल में सिर्फ़ {available} मिले।")
         if truncated:
@@ -2057,7 +2324,7 @@ def process_update(update):
                 "✅ <b>Study Material तैयार है!</b>\n\n"
                 f"🎯 <b>विषय:</b> {safe_topic}\n"
                 f"📌 <b>प्रकार:</b> Study Material\n\n"
-                f'<a href="{html.escape(file_url, quote=True)}">🔗 READ NOTES</a>'
+                + link_line("READ NOTES", file_url)
             )
             send_message(chat_id, formatted_message)
             if CHANNEL_ID:
@@ -2120,7 +2387,7 @@ def process_update(update):
             f"🎯 <b>विषय:</b> {safe_topic}\n"
             f"📌 <b>प्रकार:</b> {info['label']}\n"
             f"📝 <b>प्रश्न:</b> {count}\n\n"
-            f'<a href="{html.escape(test_url, quote=True)}">🔗 {info["btn_text"]}</a>'
+            + link_line(info["btn_text"], test_url)
         )
 
         current_ts = datetime.now(timezone.utc).timestamp()
