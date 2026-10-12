@@ -1,5 +1,18 @@
 [
   {
+    "id": "20261012-174345",
+    "title": "📝 सामान्य अध्ययन",
+    "class": "GENERAL",
+    "subject": "General",
+    "topic": "सामान्य अध्ययन",
+    "category": "Practice",
+    "type": "practice",
+    "url": "https://gyankshetra.github.io/Gyankshetra-app/practice/test-17q-20261012-174345.html",
+    "btn_text": "PRACTICE NOW",
+    "created_at": "20261012-174345",
+    "questions": 17
+  },
+  {
     "id": "20261012-172102-01",
     "title": "🎯 विज्ञान — ihep101 11Q",
     "class": "GENERAL",
