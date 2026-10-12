@@ -1164,8 +1164,11 @@ def save_offset(offset):
 # ------------------------------------------------------------------- Handler
 
 # ------------------------------------------------ Universal (natural language)
+BOT_VERSION = "2026-10-12b • PDF/DOCX + /doc + /rebuild"
+
 HELP_TEXT = (
-    "🤖 <b>Gyankshetra Bot</b>\n\n"
+    "🤖 <b>Gyankshetra Bot</b>\n"
+    "<i>Version: " + BOT_VERSION + "</i>\n\n"
     "जो चाहिए सीधे लिख दें, जैसे:\n"
     "• भारत का भूगोल 30 प्रश्न का quiz, Easy Moderate Hard\n"
     "• 40 MCQ test: history 8, geo 8, math 8, science 8, current affairs 8\n"
@@ -1173,6 +1176,7 @@ HELP_TEXT = (
     "• ऑक्सीकरण के short notes / study material\n"
     "• 20 प्रश्नों का practice set गुरुत्वाकर्षण पर\n"
     "• Test 40Q 1 delete कर दो\n"
+    "• /rebuild — पुराने test/quiz pages में ऐप का नया design/सुधार लगाना\n"
     "• BPSC 2019 paper से 30 प्रश्न का quiz (ऐप में सेव की हुई फ़ाइल से)\n"
     "• 📎 PDF / DOCX भेजें (साथ में लिखें: 30 प्रश्न quiz, विषय अलग-अलग, chapter wise, या सब मिलाकर एक test)\n\n"
     "Commands भी चलते हैं: /test /mock /quiz /practice /pyq /notes"
@@ -1189,7 +1193,8 @@ intent के विकल्प:
 - "practice": practice, अभ्यास, set, सवाल/प्रश्न बनाओ (बिना किसी और शब्द के)
 - "pyq": पिछले वर्षों के प्रश्न, PYQ
 - "notes": notes, नोट्स, study material, अध्ययन सामग्री, download, PDF, summary, पढ़ने की सामग्री
-- "from_file": यूज़र नीचे दी गई "सेव की हुई फ़ाइलें" में से किसी फ़ाइल/paper/किताब से test/quiz बनवाना चाहे (नाम मिलता-जुलता हो या "इस paper से" जैसा संकेत हो); topic में फ़ाइल का नाम
+- "from_file": यूज़र नीचे दी गई "सेव की हुई फ़ाइलें" में से किसी फ़ाइल/paper/किताब से test/quiz बनवाना चाहे। अगर संदेश में "book / किताब / pdf / paper / notes / NCERT से" जैसा शब्द हो और सूची की किसी फ़ाइल के नाम में उसका विषय-शब्द (जैसे "tissue") मिले, तो यही चुनो; topic में उस फ़ाइल का पूरा नाम (सूची जैसा) लिखो
+- "rebuild": ऐप का नया design/सुधार पुराने बने test/quiz pages में भी लगाना (update/refresh/rebuild all tests)
 - "delete": बना हुआ test/quiz/notes हटाना (delete, हटाओ, मिटाओ); topic में उसका नाम, जैसे "Test 40Q 1"
 - "chat": ऊपर में से कुछ नहीं; सामान्य सवाल/बातचीत
 
@@ -1223,6 +1228,8 @@ def natural_command(text):
     data = json.loads(raw)
 
     intent = str(data.get("intent", "")).lower().strip()
+    if intent == "rebuild":
+        return {"command": "/rebuild"}, ""
     if intent == "from_file":
         return {"command": "/doc", "topic": str(data.get("topic", "")).strip(), "caption": text}, ""
     if intent == "delete":
@@ -1231,6 +1238,10 @@ def natural_command(text):
         return None, (str(data.get("reply", "")).strip() or HELP_TEXT)
 
     command = _INTENT_CMD[intent]
+    if command != "/notes" and re.search(r"ncert|book|pdf|file|paper|notes|किताब|पुस्तक|बुक|फ़ाइल|पेपर|नोट्स", text, re.IGNORECASE):
+        m, _many = find_material(str(data.get("topic", "")).strip() or text)
+        if len(m) == 1:
+            return {"command": "/doc", "topic": str(m[0].get("title")), "caption": text}, ""
     _, diff_text = extract_difficulty(text)
     difficulty = str(data.get("difficulty", "") or "").lower().strip()
     if difficulty not in ("easy", "moderate", "hard", "mixed"):
@@ -1599,6 +1610,8 @@ def doc_options(caption):
         mi = _INCL_RE.search(low)
         if mi:
             include = _subjects_in(mi.group(1))
+        if not include:
+            include = _subjects_in(low)      # caption me sirf kisi vishay ka naam ho, jaise "Current affairs ke quiz banaye"
     return {"command": command, "count": count, "difficulty": difficulty, "group": group,
             "exclude": exclude, "include": include}
 
@@ -1686,12 +1699,16 @@ def process_document(chat_id, name, size, loader, caption, title=None):
             raise RuntimeError("फ़ाइल से कोई प्रश्न नहीं मिला/बना। हो सकता है PDF का फ़ॉन्ट पढ़ा न जा रहा हो (पुराने Hindi फ़ॉन्ट) या फ़ाइल बहुत छोटी हो।")
 
         excl, incl = opt["exclude"], opt["include"]
+        present = {}
+        for it in items:
+            present[it["subject"]] = present.get(it["subject"], 0) + 1
         if excl:
             items = [it for it in items if it["subject"] not in excl]
         if incl:
             items = [it for it in items if it["subject"] in incl]
         if not items:
-            raise RuntimeError("विषय-फ़िल्टर के बाद कोई प्रश्न नहीं बचा।")
+            have = ", ".join(f"{SUBJ_HI.get(k, k)} ({v})" for k, v in sorted(present.items(), key=lambda kv: -kv[1]))
+            raise RuntimeError("चुने हुए विषय के प्रश्न फ़ाइल में नहीं मिले।\nफ़ाइल में ये विषय मिले: " + have + "\nइन्हीं में से लिखकर दोबारा भेजें, जैसे: 'इतिहास का quiz'")
         available = len(items)
         filt_note = (" (" + ", ".join(SUBJ_HI.get(x, x) for x in sorted(excl)) + " छोड़कर)") if excl else \
                     (" (सिर्फ़ " + ", ".join(SUBJ_HI.get(x, x) for x in sorted(incl)) + ")") if incl else ""
@@ -1700,6 +1717,10 @@ def process_document(chat_id, name, size, loader, caption, title=None):
             keep = sorted(random.sample(range(len(items)), count))
             items = [items[i] for i in keep]
         solved = sum(1 for it in items if it["solved"])
+
+        # sirf ek vishay ho to "Test 10Q 1" ki jagah file ke naam wala test banao
+        if group == "combined" and len({it["subject"] for it in items}) == 1:
+            group = "subject"
 
         # groups
         label = {"/test": "Test", "/mock": "Mock", "/quiz": "Quiz", "/practice": "Practice", "/pyq": "PYQ"}[command]
@@ -1813,6 +1834,13 @@ def material_titles():
     return [str(e.get("title")) for e in _material_entries()][:40]
 
 
+_MAT_STOP = {"se", "ka", "ki", "ke", "ko", "me", "mein", "par", "book", "ncert", "pdf", "file", "paper", "papers",
+             "notes", "note", "quiz", "test", "mock", "practice", "banao", "bana", "do", "dijiye", "kar", "karo",
+             "from", "of", "the", "and", "chapter", "prashn", "sawal", "question", "questions", "mcq",
+             "से", "का", "की", "के", "को", "में", "पर", "किताब", "पुस्तक", "बुक", "फ़ाइल", "पेपर", "नोट्स", "प्रश्न",
+             "बनाओ", "बनाइए", "टेस्ट", "क्विज़"}
+
+
 def find_material(query):
     """(mila hua, ek se zyada/sujhav) deta hai."""
     import difflib
@@ -1828,6 +1856,13 @@ def find_material(query):
         return part, []
     if len(part) > 1:
         return [], part[:8]
+    qt = [w for w in re.findall(r"[\w\u0900-\u097F]+", q) if w not in _MAT_STOP and not re.fullmatch(r"\d+q?|q\d+", w)]
+    if qt:
+        sc = [(sum(1 for w in qt if w in _norm_title(e["title"])), e) for e in files]
+        best = max(n for n, _ in sc)
+        if best and best / len(qt) >= 0.5:
+            top = [e for n, e in sc if n == best]
+            return (top[:1], []) if len(top) == 1 else ([], top[:8])
     scored = sorted(files, key=lambda e: -difflib.SequenceMatcher(None, q, _norm_title(e["title"])).ratio())
     ratios = [difflib.SequenceMatcher(None, q, _norm_title(e["title"])).ratio() for e in scored]
     if ratios[0] >= 0.6 and (len(ratios) == 1 or ratios[0] - ratios[1] >= 0.08):
@@ -1871,6 +1906,53 @@ def handle_material(chat_id, query, caption):
     process_document(chat_id, "note.txt", len(data), lambda: data, caption or "", title=title)
 
 
+def rebuild_pages():
+    """Purane test/quiz pages ko naye index.html ke design/code me badalta hai (sawal wahi rehte hain)."""
+    path = _find_index_html()
+    if not path:
+        return 0, 0, "index.html nahi mila"
+    with open(path, "r", encoding="utf-8") as f:
+        src = f.read()
+    a, b = src.find("/*GK_DATA_START*/"), src.find("/*GK_DATA_END*/")
+    if a < 0 or b < a:
+        return 0, 0, "index.html me GK_DATA marker nahi mila"
+    changed = total = 0
+    for folder in ("tests", "quiz", "practice"):
+        if not os.path.isdir(folder):
+            continue
+        for fn in sorted(os.listdir(folder)):
+            if not fn.endswith(".html"):
+                continue
+            p = os.path.join(folder, fn)
+            with open(p, "r", encoding="utf-8") as f:
+                old = f.read()
+            oa, ob = old.find("/*GK_DATA_START*/"), old.find("/*GK_DATA_END*/")
+            if oa < 0 or ob < oa:
+                continue
+            total += 1
+            page = src[:a] + old[oa:ob] + src[b:]
+            m = re.search(r"<title>.*?</title>", old, flags=re.S)
+            if m:
+                page = re.sub(r"<title>.*?</title>", lambda _m: m.group(0), page, count=1, flags=re.S)
+            if page != old:
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write(page)
+                changed += 1
+    return changed, total, ""
+
+
+def handle_rebuild(chat_id):
+    send_message(chat_id, "🔄 purane test/quiz pages naye design me badal raha hoon...")
+    changed, total, err = rebuild_pages()
+    if err:
+        send_message(chat_id, "❌ " + html.escape(err))
+        return
+    if changed and not git_publish(f"Rebuild {changed} test pages with latest app"):
+        send_message(chat_id, "❌ GitHub par publish nahi ho paya")
+        return
+    send_message(chat_id, f"✅ {changed} pages naye ho gaye (kul {total} me se). Link chalu hone me 1-2 minute lag sakte hain.")
+
+
 def handle_delete(chat_id, name):
     if not str(name).strip():
         send_message(chat_id, "❓ किसे हटाना है? जैसे: <b>Test 40Q 1 delete कर दो</b>")
@@ -1908,6 +1990,8 @@ def process_update(update):
     if word in ("/start", "/help"):
         send_message(chat_id, HELP_TEXT)
         return
+    if word == "/rebuild":
+        return handle_rebuild(chat_id)
     if word in ("/doc", "/file"):
         rest = text.split(None, 1)[1] if len(text.split(None, 1)) > 1 else ""
         name, _, cap = rest.partition("|")
@@ -1934,6 +2018,8 @@ def process_update(update):
 
     if cmd.get("command") == "/delete":
         return handle_delete(chat_id, cmd.get("topic", ""))
+    if cmd.get("command") == "/rebuild":
+        return handle_rebuild(chat_id)
     if cmd.get("command") == "/doc":
         return handle_material(chat_id, cmd.get("topic", ""), cmd.get("caption", ""))
 
