@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install requests groq pypdf python-docx
+        run: pip install requests groq pypdf python-docx pymupdf
 
       - name: Run bot
         env:
