@@ -56,7 +56,9 @@ def telegram(method, data=None):
 
 def send_message(chat_id, text, parse_mode="HTML"):
     """Message bhejta hai. Fail hone par plain text try karta hai.
+    Text me ⟦BTN|naam|url⟧ ho to unke inline URL button ban jate hain.
     Success par response dict, fail par None return karta hai."""
+    text, btns = _split_buttons(text)
     text = text[:TG_LIMIT]
     try:
         payload = {
@@ -65,11 +67,15 @@ def send_message(chat_id, text, parse_mode="HTML"):
             "parse_mode": parse_mode,
             "disable_web_page_preview": False
         }
+        if btns:
+            payload["reply_markup"] = {"inline_keyboard": [[{"text": n, "url": u}] for n, u in btns[:100]]}
         return telegram("sendMessage", payload)
     except Exception as e:
         print(f"sendMessage failed for {chat_id}:", e)
         try:
             clean_text = html.unescape(re.sub(r'<[^>]+>', '', text))
+            if btns:   # button na chale to link text me dikha do
+                clean_text += "\n\n" + "\n".join(u for _, u in btns)
             return telegram("sendMessage", {"chat_id": chat_id, "text": clean_text})
         except Exception as e2:
             print("plain sendMessage failed too:", e2)
@@ -1151,10 +1157,32 @@ def safe_slug(text):
     return (text or "test")[:50]
 
 
-def link_line(label, url):
-    """Link ko seedha dikhne wale URL ki tarah bhejta hai. Telegram text-link par 'Open Link' poochta hai,
-    jabki dikhta hua URL tap karne par seedha khul jata hai."""
-    return f"🔗 {label}\n{html.escape(url)}"
+LINK_STYLE = os.environ.get("LINK_STYLE", "button").strip().lower()   # button | text | url
+
+
+def link_line(label, url, tag=None):
+    """Test/notes ka link. LINK_STYLE:
+    button (default): message ke neeche "🔗 QUIZ NOW" naam ka button, URL chhupa rehta hai (Telegram 'Open Link' nahi poochta)
+    text            : "🔗 QUIZ NOW" hyperlink text (Telegram 'Open Link' poochta hai)
+    url             : "🔗 https://..." seedha dikhta URL"""
+    if LINK_STYLE == "url":
+        return f"🔗 {html.escape(url)}"
+    if LINK_STYLE == "text":
+        return f'🔗 <a href="{html.escape(url, quote=True)}">{html.escape(label)}</a>'
+    name = f"🔗 {label}" + (f" · {str(tag)[:22]}" if tag else "")
+    name = name.replace("|", "-").replace("⟦", "").replace("⟧", "")
+    return f"⟦BTN|{name}|{url}⟧"
+
+
+_BTN_RE = re.compile(r"⟦BTN\|([^|⟧]*)\|([^⟧]+)⟧")
+
+
+def _split_buttons(text):
+    """Text me chhupe ⟦BTN|naam|url⟧ nishan hata kar (text, [(naam, url)]) deta hai."""
+    btns = [(m.group(1), m.group(2)) for m in _BTN_RE.finditer(text)]
+    text = _BTN_RE.sub("", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).rstrip()
+    return text, btns
 
 
 def load_offset():
@@ -1174,7 +1202,7 @@ def save_offset(offset):
 # ------------------------------------------------------------------- Handler
 
 # ------------------------------------------------ Universal (natural language)
-BOT_VERSION = "2026-10-12c • OCR + 8-point analysis + /rebuild"
+BOT_VERSION = "2026-10-12e • OCR + 8-point analysis + /rebuild + link-button"
 
 HELP_TEXT = (
     "🤖 <b>Gyankshetra Bot</b>\n"
@@ -2033,7 +2061,7 @@ def process_document(chat_id, name, size, loader, caption, title=None):
 
         lines = [f"✅ <b>{len(made)} {info['label']} तैयार!</b>", ""]
         for topic, n, url in made:
-            lines.append(f'• {html.escape(topic)} ({n} प्रश्न)\n' + link_line(info["btn_text"], url) + "\n")
+            lines.append(f'• {html.escape(topic)} ({n} प्रश्न)\n' + link_line(info["btn_text"], url, tag=topic) + "\n")
         extra = list(warns)
         if solved:
             extra.append(f"⚠️ {solved} प्रश्नों का उत्तर फ़ाइल में नहीं मिला, AI ने खुद हल किया है। एक बार जाँच लें।")
