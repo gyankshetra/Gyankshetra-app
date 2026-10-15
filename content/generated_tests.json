@@ -1,5 +1,18 @@
 [
   {
+    "id": "20261015-141129",
+    "title": "🎯 Chemistry",
+    "class": "GENERAL",
+    "subject": "Chemistry",
+    "topic": "Chemistry",
+    "category": "Quiz",
+    "type": "quiz",
+    "url": "https://gyankshetra.github.io/Gyankshetra-app/quiz/Chemistry-3q-20261015-141129.html",
+    "btn_text": "QUIZ NOW",
+    "created_at": "20261015-141129",
+    "questions": 3
+  },
+  {
     "id": "20261015-140913",
     "title": "📝 Quantum Chemistry",
     "class": "GENERAL",
