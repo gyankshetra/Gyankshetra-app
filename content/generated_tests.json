@@ -1,5 +1,18 @@
 [
   {
+    "id": "20261015-165542",
+    "title": "🎯 सामान्य अध्ययन",
+    "class": "GENERAL",
+    "subject": "General",
+    "topic": "सामान्य अध्ययन",
+    "category": "Quiz",
+    "type": "quiz",
+    "url": "https://gyankshetra.github.io/Gyankshetra-app/quiz/test-1q-20261015-165542.html",
+    "btn_text": "QUIZ NOW",
+    "created_at": "20261015-165542",
+    "questions": 1
+  },
+  {
     "id": "20261015-162228",
     "title": "📝 सामान्य अध्ययन",
     "class": "GENERAL",
